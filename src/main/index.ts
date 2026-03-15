@@ -1,5 +1,30 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import * as path from "path";
+import * as fs from "fs";
+
+// Load .env from app resources (production) or project root (dev)
+function loadEnvFile(): void {
+  const candidates = [
+    path.join(process.resourcesPath ?? "", ".env"),  // production
+    path.join(__dirname, "../../.env"),                // dev
+  ];
+  for (const envPath of candidates) {
+    if (fs.existsSync(envPath)) {
+      for (const line of fs.readFileSync(envPath, "utf-8").split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx > 0) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          const value = trimmed.slice(eqIdx + 1).trim();
+          if (!process.env[key]) process.env[key] = value;
+        }
+      }
+      break;
+    }
+  }
+}
+loadEnvFile();
 import { loadConfig, saveConfig, type Config } from "../config";
 import {
   getDb, closeDb, getOverallRecord, getMatchupRecords,
@@ -50,7 +75,9 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 600,
     webPreferences: {
-      preload: path.resolve(__dirname, "..", "preload", "entry.js"),
+      preload: process.env["VITE_DEV_SERVER_URL"]
+        ? path.resolve(__dirname, "..", "preload", "entry.js")
+        : path.resolve(__dirname, "../../src/preload/entry.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false, // needed for preload to use require()
@@ -64,7 +91,8 @@ function createWindow(): void {
     mainWindow.loadURL(process.env["VITE_DEV_SERVER_URL"]);
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../../dist/renderer/index.html"));
+    // In prod, __dirname is dist/main/main/ — go up to project root, then into dist/renderer
+    mainWindow.loadFile(path.join(__dirname, "../../../dist/renderer/index.html"));
   }
 
   mainWindow.on("closed", () => {
@@ -298,7 +326,8 @@ app.whenReady().then(() => {
   if (!process.env["VITE_DEV_SERVER_URL"]) {
     try {
       const { autoUpdater } = require("electron-updater") as typeof import("electron-updater");
-      autoUpdater.checkForUpdatesAndNotify();
+      autoUpdater.on("error", () => { /* silently ignore update errors */ });
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
       autoUpdater.on("update-downloaded", () => {
         mainWindow?.webContents.send("update:ready");
       });

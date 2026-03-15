@@ -1,4 +1,7 @@
-// Plain JS preload — no tsx dependency
+// Preload entry point
+// In dev: this file IS the preload (plain JS, no tsx needed)
+// In production: same file works since it's already plain JS
+
 const { contextBridge, ipcRenderer } = require("electron");
 
 const api = {
@@ -15,6 +18,14 @@ const api = {
   importAndAnalyze: (filePaths, targetPlayer) =>
     ipcRenderer.invoke("import:analyze", filePaths, targetPlayer),
 
+  // Analysis
+  analyzeReplays: (replayPaths, targetPlayer) =>
+    ipcRenderer.invoke("analyze:run", replayPaths, targetPlayer),
+  analyzeRecent: (count, targetPlayer) =>
+    ipcRenderer.invoke("analyze:recent", count, targetPlayer),
+  analyzeTrends: (trendSummary) =>
+    ipcRenderer.invoke("analyze:trends", trendSummary),
+
   // Stats
   getOverallRecord: () => ipcRenderer.invoke("stats:overall"),
   getMatchupRecords: () => ipcRenderer.invoke("stats:matchups"),
@@ -23,14 +34,6 @@ const api = {
   getLatestAnalysis: () => ipcRenderer.invoke("stats:latestAnalysis"),
   getOpponents: (search) => ipcRenderer.invoke("stats:opponents", search),
   getSets: () => ipcRenderer.invoke("stats:sets"),
-
-  // Analysis
-  analyzeReplays: (replayPaths, targetPlayer) =>
-    ipcRenderer.invoke("analyze:run", replayPaths, targetPlayer),
-  analyzeRecent: (count, targetPlayer) =>
-    ipcRenderer.invoke("analyze:recent", count, targetPlayer),
-  analyzeTrends: (trendSummary) =>
-    ipcRenderer.invoke("analyze:trends", trendSummary),
 
   // Data management
   clearAllGames: () => ipcRenderer.invoke("data:clearAll"),

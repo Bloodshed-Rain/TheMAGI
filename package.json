@@ -1,23 +1,98 @@
 {
   "name": "coach-clippi",
   "version": "1.0.0",
-  "description": "",
+  "description": "AI-powered Melee coaching from your Slippi replays",
   "main": "src/main/entry.js",
   "scripts": {
     "dev": "node scripts/dev.js",
     "build:renderer": "vite build",
-    "build:main": "tsc -p tsconfig.main.json",
+    "build": "tsc -p tsconfig.main.json && vite build && electron-builder",
+    "build:win": "tsc -p tsconfig.main.json && vite build && electron-builder --win",
+    "build:mac": "tsc -p tsconfig.main.json && vite build && electron-builder --mac",
+    "build:linux": "tsc -p tsconfig.main.json && vite build && electron-builder --linux",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["melee", "slippi", "coaching", "ai", "smash-bros"],
+  "author": {
+    "name": "Bloodshed-Rain",
+    "email": "268419293+Bloodshed-Rain@users.noreply.github.com"
+  },
+  "license": "MIT",
   "type": "commonjs",
+  "build": {
+    "appId": "com.coach-clippi.app",
+    "productName": "Coach-Clippi",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/main/entry.js",
+      "src/preload/entry.js",
+      "dist/main/**/*",
+      "dist/renderer/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".env",
+        "to": ".",
+        "filter": [".env"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Bloodshed-Rain",
+      "repo": "Coach-Clippi"
+    }
+  },
   "dependencies": {
     "@slippi/slippi-js": "^9.0.0",
     "better-sqlite3": "^12.8.0",
     "chokidar": "^5.0.0",
-    "electron": "^41.0.2",
     "electron-updater": "^6.8.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -32,6 +107,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.2.1",
+    "electron": "^41.0.2",
     "electron-builder": "^26.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
