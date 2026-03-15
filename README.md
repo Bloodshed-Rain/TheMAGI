@@ -152,12 +152,7 @@ Key modules:
 
 ## Cost
 
-Coach-Clippi uses your own API key. Approximate costs per Gemini 2.5 Flash call:
-- **Per-game analysis:** ~$0.01-0.03
-- **Trend commentary:** ~$0.01
-- **Cached results:** $0 (stored locally, never re-calls the API)
-
-A typical session of 10 games costs about $0.10-0.30 to fully analyze.
+Im not charging any money at this point, but in the future when/if enough people use it to warrant it I will implement some type of way to make the money back for the API Calls. But local LLM models/BYOK will also be supported.
 
 ## Roadmap
 
