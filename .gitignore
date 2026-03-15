@@ -137,3 +137,29 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# ── Coach-Clippi specific ────────────────────────────────────────────
+
+# Electron build output
+dist/
+release/
+out/
+
+# Local SQLite database (user data)
+*.db
+*.db-journal
+*.db-wal
+
+# Slippi replay files (user data, too large for git)
+test-replays/
+*.slp
+
+# User config (contains API keys)
+.coach-clippi/
+
+# Native module rebuilds
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
