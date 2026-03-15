@@ -1,0 +1,77 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            targets: AppImage
+          - os: windows-latest
+            platform: win
+            targets: nsis portable
+          - os: macos-latest
+            platform: mac
+            targets: dmg
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create key.env
+        run: echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > key.env
+
+      - name: Compile main process
+        run: npx tsc -p tsconfig.main.json
+
+      - name: Build renderer
+        run: npx vite build
+
+      - name: Rebuild native modules for Electron
+        run: npx electron-rebuild
+
+      - name: Build Electron app
+        run: npx electron-builder --${{ matrix.platform }} ${{ matrix.targets }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coach-clippi-${{ matrix.platform }}
+          path: |
+            release/*.AppImage
+            release/*.exe
+            release/*.dmg
+            release/*.deb
+          if-no-files-found: ignore
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.AppImage
+            release/*.exe
+            release/*.dmg
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
