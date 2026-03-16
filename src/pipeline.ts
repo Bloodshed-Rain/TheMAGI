@@ -54,6 +54,36 @@ export interface PlayerSummary {
     openingsGiven: number;
     damageDealt: number;
   }[];
+  /** Peach only — turnip/item pull breakdown. Null for non-Peach characters. */
+  turnipPulls: TurnipPullStats | null;
+  /** Marth only — Ken combo detection. Null for non-Marth characters. */
+  kenCombos: KenComboStats | null;
+}
+
+export interface KenComboStats {
+  /** Total Ken combos landed (fair(s) → dair) */
+  total: number;
+  /** How many resulted in a kill */
+  kills: number;
+  /** Each individual Ken combo with details */
+  combos: {
+    moves: string[];
+    totalDamage: number;
+    startPercent: number;
+    endedInKill: boolean;
+  }[];
+}
+
+export interface TurnipPullStats {
+  totalPulls: number;
+  /** Breakdown by face type */
+  faces: { face: string; count: number }[];
+  /** Pulls that resulted in hitting the opponent */
+  turnipsHit: number;
+  /** Hit rate for thrown turnips */
+  hitRate: number;
+  /** Rare item pulls (beam sword, bob-omb, mr. saturn) */
+  rareItems: { item: string; count: number }[];
 }
 
 export interface GameSummary {
@@ -565,6 +595,98 @@ function buildPlayerSummary(
     };
   });
 
+  // ── Peach turnip pull tracking ────────────────────────────────────
+  const PEACH_CHARACTER_ID = 12;
+  // Melee item typeIds (from slippi replay data):
+  //   99 = Peach's Turnip/Vegetable
+  //   103 = Mr. Saturn (Peach pull rare)
+  //   104 = Bob-omb (Peach pull rare)
+  //   55  = Beam Sword (Peach pull rare, also fsmash items)
+  const TURNIP_TYPE_ID = 99;
+  const PEACH_RARE_ITEMS: Record<number, string> = {
+    103: "Mr. Saturn",
+    104: "Bob-omb",
+    55: "Beam Sword",
+  };
+  const TURNIP_FACE_NAMES: Record<number, string> = {
+    0: "neutral",
+    1: "smile",
+    2: "wink",
+    3: "surprised",
+    4: "happy",
+    5: "circle eyes",
+    6: "carrot eyes",
+    7: "stitch face",
+  };
+
+  let turnipPulls: TurnipPullStats | null = null;
+
+  if (player.characterId === PEACH_CHARACTER_ID) {
+    const seenSpawnIds = new Set<number>();
+    const faceCounts = new Map<number, number>();
+    const rareItemCounts = new Map<string, number>();
+    let totalPulls = 0;
+    let turnipsHit = 0;
+
+    for (let f = Frames.FIRST_PLAYABLE; f <= lastFrame; f++) {
+      const items = frames[f]?.items;
+      if (!items) continue;
+
+      for (const item of items) {
+        if (item.owner !== playerIndex) continue;
+        const spawnId = item.spawnId;
+        if (spawnId == null || seenSpawnIds.has(spawnId)) continue;
+        seenSpawnIds.add(spawnId);
+
+        const typeId = item.typeId ?? -1;
+
+        if (typeId === TURNIP_TYPE_ID) {
+          totalPulls++;
+          const face = item.turnipFace ?? 0;
+          faceCounts.set(face, (faceCounts.get(face) ?? 0) + 1);
+        } else if (PEACH_RARE_ITEMS[typeId]) {
+          totalPulls++;
+          const name = PEACH_RARE_ITEMS[typeId]!;
+          rareItemCounts.set(name, (rareItemCounts.get(name) ?? 0) + 1);
+        }
+      }
+    }
+
+    // Detect turnip hits from conversion data.
+    // In Melee, item throw hits register as moveId 1 ("misc") in slippi-js.
+    // Count conversion moves with moveId 1 where Peach is the attacker.
+    // (conversions where opponent is victim = playerIndex !== this player)
+    const ITEM_THROW_MOVE_ID = 1;
+    for (const conv of myConversions) {
+      for (const move of conv.moves) {
+        if (move.moveId === ITEM_THROW_MOVE_ID) {
+          turnipsHit++;
+        }
+      }
+    }
+
+    if (totalPulls > 0) {
+      const faces = [...faceCounts.entries()]
+        .map(([face, count]) => ({ face: TURNIP_FACE_NAMES[face] ?? `face ${face}`, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const rareItems = [...rareItemCounts.entries()]
+        .map(([item, count]) => ({ item, count }))
+        .sort((a, b) => b.count - a.count);
+
+      // Hit rate: item throw hits / total turnip pulls (not counting rare items)
+      const turnipCount = [...faceCounts.values()].reduce((a, b) => a + b, 0);
+
+      turnipPulls = {
+        totalPulls,
+        faces,
+        turnipsHit,
+        hitRate: turnipCount > 0 ? ratio(turnipsHit, turnipCount) : 0,
+        rareItems,
+      };
+    }
+  }
+
   return {
     tag,
     connectCode,
@@ -592,6 +714,56 @@ function buildPlayerSummary(
     dashDanceFrames: dashDanceFrameCount,
     moveUsage,
     stocks: stockBreakdown,
+    turnipPulls,
+    kenCombos: detectKenCombos(player.characterId, myConversions),
+  };
+}
+
+// ── Ken combo detection (Marth only) ─────────────────────────────────
+
+const MARTH_CHARACTER_ID = 9;
+const FAIR_MOVE_ID = 14;
+const DAIR_MOVE_ID = 17;
+
+function detectKenCombos(
+  characterId: number | undefined,
+  myConversions: ConversionType[],
+): KenComboStats | null {
+  if (characterId !== MARTH_CHARACTER_ID) return null;
+
+  const combos: KenComboStats["combos"] = [];
+
+  for (const conv of myConversions) {
+    if (conv.moves.length < 2) continue;
+
+    const moveIds = conv.moves.map((m) => m.moveId);
+    const hasFair = moveIds.includes(FAIR_MOVE_ID);
+    const lastMoveId = moveIds[moveIds.length - 1];
+
+    // Ken combo: at least one fair, ending with dair
+    if (hasFair && lastMoveId === DAIR_MOVE_ID) {
+      const moveNames = conv.moves.map(
+        (m) => moveIdToName[m.moveId] ?? getMoveName(m.moveId),
+      );
+      const totalDamage = Math.round(
+        (conv.endPercent ?? conv.currentPercent) - conv.startPercent,
+      );
+
+      combos.push({
+        moves: moveNames,
+        totalDamage,
+        startPercent: Math.round(conv.startPercent),
+        endedInKill: conv.didKill,
+      });
+    }
+  }
+
+  if (combos.length === 0) return null;
+
+  return {
+    total: combos.length,
+    kills: combos.filter((c) => c.endedInKill).length,
+    combos,
   };
 }
 
@@ -1382,91 +1554,8 @@ export function assembleUserPrompt(
   return lines.join("\n");
 }
 
-// ── Gemini API call ───────────────────────────────────────────────────
-
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 2000;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export async function callGemini(
-  systemPrompt: string,
-  userPrompt: string,
-): Promise<string> {
-  const apiKey = process.env["GEMINI_API_KEY"];
-  if (!apiKey) {
-    throw new Error(
-      "GEMINI_API_KEY environment variable is not set",
-    );
-  }
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
-  const body = JSON.stringify({
-    system_instruction: {
-      parts: [{ text: systemPrompt }],
-    },
-    contents: [
-      {
-        parts: [{ text: userPrompt }],
-      },
-    ],
-  });
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body,
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(
-        `Gemini API error (${response.status}): ${errorBody}`,
-      );
-    }
-
-    const data = (await response.json()) as {
-      candidates?: {
-        content?: { parts?: { text?: string }[] };
-        finishReason?: string;
-      }[];
-    };
-
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (text) {
-      return text;
-    }
-
-    // Empty response — retry if we have attempts left
-    const reason = data.candidates?.[0]?.finishReason ?? "unknown";
-    if (attempt < MAX_RETRIES) {
-      console.error(
-        `Gemini returned empty response (finishReason: ${reason}), retrying (${attempt}/${MAX_RETRIES})...`,
-      );
-      await sleep(RETRY_DELAY_MS * attempt);
-    } else {
-      throw new EmptyResponseError(reason);
-    }
-  }
-
-  // Unreachable, but TypeScript needs it
-  throw new EmptyResponseError("unknown");
-}
-
-class EmptyResponseError extends Error {
-  constructor(finishReason: string) {
-    super(
-      `Gemini returned empty text after ${MAX_RETRIES} attempts (last finishReason: ${finishReason})`,
-    );
-    this.name = "EmptyResponseError";
-  }
-}
+// ── LLM call — delegated to src/llm.ts ───────────────────────────────
+// callGemini removed — use callLLM() from src/llm.ts instead.
 
 // ── CLI entry point ───────────────────────────────────────────────────
 
@@ -1624,25 +1713,34 @@ async function main() {
     );
   }
   console.error(`Perspective: ${targetTag}`);
-  console.error(`Calling Gemini 2.5 Flash...`);
+
+  // Resolve LLM config from user config + env vars
+  const configMod = require("./config") as typeof import("./config");
+  const llmMod = require("./llm") as typeof import("./llm");
+  const userConfig = configMod.loadConfig();
+  const llmConfig: import("./llm").LLMConfig = {
+    modelId: userConfig.llmModelId ?? llmMod.LLM_DEFAULTS.modelId,
+    openrouterApiKey: userConfig.openrouterApiKey,
+    geminiApiKey: userConfig.geminiApiKey,
+    anthropicApiKey: userConfig.anthropicApiKey,
+    openaiApiKey: userConfig.openaiApiKey,
+    localEndpoint: userConfig.localEndpoint,
+  };
+
+  console.error(`Calling ${llmMod.getModelLabel(llmConfig.modelId)}...`);
 
   try {
-    const analysis = await callGemini(SYSTEM_PROMPT, userPrompt);
+    const analysis = await llmMod.callLLM({
+      systemPrompt: SYSTEM_PROMPT,
+      userPrompt,
+      config: llmConfig,
+    });
     console.log(analysis);
   } catch (err) {
-    if (err instanceof EmptyResponseError) {
-      console.error(`\nError: ${err.message}`);
-      console.error(
-        "The Gemini API returned empty responses. This can happen intermittently.",
-      );
-      console.error(
-        "Try running again, or try with a different replay file.\n",
-      );
-      console.error("Game summary data (so your analysis isn't lost):\n");
-      dumpJson(gameResults);
-      process.exit(1);
-    }
-    throw err;
+    console.error(`\nError: ${err instanceof Error ? err.message : String(err)}`);
+    console.error("Game summary data (so your analysis isn't lost):\n");
+    dumpJson(gameResults);
+    process.exit(1);
   }
 }
 

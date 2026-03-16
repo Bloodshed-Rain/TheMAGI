@@ -1,18 +1,31 @@
 import { saveConfig, loadConfig, CONFIG_PATH } from "./config";
+import { getModelLabel, LLM_DEFAULTS } from "./llm";
+
+function printConfig() {
+  const config = loadConfig();
+  const modelId = config.llmModelId ?? LLM_DEFAULTS.modelId;
+  console.log(`  Target player:    ${config.targetPlayer ?? "(not set)"}`);
+  console.log(`  Connect code:     ${config.connectCode ?? "(not set)"}`);
+  console.log(`  Replay folder:    ${config.replayFolder ?? "(not set)"}`);
+  console.log(`  AI model:         ${getModelLabel(modelId)}`);
+  console.log(`  OpenRouter key:   ${config.openrouterApiKey ? "(set)" : "(not set)"}`);
+  console.log(`  Gemini key:       ${config.geminiApiKey ? "(set)" : "(not set)"}`);
+  console.log(`  Anthropic key:    ${config.anthropicApiKey ? "(set)" : "(not set)"}`);
+  console.log(`  OpenAI key:       ${config.openaiApiKey ? "(set)" : "(not set)"}`);
+  console.log(`  Local endpoint:   ${config.localEndpoint ?? "(default: localhost:1234)"}`);
+}
 
 function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    const config = loadConfig();
     console.log(`Coach-Clippi config (${CONFIG_PATH}):\n`);
-    console.log(`  Target player:  ${config.targetPlayer ?? "(not set)"}`);
-    console.log(`  Connect code:   ${config.connectCode ?? "(not set)"}`);
-    console.log(`  Replay folder:  ${config.replayFolder ?? "(not set)"}`);
-    console.log(`  Gemini API key: ${config.geminiApiKey ? "(set)" : "(not set)"}`);
+    printConfig();
     console.log();
     console.log("Usage:");
-    console.log("  npx tsx src/setup.ts --tag YourTag --code YOUR#123 --folder /path/to/replays --key AIza...");
+    console.log("  npx tsx src/setup.ts --tag YourTag --code YOUR#123 --folder /path/to/replays");
+    console.log("  npx tsx src/setup.ts --model deepseek/deepseek-chat --openrouter-key sk-or-...");
+    console.log("  npx tsx src/setup.ts --model gemini-2.5-flash --gemini-key AIza...");
     return;
   }
 
@@ -30,23 +43,35 @@ function main() {
     } else if ((arg === "--folder" || arg === "--replays") && next) {
       updates["replayFolder"] = next;
       i++;
-    } else if ((arg === "--key" || arg === "--api-key") && next) {
+    } else if (arg === "--model" && next) {
+      updates["llmModelId"] = next;
+      i++;
+    } else if (arg === "--openrouter-key" && next) {
+      updates["openrouterApiKey"] = next;
+      i++;
+    } else if ((arg === "--key" || arg === "--gemini-key") && next) {
       updates["geminiApiKey"] = next;
+      i++;
+    } else if (arg === "--anthropic-key" && next) {
+      updates["anthropicApiKey"] = next;
+      i++;
+    } else if (arg === "--openai-key" && next) {
+      updates["openaiApiKey"] = next;
+      i++;
+    } else if (arg === "--local-endpoint" && next) {
+      updates["localEndpoint"] = next;
       i++;
     }
   }
 
   if (Object.keys(updates).length === 0) {
-    console.error("No valid options provided. Use --tag, --code, --folder, or --key.");
+    console.error("No valid options provided. Use --tag, --code, --folder, --model, or --<provider>-key.");
     process.exit(1);
   }
 
-  const config = saveConfig(updates);
+  saveConfig(updates);
   console.log("Config saved!\n");
-  console.log(`  Target player:  ${config.targetPlayer ?? "(not set)"}`);
-  console.log(`  Connect code:   ${config.connectCode ?? "(not set)"}`);
-  console.log(`  Replay folder:  ${config.replayFolder ?? "(not set)"}`);
-  console.log(`  Gemini API key: ${config.geminiApiKey ? "(set)" : "(not set)"}`);
+  printConfig();
 }
 
 if (require.main === module) {

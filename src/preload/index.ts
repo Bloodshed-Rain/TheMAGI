@@ -14,6 +14,10 @@ const api = {
   importAndAnalyze: (filePaths: string[], targetPlayer: string) =>
     ipcRenderer.invoke("import:analyze", filePaths, targetPlayer),
 
+  // LLM
+  getLLMModels: () => ipcRenderer.invoke("llm:models"),
+  getCurrentModel: () => ipcRenderer.invoke("llm:currentModel"),
+
   // Stats
   getOverallRecord: () => ipcRenderer.invoke("stats:overall"),
   getMatchupRecords: () => ipcRenderer.invoke("stats:matchups"),

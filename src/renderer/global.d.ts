@@ -9,6 +9,8 @@ declare global {
       analyzeReplays: (replayPaths: string[], targetPlayer: string) => Promise<string>;
       analyzeRecent: (count: number, targetPlayer: string) => Promise<string>;
       analyzeTrends: (trendSummary: string) => Promise<string>;
+      getLLMModels: () => Promise<any[]>;
+      getCurrentModel: () => Promise<{ modelId: string; label: string }>;
       getOverallRecord: () => Promise<any>;
       getMatchupRecords: () => Promise<any[]>;
       getStageRecords: () => Promise<any[]>;

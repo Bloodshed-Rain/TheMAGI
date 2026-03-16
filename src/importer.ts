@@ -7,13 +7,14 @@ import {
   findPlayerIdx,
   computeAdaptationSignals,
   assembleUserPrompt,
-  callGemini,
   SYSTEM_PROMPT,
   type GameResult,
   type GameSummary,
   type PlayerSummary,
   type DerivedInsights,
 } from "./pipeline";
+import { callLLM, LLM_DEFAULTS, type LLMConfig } from "./llm";
+import { loadConfig } from "./config";
 
 import {
   replayExists,
@@ -241,11 +242,24 @@ export async function importAndAnalyze(
   }
 
   const userPrompt = assembleUserPrompt(gameResults, targetTag);
-  const analysis = await callGemini(SYSTEM_PROMPT, userPrompt);
+  const userCfg = loadConfig();
+  const llmConfig: LLMConfig = {
+    modelId: userCfg.llmModelId ?? LLM_DEFAULTS.modelId,
+    openrouterApiKey: userCfg.openrouterApiKey,
+    geminiApiKey: userCfg.geminiApiKey,
+    anthropicApiKey: userCfg.anthropicApiKey,
+    openaiApiKey: userCfg.openaiApiKey,
+    localEndpoint: userCfg.localEndpoint,
+  };
+  const analysis = await callLLM({
+    systemPrompt: SYSTEM_PROMPT,
+    userPrompt,
+    config: llmConfig,
+  });
 
   // Store the coaching analysis
   if (batchResult.sessionId) {
-    insertCoachingAnalysis(null, batchResult.sessionId, "gemini-2.5-flash", analysis);
+    insertCoachingAnalysis(null, batchResult.sessionId, llmConfig.modelId, analysis);
   }
 
   return { batchResult, analysis };

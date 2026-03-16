@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import fs from "fs";
 import type Database from "better-sqlite3";
+import { loadConfig } from "./config";
+import { LLM_DEFAULTS } from "./llm";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -57,7 +59,7 @@ let _generateAnalysis: AnalysisGenerator = async (filePath: string) => {
  * setAnalysisGenerator(async (filePath) => {
  *   const result = processGame(filePath, 1);
  *   const prompt = assembleUserPrompt([result], targetTag);
- *   return await callGemini(SYSTEM_PROMPT, prompt);
+ *   return await callLLM({ systemPrompt: SYSTEM_PROMPT, userPrompt: prompt, config });
  * });
  * ```
  */
@@ -117,7 +119,7 @@ export async function processReplay(
     `).run(
       existingGame.id,
       existingGame.session_id,
-      "gemini-2.5-flash",
+      loadConfig().llmModelId ?? LLM_DEFAULTS.modelId,
       analysisText,
     );
 
@@ -162,7 +164,7 @@ export async function processReplay(
     db.prepare(`
       INSERT INTO coaching_analyses (game_id, session_id, model_used, analysis_text)
       VALUES (?, ?, ?, ?)
-    `).run(gameId, sessionId, "gemini-2.5-flash", text);
+    `).run(gameId, sessionId, loadConfig().llmModelId ?? LLM_DEFAULTS.modelId, text);
 
     return gameId;
   });

@@ -8,7 +8,14 @@ export interface Config {
   targetPlayer: string | null;
   connectCode: string | null;
   replayFolder: string | null;
+  // LLM provider settings
+  llmModelId: string | null;
+  openrouterApiKey: string | null;
   geminiApiKey: string | null;
+  anthropicApiKey: string | null;
+  openaiApiKey: string | null;
+  localEndpoint: string | null;
+  // UI
   theme: string | null;
   colorMode: string | null;
 }
@@ -17,7 +24,12 @@ const DEFAULTS: Config = {
   targetPlayer: null,
   connectCode: null,
   replayFolder: null,
+  llmModelId: null,
+  openrouterApiKey: null,
   geminiApiKey: null,
+  anthropicApiKey: null,
+  openaiApiKey: null,
+  localEndpoint: null,
   theme: null,
   colorMode: null,
 };

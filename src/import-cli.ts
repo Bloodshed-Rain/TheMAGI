@@ -76,7 +76,7 @@ async function main() {
       console.error("");
       console.error("Options:");
       console.error("  --target <player>  Analyze from this player's perspective (or set via setup)");
-      console.error("  --analyze          Also run AI coaching analysis (requires GEMINI_API_KEY)");
+      console.error("  --analyze          Also run AI coaching analysis (requires API key in config)");
       console.error("");
       console.error("Tip: Run 'npx tsx src/setup.ts --tag YourTag --folder /path/to/replays' once,");
       console.error("     then just run 'npx tsx src/import-cli.ts' with no args.");

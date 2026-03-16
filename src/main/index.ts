@@ -36,36 +36,27 @@ import { importReplays, importAndAnalyze } from "../importer";
 import { watchReplays } from "../watcher";
 import {
   processGame, computeAdaptationSignals, findPlayerIdx,
-  assembleUserPrompt, callGemini, SYSTEM_PROMPT,
+  assembleUserPrompt, SYSTEM_PROMPT,
   type GameResult,
 } from "../pipeline";
+import { callLLM, LLM_DEFAULTS, MODELS, getModelLabel, type LLMConfig } from "../llm";
 import { processReplay, setAnalysisGenerator } from "../replayAnalyzer";
 import { llmQueue } from "../llmQueue";
 
 let mainWindow: BrowserWindow | null = null;
 let fileWatcher: { close: () => void } | null = null;
 
-/**
- * API key resolution order:
- * 1. GEMINI_API_KEY env var (set by the app distribution / .env)
- * 2. User's own key from config (BYOK — always free)
- *
- * For the beta, the app ships with the key baked into the env.
- * Users never need to touch API settings.
- */
-function ensureApiKey(): void {
-  if (process.env["GEMINI_API_KEY"]) return;
-
-  // Fallback: check if user brought their own key
+/** Build LLMConfig from user config + env vars */
+function resolveLLMConfig(): LLMConfig {
   const config = loadConfig();
-  if (config.geminiApiKey) {
-    process.env["GEMINI_API_KEY"] = config.geminiApiKey;
-    return;
-  }
-
-  throw new Error(
-    "Analysis unavailable. Please contact the developer or provide your own Gemini API key in Settings.",
-  );
+  return {
+    modelId: config.llmModelId ?? LLM_DEFAULTS.modelId,
+    openrouterApiKey: config.openrouterApiKey ?? null,
+    geminiApiKey: config.geminiApiKey ?? null,
+    anthropicApiKey: config.anthropicApiKey ?? null,
+    openaiApiKey: config.openaiApiKey ?? null,
+    localEndpoint: config.localEndpoint ?? null,
+  };
 }
 
 function createWindow(): void {
@@ -147,7 +138,7 @@ function setupIPC(): void {
 
   // Analyze — deduplicated. Returns cached analysis if already exists.
   ipcMain.handle("analyze:run", async (_e, replayPaths: string[], targetPlayer: string) => {
-    ensureApiKey();
+    const llmConfig = resolveLLMConfig();
 
     // Single replay — use processReplay for dedup + caching
     if (replayPaths.length === 1) {
@@ -183,9 +174,11 @@ function setupIPC(): void {
     }
 
     const userPrompt = assembleUserPrompt(gameResults, targetTag);
-    const analysis = await llmQueue.enqueue(() => callGemini(SYSTEM_PROMPT, userPrompt));
+    const analysis = await llmQueue.enqueue(() =>
+      callLLM({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }),
+    );
 
-    insertCoachingAnalysis(null, null, "gemini-2.5-flash", analysis);
+    insertCoachingAnalysis(null, null, llmConfig.modelId, analysis);
 
     return analysis;
   });
@@ -206,7 +199,7 @@ function setupIPC(): void {
     // Reverse to chronological order
     const paths = games.reverse().map((g) => g.replay_path);
 
-    ensureApiKey();
+    const llmConfig = resolveLLMConfig();
 
     const gameResults: GameResult[] = [];
     for (let i = 0; i < paths.length; i++) {
@@ -231,15 +224,17 @@ function setupIPC(): void {
     }
 
     const userPrompt = assembleUserPrompt(gameResults, targetTag);
-    const analysis = await llmQueue.enqueue(() => callGemini(SYSTEM_PROMPT, userPrompt));
-    insertCoachingAnalysis(null, null, "gemini-2.5-flash", analysis);
+    const analysis = await llmQueue.enqueue(() =>
+      callLLM({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }),
+    );
+    insertCoachingAnalysis(null, null, llmConfig.modelId, analysis);
 
     return analysis;
   });
 
   // Trend commentary — Coach-Clippi reacts to your trend data
   ipcMain.handle("analyze:trends", async (_e, trendSummary: string) => {
-    ensureApiKey();
+    const llmConfig = resolveLLMConfig();
 
     const trendPrompt = `You are Coach-Clippi, a Melee coaching assistant with personality. You're reviewing a player's stat trends over their recent games.
 
@@ -249,8 +244,18 @@ Keep it concise — 3-5 short paragraphs max. Don't just recite the numbers back
 
 Open with a quick vibe check on their overall trajectory, then hit the highlights and lowlights.`;
 
-    const analysis = await llmQueue.enqueue(() => callGemini(trendPrompt, trendSummary));
+    const analysis = await llmQueue.enqueue(() =>
+      callLLM({ systemPrompt: trendPrompt, userPrompt: trendSummary, config: llmConfig }),
+    );
     return analysis;
+  });
+
+  // LLM models list — for the Settings UI
+  ipcMain.handle("llm:models", () => MODELS);
+  ipcMain.handle("llm:currentModel", () => {
+    const config = loadConfig();
+    const modelId = config.llmModelId ?? LLM_DEFAULTS.modelId;
+    return { modelId, label: getModelLabel(modelId) };
   });
 
   // Queue status — so UI can show "3 analyses pending..."
@@ -308,7 +313,7 @@ app.whenReady().then(() => {
   // Wire up the real analysis pipeline for replayAnalyzer dedup.
   // All LLM calls go through the rate-limited queue to prevent 429s.
   setAnalysisGenerator(async (filePath: string) => {
-    ensureApiKey();
+    const llmConfig = resolveLLMConfig();
     const config = loadConfig();
     const targetPlayer = config.connectCode ?? config.targetPlayer ?? "";
     const result = processGame(filePath, 1);
@@ -317,7 +322,9 @@ app.whenReady().then(() => {
       result.gameSummary.players[0].tag;
     const userPrompt = assembleUserPrompt([result], targetTag);
     // Queue the API call — waits its turn, respects rate limits
-    return llmQueue.enqueue(() => callGemini(SYSTEM_PROMPT, userPrompt));
+    return llmQueue.enqueue(() =>
+      callLLM({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }),
+    );
   });
 
   setupIPC();
