@@ -19,6 +19,10 @@ declare global {
       getOpponents: (search?: string) => Promise<any[]>;
       clearAllGames: () => Promise<boolean>;
       getSets: () => Promise<any[]>;
+      getCharacterList: () => Promise<any[]>;
+      getCharacterMatchups: (character: string) => Promise<any[]>;
+      getCharacterStageStats: (character: string) => Promise<any[]>;
+      getCharacterSignatureStats: (character: string) => Promise<any>;
       startWatcher: (replayFolder: string, targetPlayer: string) => Promise<boolean>;
       stopWatcher: () => Promise<boolean>;
       onImported: (callback: (result: any) => void) => () => void;

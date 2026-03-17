@@ -930,3 +930,167 @@ body {
   font-family: var(--font-mono);
   color: var(--text-dim);
 }
+
+/* ── Characters page ─────────────────────────────────────────────── */
+
+.char-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.char-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  color: var(--text);
+}
+
+.char-card:hover {
+  border-color: var(--char-color, var(--accent));
+  background: var(--char-glow, var(--accent-glow));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px var(--char-glow, var(--accent-glow));
+}
+
+.char-card-active {
+  border-color: var(--char-color, var(--accent));
+  background: var(--char-glow, var(--accent-glow));
+  box-shadow: 0 0 24px var(--char-glow, var(--accent-glow));
+}
+
+.char-card-emoji {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.char-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.char-card-record {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.char-card-games {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+/* Character detail */
+
+.char-detail {
+  margin-top: 8px;
+}
+
+.char-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin-bottom: 16px;
+  border-left: 4px solid var(--char-color, var(--accent));
+}
+
+.char-hero-icon {
+  font-size: 56px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.char-hero-name {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0 0 4px;
+}
+
+.char-hero-record {
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.char-hero-games {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.char-hero-last {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* Signature stats */
+
+.sig-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.sig-stat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  transition: border-color 0.2s, transform 0.15s;
+}
+
+.sig-stat:hover {
+  transform: translateY(-1px);
+}
+
+.sig-stat-highlight {
+  border-width: 2px;
+}
+
+.sig-stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  letter-spacing: -1px;
+}
+
+.sig-stat-label {
+  font-size: 10px;
+  color: var(--text-label);
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* Matchup win rate bar */
+
+.matchup-wr-bar {
+  display: inline-block;
+  position: relative;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 13px;
+}

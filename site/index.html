@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coach-Clippi — AI Melee Coaching from Your Replays</title>
+<meta name="description" content="Import your Slippi replays. Get frame-data-grounded AI coaching. Track improvement. 26 character themes. Currently free, local-first, open source.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0c;--bg2:#111116;--bg3:#18181f;
+  --tx:#e8e6e3;--txm:#8a8a96;--txd:#55555f;
+  --acc:#73f0a0;--acc2:#44d080;--acc3:#2aff6a;
+  --red:#ff4060;--amber:#ffb040;
+  --bdr:#2a2a35;
+  --font-display:'Bebas Neue',sans-serif;
+  --font-body:'Outfit',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth;background:var(--bg);color:var(--tx);font-family:var(--font-body)}
+body{overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--acc);color:var(--bg)}
+
+/* ── GLOBAL CRT OVERLAY ── */
+.crt-overlay{pointer-events:none;position:fixed;inset:0;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+  mix-blend-mode:multiply;opacity:0.4}
+.vignette{pointer-events:none;position:fixed;inset:0;z-index:9998;
+  background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,0.6) 100%)}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:1rem 2rem;
+  display:flex;align-items:center;justify-content:space-between;
+  backdrop-filter:blur(12px);background:rgba(10,10,12,0.7);
+  border-bottom:1px solid rgba(115,240,160,0.08);transition:all 0.4s}
+nav.scrolled{background:rgba(10,10,12,0.95);border-bottom-color:rgba(115,240,160,0.15)}
+.nav-logo{font-family:var(--font-display);font-size:1.6rem;letter-spacing:0.08em;
+  display:flex;align-items:center;gap:0.5rem}
+.nav-logo .cc{color:var(--acc)}
+.nav-links{display:flex;gap:2rem;font-size:0.82rem;font-weight:400;letter-spacing:0.04em;color:var(--txm)}
+.nav-links a{transition:color 0.2s;position:relative}
+.nav-links a:hover{color:var(--acc)}
+.nav-cta{font-family:var(--font-mono);font-size:0.7rem;padding:0.55rem 1.2rem;
+  border:1px solid var(--acc);color:var(--acc);letter-spacing:0.06em;
+  transition:all 0.25s;text-transform:uppercase}
+.nav-cta:hover{background:var(--acc);color:var(--bg)}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;padding:6rem 2rem}
+.hero-grid{position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(115,240,160,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(115,240,160,0.03) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse at center,black 20%,transparent 70%)}
+.hero-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:800px;height:800px;border-radius:50%;
+  background:radial-gradient(circle,rgba(115,240,160,0.08) 0%,transparent 60%);
+  animation:pulse-glow 4s ease-in-out infinite alternate}
+@keyframes pulse-glow{0%{transform:translate(-50%,-50%) scale(1);opacity:0.6}100%{transform:translate(-50%,-50%) scale(1.2);opacity:1}}
+
+.hero-content{position:relative;z-index:2;text-align:center;max-width:900px}
+.hero-tag{font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--acc);margin-bottom:1.5rem;opacity:0;animation:fade-up 0.8s 0.2s forwards}
+.hero h1{font-family:var(--font-display);font-size:clamp(3.5rem,10vw,8rem);line-height:0.92;
+  letter-spacing:0.02em;margin-bottom:1.5rem;opacity:0;animation:fade-up 0.8s 0.4s forwards}
+.hero h1 em{font-style:normal;color:var(--acc);position:relative;display:inline-block}
+.hero h1 em::after{content:'';position:absolute;bottom:0.08em;left:0;right:0;height:3px;
+  background:var(--acc);opacity:0.4}
+.hero-sub{font-size:1.1rem;color:var(--txm);max-width:560px;margin:0 auto 2.5rem;line-height:1.7;
+  font-weight:300;opacity:0;animation:fade-up 0.8s 0.6s forwards}
+.hero-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;
+  opacity:0;animation:fade-up 0.8s 0.8s forwards}
+@keyframes fade-up{to{opacity:1;transform:translateY(0)}}
+.hero-tag,.hero h1,.hero-sub,.hero-btns{transform:translateY(30px)}
+
+.btn-primary{font-family:var(--font-mono);font-size:0.75rem;padding:0.8rem 2rem;
+  background:var(--acc);color:var(--bg);font-weight:700;letter-spacing:0.08em;
+  text-transform:uppercase;border:none;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform 0.2s,box-shadow 0.3s}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 30px rgba(115,240,160,0.3)}
+.btn-primary::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);
+  transform:translateX(-100%);transition:transform 0.5s}
+.btn-primary:hover::after{transform:translateX(100%)}
+
+.btn-ghost{font-family:var(--font-mono);font-size:0.75rem;padding:0.8rem 2rem;
+  background:transparent;color:var(--txm);border:1px solid var(--bdr);
+  letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all 0.25s}
+.btn-ghost:hover{border-color:var(--txm);color:var(--tx)}
+
+.hero-stats{display:flex;gap:3rem;justify-content:center;margin-top:4rem;
+  opacity:0;animation:fade-up 0.8s 1s forwards;transform:translateY(30px)}
+.hero-stat{text-align:center}
+.hero-stat-val{font-family:var(--font-display);font-size:2rem;color:var(--acc)}
+.hero-stat-label{font-size:0.65rem;color:var(--txd);letter-spacing:0.1em;text-transform:uppercase;margin-top:0.2rem}
+
+/* ── TICKER ── */
+.ticker-wrap{overflow:hidden;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr);
+  padding:0.8rem 0;background:var(--bg2)}
+.ticker{display:flex;gap:3rem;animation:scroll-ticker 30s linear infinite;white-space:nowrap;width:max-content}
+.ticker span{font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--txd)}
+.ticker .dot{color:var(--acc);margin:0 1.2rem}
+@keyframes scroll-ticker{to{transform:translateX(-50%)}}
+
+/* ── SECTION UTILS ── */
+.section{padding:8rem 2rem}
+.section-inner{max-width:1100px;margin:0 auto}
+.sec-tag{font-family:var(--font-mono);font-size:0.6rem;letter-spacing:0.25em;text-transform:uppercase;
+  color:var(--acc);margin-bottom:1rem}
+.sec-title{font-family:var(--font-display);font-size:clamp(2.2rem,5vw,3.8rem);line-height:1;
+  letter-spacing:0.02em;margin-bottom:1rem}
+.sec-desc{color:var(--txm);font-size:0.95rem;max-width:520px;line-height:1.7;font-weight:300}
+
+/* ── COACHING DEMO ── */
+.demo-section{background:var(--bg2);border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr)}
+.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;margin-top:4rem}
+.demo-terminal{background:var(--bg);border:1px solid var(--bdr);border-radius:8px;overflow:hidden;
+  font-family:var(--font-mono);font-size:0.72rem;line-height:1.8}
+.demo-terminal-bar{display:flex;gap:6px;padding:0.75rem 1rem;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--bdr)}
+.demo-terminal-bar span{width:10px;height:10px;border-radius:50%;background:var(--bdr)}
+.demo-terminal-bar span:first-child{background:var(--red)}
+.demo-terminal-bar span:nth-child(2){background:var(--amber)}
+.demo-terminal-bar span:nth-child(3){background:var(--acc)}
+.demo-terminal-body{padding:1.2rem;max-height:420px;overflow-y:auto}
+.demo-terminal-body .line{opacity:0;transform:translateX(-8px);animation:type-in 0.3s forwards}
+.demo-terminal-body .cm{color:var(--txd)}
+.demo-terminal-body .kw{color:var(--acc)}
+.demo-terminal-body .str{color:var(--amber)}
+.demo-terminal-body .num{color:#80b0ff}
+.demo-terminal-body .fn{color:#c0a0ff}
+.demo-text h3{font-family:var(--font-display);font-size:2rem;margin-bottom:0.8rem}
+.demo-text p{color:var(--txm);line-height:1.7;font-size:0.92rem;margin-bottom:1rem;font-weight:300}
+.demo-text .highlight{color:var(--acc);font-family:var(--font-mono);font-size:0.8rem}
+@keyframes type-in{to{opacity:1;transform:translateX(0)}}
+
+/* ── FEATURES GRID ── */
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:4rem;
+  background:var(--bdr);border:1px solid var(--bdr)}
+.feat-card{background:var(--bg);padding:2.5rem;position:relative;overflow:hidden;
+  transition:background 0.3s}
+.feat-card:hover{background:var(--bg2)}
+.feat-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;
+  background:var(--acc);transform:scaleX(0);transform-origin:left;transition:transform 0.4s}
+.feat-card:hover::before{transform:scaleX(1)}
+.feat-icon{font-family:var(--font-mono);font-size:1.2rem;margin-bottom:1rem;display:block;color:var(--acc);opacity:0.6;letter-spacing:0.05em}
+.feat-card h3{font-family:var(--font-display);font-size:1.3rem;letter-spacing:0.04em;margin-bottom:0.6rem}
+.feat-card p{color:var(--txm);font-size:0.8rem;line-height:1.6;font-weight:300}
+
+/* ── STAT BREAKDOWN ── */
+.stats-section{background:var(--bg2);border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr)}
+.stats-bar-group{margin-top:3rem;display:flex;flex-direction:column;gap:1.2rem;max-width:700px}
+.stat-row{display:flex;align-items:center;gap:1rem}
+.stat-label{font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.06em;text-transform:uppercase;
+  color:var(--txm);width:140px;flex-shrink:0;text-align:right}
+.stat-bar-wrap{flex:1;height:28px;background:rgba(255,255,255,0.03);border:1px solid var(--bdr);
+  border-radius:2px;overflow:hidden;position:relative}
+.stat-bar{height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc));
+  border-radius:2px;position:relative;width:0;transition:width 1.5s cubic-bezier(0.22,1,0.36,1)}
+.stat-bar.animated{width:var(--w)}
+.stat-val{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  font-family:var(--font-mono);font-size:0.65rem;font-weight:700;color:var(--bg)}
+.stat-bar-wrap .stat-val-out{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  font-family:var(--font-mono);font-size:0.65rem;color:var(--txd)}
+
+/* ── THEMES SHOWCASE ── */
+.themes-track{display:flex;gap:4px;overflow:hidden;margin-top:3rem;padding:1rem 0}
+.theme-strip{flex-shrink:0;width:60px;height:180px;border-radius:4px;position:relative;
+  transition:all 0.3s;cursor:pointer;overflow:hidden}
+.theme-strip:hover{width:120px}
+.theme-strip .theme-name{position:absolute;bottom:8px;left:8px;font-family:var(--font-mono);
+  font-size:0.5rem;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.8);
+  opacity:0;transition:opacity 0.3s;writing-mode:vertical-rl;transform:rotate(180deg)}
+.theme-strip:hover .theme-name{opacity:1;writing-mode:horizontal-tb;transform:none}
+
+/* ── ARCHITECTURE ── */
+.arch-flow{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-top:3rem;
+  font-family:var(--font-mono);font-size:0.7rem}
+.arch-node{padding:0.6rem 1.2rem;border:1px solid var(--bdr);background:var(--bg2);
+  color:var(--txm);transition:all 0.3s;border-radius:3px}
+.arch-node:hover{border-color:var(--acc);color:var(--acc)}
+.arch-arrow{color:var(--txd);font-size:1.2rem}
+
+/* ── CTA ── */
+.cta-section{text-align:center;padding:10rem 2rem;position:relative}
+.cta-section::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:1px;height:80px;background:linear-gradient(transparent,var(--acc));opacity:0.3}
+.cta-section h2{font-family:var(--font-display);font-size:clamp(3rem,7vw,5.5rem);margin-bottom:1rem}
+.cta-section h2 em{font-style:normal;color:var(--acc)}
+.cta-section p{color:var(--txm);font-size:0.9rem;margin-bottom:2.5rem;font-weight:300}
+.cta-code{font-family:var(--font-mono);font-size:0.75rem;color:var(--txm);
+  background:var(--bg2);border:1px solid var(--bdr);padding:1rem 2rem;
+  display:inline-block;margin-top:2rem;border-radius:4px;position:relative;cursor:pointer;
+  transition:border-color 0.3s}
+.cta-code:hover{border-color:var(--acc)}
+.cta-code .copy-hint{position:absolute;top:-1.5rem;right:0;font-size:0.55rem;color:var(--txd);
+  text-transform:uppercase;letter-spacing:0.1em}
+
+/* ── FOOTER ── */
+footer{padding:3rem 2rem;border-top:1px solid var(--bdr);
+  display:flex;align-items:center;justify-content:space-between;max-width:1100px;margin:0 auto}
+footer .foot-left{font-family:var(--font-mono);font-size:0.6rem;color:var(--txd);letter-spacing:0.06em}
+footer .foot-right{display:flex;gap:1.5rem}
+footer .foot-right a{font-family:var(--font-mono);font-size:0.6rem;color:var(--txd);
+  letter-spacing:0.06em;text-transform:uppercase;transition:color 0.2s}
+footer .foot-right a:hover{color:var(--acc)}
+
+/* ── REVEAL ANIMATIONS ── */
+.reveal{opacity:0;transform:translateY(40px);transition:opacity 0.8s ease,transform 0.8s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:0.1s}
+.reveal-delay-2{transition-delay:0.2s}
+.reveal-delay-3{transition-delay:0.3s}
+
+/* ── PERCENT COUNTER ── */
+.counter{font-family:var(--font-display);font-size:3.5rem;color:var(--tx)}
+.counter .pct{color:var(--acc);font-size:2rem;vertical-align:super}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .demo-grid{grid-template-columns:1fr;gap:2rem}
+  .features-grid{grid-template-columns:1fr}
+  .hero-stats{gap:1.5rem}
+  .stat-label{width:100px;font-size:0.55rem}
+  .nav-links{display:none}
+  .arch-flow{justify-content:center}
+  footer{flex-direction:column;gap:1rem;text-align:center}
+}
+@media(max-width:480px){
+  .section{padding:5rem 1.2rem}
+  .theme-strip{width:40px;height:120px}
+}
+</style>
+</head>
+<body>
+
+<div class="crt-overlay"></div>
+<div class="vignette"></div>
+
+<!-- ═══════ NAV ═══════ -->
+<nav id="nav">
+  <div class="nav-logo"><span class="cc">COACH</span>-CLIPPI</div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#coaching">Coaching</a>
+    <a href="#stats">Stats</a>
+    <a href="#themes">Themes</a>
+  </div>
+  <a href="https://github.com/Bloodshed-Rain/Coach-Clippi" target="_blank" class="nav-cta">GitHub →</a>
+</nav>
+
+<!-- ═══════ HERO ═══════ -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-tag">Open Source · Local-First · Free While It Lasts</div>
+    <h1>YOUR REPLAYS<br><em>YOUR COACH</em></h1>
+    <p class="hero-sub">Import your Slippi files. Get AI coaching grounded in your actual frame data — L-cancel rates, neutral wins, habit entropy, conversion paths. Not generic advice.</p>
+    <div class="hero-btns">
+      <a href="https://github.com/Bloodshed-Rain/Coach-Clippi/releases" target="_blank" class="btn-primary">Download v1.0.0</a>
+      <a href="https://github.com/Bloodshed-Rain/Coach-Clippi" target="_blank" class="btn-ghost">View Source</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-val">26</div><div class="hero-stat-label">Character Themes</div></div>
+      <div class="hero-stat"><div class="hero-stat-val">5</div><div class="hero-stat-label">LLM Providers</div></div>
+      <div class="hero-stat"><div class="hero-stat-val">20+</div><div class="hero-stat-label">Tracked Stats</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ TICKER ═══════ -->
+<div class="ticker-wrap">
+  <div class="ticker" id="ticker"></div>
+</div>
+
+<!-- ═══════ COACHING DEMO ═══════ -->
+<section class="section demo-section" id="coaching">
+  <div class="section-inner">
+    <div class="sec-tag reveal">How It Works</div>
+    <div class="sec-title reveal">Click a game.<br>Get coached.</div>
+    <div class="sec-desc reveal">Coach-Clippi parses every replay into 20+ computed stats, detects habits, and sends structured context to an LLM. The coaching is specific to your data — not a template.</div>
+
+    <div class="demo-grid">
+      <div class="demo-terminal reveal" id="demo-term">
+        <div class="demo-terminal-bar"><span></span><span></span><span></span></div>
+        <div class="demo-terminal-body" id="demo-body"></div>
+      </div>
+      <div class="demo-text reveal reveal-delay-1">
+        <h3>FRAME-LEVEL PRECISION</h3>
+        <p>Every analysis includes L-cancel percentage, neutral win rate, openings per kill, damage per opening, recovery success rate, ledge option entropy, OOS option diversity, and character-specific tracking — Fox waveshine sequences, Falcon knee conversions, Peach turnip pull breakdowns, Marth Ken combo detection.</p>
+        <p>Coaching responses use Melee terminology. No hand-holding. Move names, frame data references, matchup-specific advice.</p>
+        <div class="highlight">Free right now · BYOK and local models always supported</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ FEATURES ═══════ -->
+<section class="section" id="features">
+  <div class="section-inner">
+    <div class="sec-tag reveal">Features</div>
+    <div class="sec-title reveal">Everything. One app.</div>
+    <div class="features-grid reveal">
+      <div class="feat-card">
+        <span class="feat-icon">//</span>
+        <h3>AI COACHING</h3>
+        <p>Per-game analysis with Melee-specific terminology. Actionable drills. Habit callouts. Grounded in your frame data, not vibes.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">^</span>
+        <h3>TREND CHARTS</h3>
+        <p>5-game rolling averages for every tracked stat. Line graphs with AI commentary on your trajectory over time.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">&lt;&gt;</span>
+        <h3>PLAYER RADAR</h3>
+        <p>Six-axis archetype chart: Neutral, Punish, Tech Skill, Defense, Aggression, Consistency. Computed from your stats.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">[ ]</span>
+        <h3>SET DETECTION</h3>
+        <p>Auto-groups games against the same opponent within 15 minutes. Full opponent history, searchable by tag or connect code.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">~</span>
+        <h3>HABIT ENTROPY</h3>
+        <p>Shannon entropy on OOS options, ledge getups, and knockdown responses. Coach-Clippi finds your patterns before opponents do.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">&amp;</span>
+        <h3>MULTI-LLM</h3>
+        <p>OpenRouter (full model catalog), Gemini, Claude, GPT-4o, or local models via Ollama/LM Studio. Your key, your choice.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">_</span>
+        <h3>LOCAL-FIRST</h3>
+        <p>SQLite on your machine. SHA-256 dedup. Analysis caching. No server, no account, no telemetry. Your data stays yours.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">&gt;_</span>
+        <h3>FILE WATCHER</h3>
+        <p>Point at your Slippi replay folder. New games auto-import as you play. Stop alt-tabbing to import manually.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">#</span>
+        <h3>CHARACTER STATS</h3>
+        <p>Fox waveshine tracking, Falcon knee conversions, Peach turnip pull breakdowns, Marth Ken combo detection, and more. Per-character depth.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ STAT BARS ═══════ -->
+<section class="section stats-section" id="stats">
+  <div class="section-inner">
+    <div class="sec-tag reveal">Tracked Stats</div>
+    <div class="sec-title reveal">Your numbers.<br>Visualized.</div>
+    <div class="sec-desc reveal">Every replay gets parsed into 20+ stats plus character-specific tracking. Here's what Coach-Clippi pulls from a single game.</div>
+
+    <div class="stats-bar-group reveal" id="stat-bars">
+      <div class="stat-row"><div class="stat-label">Neutral Win %</div><div class="stat-bar-wrap"><div class="stat-bar" style="--w:62%"><span class="stat-val">62%</span></div></div></div>
+      <div class="stat-row"><div class="stat-label">L-Cancel %</div><div class="stat-bar-wrap"><div class="stat-bar" style="--w:78%"><span class="stat-val">78%</span></div></div></div>
+      <div class="stat-row"><div class="stat-label">Conversion Rate</div><div class="stat-bar-wrap"><div class="stat-bar" style="--w:45%"><span class="stat-val">45%</span></div></div></div>
+      <div class="stat-row"><div class="stat-label">Recovery %</div><div class="stat-bar-wrap"><div class="stat-bar" style="--w:71%"><span class="stat-val">71%</span></div></div></div>
+      <div class="stat-row"><div class="stat-label">OOS Entropy</div><div class="stat-bar-wrap"><div class="stat-bar" style="--w:89%"><span class="stat-val">0.89</span></div></div></div>
+      <div class="stat-row"><div class="stat-label">Ledge Entropy</div><div class="stat-bar-wrap"><div class="stat-bar" style="--w:54%"><span class="stat-val">0.54</span></div></div></div>
+      <div class="stat-row"><div class="stat-label">Openings / Kill</div><div class="stat-bar-wrap"><div class="stat-bar" style="--w:35%;background:linear-gradient(90deg,var(--amber),var(--red))"><span class="stat-val">6.2</span></div></div></div>
+      <div class="stat-row"><div class="stat-label">Dmg / Opening</div><div class="stat-bar-wrap"><div class="stat-bar" style="--w:58%"><span class="stat-val">34.8</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ THEMES ═══════ -->
+<section class="section" id="themes">
+  <div class="section-inner">
+    <div class="sec-tag reveal">Personalization</div>
+    <div class="sec-title reveal">26 character skins.</div>
+    <div class="sec-desc reveal">Each theme uses the character's actual default costume palette. Hover to peek.</div>
+    <div class="themes-track reveal" id="theme-track"></div>
+  </div>
+</section>
+
+<!-- ═══════ ARCHITECTURE ═══════ -->
+<section class="section" style="background:var(--bg2);border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr)">
+  <div class="section-inner">
+    <div class="sec-tag reveal">Architecture</div>
+    <div class="sec-title reveal">How it flows.</div>
+    <div class="arch-flow reveal">
+      <div class="arch-node">.slp files</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">slippi-js parser</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">stat engine</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">SQLite</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">LLM queue</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node" style="border-color:var(--acc);color:var(--acc)">coaching output</div>
+    </div>
+    <p style="color:var(--txd);font-size:0.75rem;margin-top:2rem;font-family:var(--font-mono);letter-spacing:0.04em" class="reveal">
+      Electron + React + TypeScript · better-sqlite3 · Recharts · chokidar · Vite · electron-updater
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ CTA ═══════ -->
+<section class="cta-section">
+  <h2 class="reveal">STOP <em>GUESSING.</em><br>START <em>KNOWING.</em></h2>
+  <p class="reveal">Free right now — I'm covering the API costs personally. BYOK and local models always supported. Open source, MIT licensed.</p>
+  <div class="reveal">
+    <a href="https://github.com/Bloodshed-Rain/Coach-Clippi/releases" target="_blank" class="btn-primary">Download Coach-Clippi</a>
+  </div>
+  <div class="cta-code reveal" onclick="navigator.clipboard.writeText('git clone https://github.com/Bloodshed-Rain/Coach-Clippi.git && cd Coach-Clippi && npm install && npm run dev')">
+    <span class="copy-hint">click to copy</span>
+    git clone https://github.com/Bloodshed-Rain/Coach-Clippi.git
+  </div>
+</section>
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer>
+  <div class="foot-left">© 2026 Coach-Clippi · MIT License</div>
+  <div class="foot-right">
+    <a href="https://github.com/Bloodshed-Rain/Coach-Clippi" target="_blank">GitHub</a>
+    <a href="https://github.com/Bloodshed-Rain/Coach-Clippi/releases" target="_blank">Releases</a>
+    <a href="https://github.com/Bloodshed-Rain/Coach-Clippi/blob/main/LICENSE" target="_blank">License</a>
+  </div>
+</footer>
+
+<script>
+// ── NAV SCROLL ──
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+});
+
+// ── TICKER ──
+const tickerItems = [
+  'Per-game AI coaching','L-cancel tracking','Neutral win rate','Habit entropy detection',
+  'Player radar chart','Set auto-detection','Opponent history','Matchup records','Stage records',
+  'Fox waveshine tracking','Falcon knee conversions','Peach turnip tracking','Marth Ken combos',
+  '26 character themes','Light/dark modes',
+  'OpenRouter support','Gemini direct','Claude direct','GPT-4o direct','Ollama/LM Studio',
+  'File watcher','SHA-256 dedup','Analysis caching','CLI tools','MIT license','Free right now','BYOK always'
+];
+const tickerEl = document.getElementById('ticker');
+const tickerHTML = tickerItems.map(t => `<span>${t}</span>`).join('<span class="dot">·</span>');
+tickerEl.innerHTML = tickerHTML + '<span class="dot">·</span>' + tickerHTML;
+
+// ── REVEAL ON SCROLL ──
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }});
+}, { threshold: 0.15 });
+reveals.forEach(el => observer.observe(el));
+
+// ── STAT BARS ANIMATION ──
+const statObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.querySelectorAll('.stat-bar').forEach((bar, i) => {
+        setTimeout(() => bar.classList.add('animated'), i * 120);
+      });
+      statObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.3 });
+const statBars = document.getElementById('stat-bars');
+if (statBars) statObserver.observe(statBars);
+
+// ── COACHING DEMO TYPEWRITER ──
+const demoLines = [
+  { text: '// Coach-Clippi Analysis — Fox vs Captain Falcon', cls: 'cm' },
+  { text: '// Battlefield · 2 stocks to 0 · 3m 42s', cls: 'cm' },
+  { text: '' },
+  { text: '▸ Neutral', cls: 'kw' },
+  { text: '  Win rate: <span class="num">62.3%</span> — solid. Your <span class="fn">nair</span> approaches' },
+  { text: '  initiated 73% of neutral wins. But you didn\'t' },
+  { text: '  <span class="fn">dash dance</span> once in neutral. Against Falcon,' },
+  { text: '  that\'s free whiff punish real estate.' },
+  { text: '' },
+  { text: '▸ Punish Game', cls: 'kw' },
+  { text: '  Openings per kill: <span class="num">6.2</span> — too many.' },
+  { text: '  Damage per opening: <span class="num">34.8%</span>. You\'re ending' },
+  { text: '  combos with <span class="fn">up-smash</span> at 40%. At that percent,' },
+  { text: '  <span class="fn">up-air</span> chains extend further.' },
+  { text: '' },
+  { text: '▸ Habits Detected', cls: 'kw' },
+  { text: '  Ledge entropy: <span class="str">0.54</span> — predictable.' },
+  { text: '  You used <span class="fn">tournament winner</span> 6/8 times.' },
+  { text: '  Any Falcon player will time the <span class="fn">knee</span>.' },
+  { text: '' },
+  { text: '▸ Drill: <span class="fn">Mix ledge getups in training mode.</span>', cls: 'kw' },
+  { text: '  Aim for entropy > <span class="num">0.80</span> across 4+ options.' },
+  { text: '' },
+  { text: '▸ Character Tech — Fox', cls: 'kw' },
+  { text: '  Waveshines: <span class="num">4</span> attempted, <span class="num">3</span> connected.' },
+  { text: '  <span class="fn">Waveshine → upsmash</span> converted at 75%.' },
+  { text: '  Missing the 4th was at <span class="num">88%</span> — too late for kill confirm.' },
+];
+
+const demoBody = document.getElementById('demo-body');
+const demoObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      demoLines.forEach((line, i) => {
+        setTimeout(() => {
+          const div = document.createElement('div');
+          div.className = 'line ' + (line.cls || '');
+          div.innerHTML = line.text || '&nbsp;';
+          div.style.animationDelay = '0s';
+          demoBody.appendChild(div);
+          demoBody.scrollTop = demoBody.scrollHeight;
+        }, i * 100);
+      });
+      demoObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.3 });
+demoObserver.observe(document.getElementById('demo-term'));
+
+// ── THEME STRIPS ──
+const themes = [
+  { name: 'Slippi', colors: ['#21ba45','#1a9c39','#0d0d0d'] },
+  { name: 'Fox', colors: ['#d4a058','#c4883a','#1a1008'] },
+  { name: 'Falco', colors: ['#4466aa','#3a5590','#0a0c14'] },
+  { name: 'Marth', colors: ['#4488cc','#5599dd','#0c1824'] },
+  { name: 'Sheik', colors: ['#c0a070','#a88855','#1a1408'] },
+  { name: 'Falcon', colors: ['#cc4444','#aa3333','#1a0808'] },
+  { name: 'Peach', colors: ['#ee7799','#dd5577','#1a0c10'] },
+  { name: 'Puff', colors: ['#ee88aa','#ffaacc','#1a0c14'] },
+  { name: 'ICs', colors: ['#88aadd','#6688bb','#0c1018'] },
+  { name: 'Pikachu', colors: ['#eebb33','#ddaa22','#1a1808'] },
+  { name: 'Samus', colors: ['#cc7722','#ee9933','#1a1008'] },
+  { name: 'Dr. Mario', colors: ['#dddddd','#cc3333','#0d0d0d'] },
+  { name: 'Yoshi', colors: ['#44bb44','#339933','#0c1a0c'] },
+  { name: 'Luigi', colors: ['#44aa44','#338833','#0c180c'] },
+  { name: 'Mario', colors: ['#cc3333','#4444cc','#120808'] },
+  { name: 'Ganondorf', colors: ['#6a3a6a','#553055','#100810'] },
+  { name: 'Link', colors: ['#448833','#557744','#0c140c'] },
+  { name: 'Y. Link', colors: ['#55aa33','#448822','#0c180c'] },
+  { name: 'Roy', colors: ['#cc4422','#dd5533','#1a0c08'] },
+  { name: 'Zelda', colors: ['#9966aa','#8855aa','#120c18'] },
+  { name: 'DK', colors: ['#996633','#885522','#1a1008'] },
+  { name: 'Bowser', colors: ['#88aa22','#779911','#141808'] },
+  { name: 'Ness', colors: ['#cc4466','#3344aa','#140810'] },
+  { name: 'Mewtwo', colors: ['#9977bb','#8866aa','#100c18'] },
+  { name: 'Kirby', colors: ['#ee88aa','#dd6699','#1a0c14'] },
+  { name: 'G&W', colors: ['#333333','#1a1a1a','#000000'] },
+];
+const themeTrack = document.getElementById('theme-track');
+themes.forEach(t => {
+  const strip = document.createElement('div');
+  strip.className = 'theme-strip';
+  strip.style.background = `linear-gradient(180deg, ${t.colors[0]}, ${t.colors[1]}, ${t.colors[2]})`;
+  strip.innerHTML = `<span class="theme-name">${t.name}</span>`;
+  themeTrack.appendChild(strip);
+});
+</script>
+</body>
+</html>

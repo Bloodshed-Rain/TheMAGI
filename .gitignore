@@ -138,6 +138,12 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# TypeScript compiled output in src/
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
+
 # ── Coach-Clippi specific ────────────────────────────────────────────
 
 # Electron build output

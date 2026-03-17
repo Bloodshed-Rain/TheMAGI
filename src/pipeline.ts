@@ -58,6 +58,8 @@ export interface PlayerSummary {
   turnipPulls: TurnipPullStats | null;
   /** Marth only — Ken combo detection. Null for non-Marth characters. */
   kenCombos: KenComboStats | null;
+  /** Character-specific signature stats. Null for unsupported characters. */
+  signatureStats: CharacterSignatureStats | null;
 }
 
 export interface KenComboStats {
@@ -84,6 +86,116 @@ export interface TurnipPullStats {
   hitRate: number;
   /** Rare item pulls (beam sword, bob-omb, mr. saturn) */
   rareItems: { item: string; count: number }[];
+}
+
+// ── Character signature stats (discriminated union) ───────────────────
+
+export type CharacterSignatureStats =
+  | FoxSignatureStats
+  | FalcoSignatureStats
+  | SheikSignatureStats
+  | FalconSignatureStats
+  | PuffSignatureStats
+  | IcClimbersSignatureStats
+  | MarthSignatureStats
+  | PeachSignatureStats;
+
+export interface FoxSignatureStats {
+  character: "Fox";
+  /** Conversions where shine (down b) appears 2+ times, indicating waveshine combos */
+  waveshines: number;
+  /** Conversions with shine → usmash (21 → 11) */
+  waveshineToUpsmash: number;
+  /** Conversions starting with uthrow (54) and containing uair (16) */
+  upthrowUpairs: number;
+  /** Same but the conversion killed */
+  upthrowUpairKills: number;
+  /** Conversions with dair (17) → shine (21) sequence */
+  drillShines: number;
+}
+
+export interface FalcoSignatureStats {
+  character: "Falco";
+  /** Conversions containing dair → shine → dair pattern */
+  pillarCombos: number;
+  /** Pillar combos that killed */
+  pillarKills: number;
+  /** Conversions with shine → grab sequence */
+  shineGrabs: number;
+  /** Count of neutral b (laser) usage from move data */
+  laserCount: number;
+}
+
+export interface SheikSignatureStats {
+  character: "Sheik";
+  /** Conversions with 3+ moves starting from a throw (dthrow or fthrow) */
+  techChases: number;
+  /** Tech chases that killed */
+  techChaseKills: number;
+  /** Count of neutral b (needle) hits from conversions */
+  needleHits: number;
+  /** Conversions with 3+ consecutive fairs */
+  fairChains: number;
+}
+
+export interface FalconSignatureStats {
+  character: "Captain Falcon";
+  /** Conversions ending with fair (knee) that killed */
+  kneeKills: number;
+  /** Conversions with dair → fair (stomp to knee) */
+  stompKnees: number;
+  /** Conversions with uthrow → ... → fair that killed */
+  upthrowKnees: number;
+  /** Conversions starting with grab and containing 3+ moves */
+  techChaseGrabs: number;
+}
+
+export interface PuffSignatureStats {
+  character: "Jigglypuff";
+  /** Conversions ending with down b (rest) that killed */
+  restKills: number;
+  /** Conversions containing down b (rest) total */
+  restAttempts: number;
+  /** Conversions with 3+ consecutive bairs */
+  bairStrings: number;
+  /** Max consecutive bairs in any conversion */
+  longestBairString: number;
+}
+
+export interface IcClimbersSignatureStats {
+  character: "Ice Climbers";
+  /** Conversions with 8+ pummel hits (moveId 51) — wobble detection */
+  wobbles: number;
+  /** Wobbles that killed */
+  wobbleKills: number;
+  /** Desync count — not detectable from conversion data, always 0 */
+  desyncs: number;
+}
+
+export interface MarthSignatureStats {
+  character: "Marth";
+  /** Reused from existing Ken combo detection */
+  kenCombos: number;
+  /** Ken combos that killed */
+  kenComboKills: number;
+  /** Conversions with 2+ throws (chain grabs) */
+  chainGrabs: number;
+  /** Conversions ending with fsmash that killed (proxy for tipper — can't distinguish tipper/sourspot from replay data) */
+  tipperKills: number;
+}
+
+export interface PeachSignatureStats {
+  character: "Peach";
+  /** Reused from existing turnip pull tracking */
+  turnipPulls: number;
+  /** Turnips that hit the opponent */
+  turnipHits: number;
+  /** Stitch face turnip pulls */
+  stitchFaces: number;
+  /** Conversions ending with dsmash that killed */
+  dsmashKills: number;
+  /** Float cancel aerials — not detectable precisely, always 0 */
+  floatCancelAerials: number;
 }
 
 export interface GameSummary {
@@ -716,6 +828,13 @@ function buildPlayerSummary(
     stocks: stockBreakdown,
     turnipPulls,
     kenCombos: detectKenCombos(player.characterId, myConversions),
+    signatureStats: detectSignatureStats(
+      character,
+      myConversions,
+      moveUsageMap,
+      turnipPulls,
+      detectKenCombos(player.characterId, myConversions),
+    ),
   };
 }
 
@@ -765,6 +884,262 @@ function detectKenCombos(
     kills: combos.filter((c) => c.endedInKill).length,
     combos,
   };
+}
+
+// ── Character signature stat detection ────────────────────────────────
+// NOTE: Many of these stats are approximations based on conversion move
+// sequences. For example, "tipperKills" counts fsmash kills as a proxy
+// since replay data doesn't distinguish tipper vs sourspot hits.
+
+/** Check if a conversion's move sequence contains moveId a followed by moveId b (not necessarily adjacent) */
+function hasSequence(moves: ConversionType["moves"], a: number, b: number): boolean {
+  const idxA = moves.findIndex((m) => m.moveId === a);
+  if (idxA === -1) return false;
+  return moves.slice(idxA + 1).some((m) => m.moveId === b);
+}
+
+/** Check if a conversion's move sequence contains moveId a immediately followed by moveId b */
+function hasAdjacentSequence(moves: ConversionType["moves"], a: number, b: number): boolean {
+  for (let i = 0; i < moves.length - 1; i++) {
+    if (moves[i]!.moveId === a && moves[i + 1]!.moveId === b) return true;
+  }
+  return false;
+}
+
+/** Count max consecutive occurrences of a moveId in a conversion */
+function maxConsecutive(moves: ConversionType["moves"], moveId: number): number {
+  let max = 0;
+  let cur = 0;
+  for (const m of moves) {
+    if (m.moveId === moveId) {
+      cur++;
+      if (cur > max) max = cur;
+    } else {
+      cur = 0;
+    }
+  }
+  return max;
+}
+
+/** Check if a conversion's move sequence contains the pattern a → b → c (adjacent) */
+function hasTriplePattern(moves: ConversionType["moves"], a: number, b: number, c: number): boolean {
+  for (let i = 0; i < moves.length - 2; i++) {
+    if (moves[i]!.moveId === a && moves[i + 1]!.moveId === b && moves[i + 2]!.moveId === c) return true;
+  }
+  return false;
+}
+
+/** Count occurrences of a moveId in a conversion's moves */
+function countMoveId(moves: ConversionType["moves"], moveId: number): number {
+  return moves.filter((m) => m.moveId === moveId).length;
+}
+
+const MOVE_SHINE = 21;
+const MOVE_USMASH = 11;
+const MOVE_UTHROW = 54;
+const MOVE_UAIR = 16;
+const MOVE_DAIR = 17;
+const MOVE_FAIR = 14;
+const MOVE_BAIR = 15;
+const MOVE_GRAB = 50;
+const MOVE_PUMMEL = 51;
+const MOVE_FTHROW = 52;
+const MOVE_DTHROW = 55;
+const MOVE_NEUTRAL_B = 18;
+const MOVE_FSMASH = 10;
+const MOVE_DSMASH = 12;
+
+function detectSignatureStats(
+  character: string,
+  myConversions: ConversionType[],
+  moveUsageMap: Map<string, { count: number; hits: number }>,
+  turnipPullStats: TurnipPullStats | null,
+  kenComboStats: KenComboStats | null,
+): CharacterSignatureStats | null {
+  switch (character) {
+    case "Fox": {
+      let waveshines = 0;
+      let waveshineToUpsmash = 0;
+      let upthrowUpairs = 0;
+      let upthrowUpairKills = 0;
+      let drillShines = 0;
+
+      for (const conv of myConversions) {
+        const { moves } = conv;
+        // Waveshines: shine appears 2+ times in a conversion
+        if (countMoveId(moves, MOVE_SHINE) >= 2) waveshines++;
+        // Waveshine to upsmash: shine → usmash sequence
+        if (hasSequence(moves, MOVE_SHINE, MOVE_USMASH)) waveshineToUpsmash++;
+        // Upthrow → uair
+        if (moves.length > 0 && moves[0]!.moveId === MOVE_UTHROW && moves.some((m) => m.moveId === MOVE_UAIR)) {
+          upthrowUpairs++;
+          if (conv.didKill) upthrowUpairKills++;
+        }
+        // Drill (dair) → shine
+        if (hasAdjacentSequence(moves, MOVE_DAIR, MOVE_SHINE)) drillShines++;
+      }
+
+      return { character: "Fox", waveshines, waveshineToUpsmash, upthrowUpairs, upthrowUpairKills, drillShines };
+    }
+
+    case "Falco": {
+      let pillarCombos = 0;
+      let pillarKills = 0;
+      let shineGrabs = 0;
+
+      for (const conv of myConversions) {
+        const { moves } = conv;
+        // Pillar: dair → shine → dair
+        if (hasTriplePattern(moves, MOVE_DAIR, MOVE_SHINE, MOVE_DAIR)) {
+          pillarCombos++;
+          if (conv.didKill) pillarKills++;
+        }
+        // Shine → grab
+        if (hasAdjacentSequence(moves, MOVE_SHINE, MOVE_GRAB)) shineGrabs++;
+      }
+
+      const laserEntry = moveUsageMap.get("neutral b");
+      const laserCount = laserEntry?.count ?? 0;
+
+      return { character: "Falco", pillarCombos, pillarKills, shineGrabs, laserCount };
+    }
+
+    case "Sheik": {
+      let techChases = 0;
+      let techChaseKills = 0;
+      let needleHits = 0;
+      let fairChains = 0;
+
+      for (const conv of myConversions) {
+        const { moves } = conv;
+        // Tech chase: starts from dthrow or fthrow, 3+ total moves
+        if (moves.length >= 3 && (moves[0]!.moveId === MOVE_DTHROW || moves[0]!.moveId === MOVE_FTHROW)) {
+          techChases++;
+          if (conv.didKill) techChaseKills++;
+        }
+        // Needle hits
+        needleHits += countMoveId(moves, MOVE_NEUTRAL_B);
+        // Fair chains: 3+ consecutive fairs
+        if (maxConsecutive(moves, MOVE_FAIR) >= 3) fairChains++;
+      }
+
+      return { character: "Sheik", techChases, techChaseKills, needleHits, fairChains };
+    }
+
+    case "Captain Falcon": {
+      let kneeKills = 0;
+      let stompKnees = 0;
+      let upthrowKnees = 0;
+      let techChaseGrabs = 0;
+
+      for (const conv of myConversions) {
+        const { moves } = conv;
+        if (moves.length === 0) continue;
+        const lastMove = moves[moves.length - 1]!;
+
+        // Knee kills: conversion ending with fair that killed
+        if (lastMove.moveId === MOVE_FAIR && conv.didKill) kneeKills++;
+        // Stomp to knee: dair → fair
+        if (hasSequence(moves, MOVE_DAIR, MOVE_FAIR)) stompKnees++;
+        // Upthrow → knee kill: starts with uthrow, ends with fair kill
+        if (moves[0]!.moveId === MOVE_UTHROW && lastMove.moveId === MOVE_FAIR && conv.didKill) upthrowKnees++;
+        // Tech chase grabs: starts with grab, 3+ moves
+        if (moves[0]!.moveId === MOVE_GRAB && moves.length >= 3) techChaseGrabs++;
+      }
+
+      return { character: "Captain Falcon", kneeKills, stompKnees, upthrowKnees, techChaseGrabs };
+    }
+
+    case "Jigglypuff": {
+      let restKills = 0;
+      let restAttempts = 0;
+      let bairStrings = 0;
+      let longestBairString = 0;
+
+      for (const conv of myConversions) {
+        const { moves } = conv;
+        if (moves.length === 0) continue;
+        const lastMove = moves[moves.length - 1]!;
+
+        // Rest: down b in conversion
+        if (moves.some((m) => m.moveId === MOVE_SHINE)) {
+          // down b = 21 = MOVE_SHINE (same moveId)
+          restAttempts++;
+          if (lastMove.moveId === MOVE_SHINE && conv.didKill) restKills++;
+        }
+        // Bair strings
+        const maxBairs = maxConsecutive(moves, MOVE_BAIR);
+        if (maxBairs >= 3) bairStrings++;
+        if (maxBairs > longestBairString) longestBairString = maxBairs;
+      }
+
+      return { character: "Jigglypuff", restKills, restAttempts, bairStrings, longestBairString };
+    }
+
+    case "Ice Climbers": {
+      let wobbles = 0;
+      let wobbleKills = 0;
+
+      for (const conv of myConversions) {
+        const { moves } = conv;
+        // Wobble: 8+ pummels in a single conversion
+        if (countMoveId(moves, MOVE_PUMMEL) >= 8) {
+          wobbles++;
+          if (conv.didKill) wobbleKills++;
+        }
+      }
+
+      return { character: "Ice Climbers", wobbles, wobbleKills, desyncs: 0 };
+    }
+
+    case "Marth": {
+      const kenCombos = kenComboStats?.total ?? 0;
+      const kenComboKills = kenComboStats?.kills ?? 0;
+      let chainGrabs = 0;
+      let tipperKills = 0;
+
+      for (const conv of myConversions) {
+        const { moves } = conv;
+        if (moves.length === 0) continue;
+
+        // Chain grabs: 2+ throws in one conversion
+        const throwIds = [MOVE_FTHROW, MOVE_UTHROW, MOVE_DTHROW];
+        const throwCount = moves.filter((m) => throwIds.includes(m.moveId)).length;
+        if (throwCount >= 2) chainGrabs++;
+
+        // Tipper kills: fsmash kill (approximate — can't distinguish tipper from sourspot)
+        const lastMove = moves[moves.length - 1]!;
+        if (lastMove.moveId === MOVE_FSMASH && conv.didKill) tipperKills++;
+      }
+
+      return { character: "Marth", kenCombos, kenComboKills, chainGrabs, tipperKills };
+    }
+
+    case "Peach": {
+      let dsmashKills = 0;
+
+      for (const conv of myConversions) {
+        const { moves } = conv;
+        if (moves.length === 0) continue;
+        const lastMove = moves[moves.length - 1]!;
+        if (lastMove.moveId === MOVE_DSMASH && conv.didKill) dsmashKills++;
+      }
+
+      const stitchFaces = turnipPullStats?.faces.find((f) => f.face === "stitch face")?.count ?? 0;
+
+      return {
+        character: "Peach",
+        turnipPulls: turnipPullStats?.totalPulls ?? 0,
+        turnipHits: turnipPullStats?.turnipsHit ?? 0,
+        stitchFaces,
+        dsmashKills,
+        floatCancelAerials: 0,
+      };
+    }
+
+    default:
+      return null;
+  }
 }
 
 // ── Derived insights ──────────────────────────────────────────────────

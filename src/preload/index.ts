@@ -14,6 +14,14 @@ const api = {
   importAndAnalyze: (filePaths: string[], targetPlayer: string) =>
     ipcRenderer.invoke("import:analyze", filePaths, targetPlayer),
 
+  // Analysis
+  analyzeReplays: (replayPaths: string[], targetPlayer: string) =>
+    ipcRenderer.invoke("analyze:run", replayPaths, targetPlayer),
+  analyzeRecent: (count: number, targetPlayer: string) =>
+    ipcRenderer.invoke("analyze:recent", count, targetPlayer),
+  analyzeTrends: (trendSummary: string) =>
+    ipcRenderer.invoke("analyze:trends", trendSummary),
+
   // LLM
   getLLMModels: () => ipcRenderer.invoke("llm:models"),
   getCurrentModel: () => ipcRenderer.invoke("llm:currentModel"),
@@ -26,6 +34,11 @@ const api = {
   getLatestAnalysis: () => ipcRenderer.invoke("stats:latestAnalysis"),
   getOpponents: (search?: string) => ipcRenderer.invoke("stats:opponents", search),
   getSets: () => ipcRenderer.invoke("stats:sets"),
+  clearAllGames: () => ipcRenderer.invoke("data:clearAll"),
+  getCharacterList: () => ipcRenderer.invoke("stats:characterList"),
+  getCharacterMatchups: (character: string) => ipcRenderer.invoke("stats:characterMatchups", character),
+  getCharacterStageStats: (character: string) => ipcRenderer.invoke("stats:characterStages", character),
+  getCharacterSignatureStats: (character: string) => ipcRenderer.invoke("stats:characterSignature", character),
 
   // File watcher
   startWatcher: (replayFolder: string, targetPlayer: string) =>

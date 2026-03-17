@@ -112,6 +112,11 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_games_opponent_character ON games(opponent_character);
   CREATE INDEX IF NOT EXISTS idx_games_opponent_tag ON games(opponent_tag);
   CREATE INDEX IF NOT EXISTS idx_games_stage ON games(stage);
+
+  CREATE TABLE IF NOT EXISTS character_signature_stats (
+    game_id INTEGER PRIMARY KEY REFERENCES games(id),
+    signature_json TEXT NOT NULL
+  );
 `;
 
 // ── Database instance ────────────────────────────────────────────────
@@ -643,10 +648,125 @@ export function clearAllGames(): void {
   db.exec(`
     DELETE FROM practice_plans;
     DELETE FROM coaching_analyses;
+    DELETE FROM character_signature_stats;
     DELETE FROM game_stats;
     DELETE FROM games;
     DELETE FROM sessions;
   `);
+}
+
+// ── Character aggregate queries ──────────────────────────────────────
+
+export interface CharacterOverview {
+  character: string;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  avgNeutralWinRate: number;
+  avgConversionRate: number;
+  avgLCancelRate: number;
+  avgOpeningsPerKill: number;
+  avgDamagePerOpening: number;
+  avgDeathPercent: number;
+  avgRecoverySuccessRate: number;
+  lastPlayed: string | null;
+}
+
+export function getCharacterList(): CharacterOverview[] {
+  return getDb().prepare(`
+    SELECT
+      g.player_character as character,
+      COUNT(*) as gamesPlayed,
+      SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN g.result = 'loss' THEN 1 ELSE 0 END) as losses,
+      ROUND(CAST(SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) AS REAL) / COUNT(*), 4) as winRate,
+      ROUND(AVG(gs.neutral_win_rate), 4) as avgNeutralWinRate,
+      ROUND(AVG(gs.conversion_rate), 4) as avgConversionRate,
+      ROUND(AVG(gs.l_cancel_rate), 4) as avgLCancelRate,
+      ROUND(AVG(gs.openings_per_kill), 2) as avgOpeningsPerKill,
+      ROUND(AVG(gs.avg_damage_per_opening), 2) as avgDamagePerOpening,
+      ROUND(AVG(gs.avg_death_percent), 0) as avgDeathPercent,
+      ROUND(AVG(gs.recovery_success_rate), 4) as avgRecoverySuccessRate,
+      MAX(g.played_at) as lastPlayed
+    FROM games g
+    JOIN game_stats gs ON gs.game_id = g.id
+    GROUP BY g.player_character
+    ORDER BY gamesPlayed DESC
+  `).all() as CharacterOverview[];
+}
+
+export interface CharacterMatchup {
+  opponentCharacter: string;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  avgNeutralWinRate: number;
+  avgConversionRate: number;
+  avgOpeningsPerKill: number;
+}
+
+export function getCharacterMatchups(character: string): CharacterMatchup[] {
+  return getDb().prepare(`
+    SELECT
+      g.opponent_character as opponentCharacter,
+      COUNT(*) as gamesPlayed,
+      SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN g.result = 'loss' THEN 1 ELSE 0 END) as losses,
+      ROUND(CAST(SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) AS REAL) / COUNT(*), 4) as winRate,
+      ROUND(AVG(gs.neutral_win_rate), 4) as avgNeutralWinRate,
+      ROUND(AVG(gs.conversion_rate), 4) as avgConversionRate,
+      ROUND(AVG(gs.openings_per_kill), 2) as avgOpeningsPerKill
+    FROM games g
+    JOIN game_stats gs ON gs.game_id = g.id
+    WHERE g.player_character = ?
+    GROUP BY g.opponent_character
+    ORDER BY gamesPlayed DESC
+  `).all(character) as CharacterMatchup[];
+}
+
+export interface CharacterStageStats {
+  stage: string;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+}
+
+export function getCharacterStageStats(character: string): CharacterStageStats[] {
+  return getDb().prepare(`
+    SELECT
+      g.stage,
+      COUNT(*) as gamesPlayed,
+      SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN g.result = 'loss' THEN 1 ELSE 0 END) as losses,
+      ROUND(CAST(SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) AS REAL) / COUNT(*), 4) as winRate
+    FROM games g
+    WHERE g.player_character = ?
+    GROUP BY g.stage
+    ORDER BY gamesPlayed DESC
+  `).all(character) as CharacterStageStats[];
+}
+
+// ── Character signature stats ────────────────────────────────────────
+
+export function insertSignatureStats(gameId: number, signatureJson: string): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO character_signature_stats (game_id, signature_json)
+    VALUES (?, ?)
+  `).run(gameId, signatureJson);
+}
+
+export function getCharacterSignatureAggregates(character: string): any {
+  const rows = getDb().prepare(`
+    SELECT css.signature_json
+    FROM character_signature_stats css
+    JOIN games g ON css.game_id = g.id
+    WHERE g.player_character = ?
+  `).all(character) as { signature_json: string }[];
+
+  return rows.map(r => JSON.parse(r.signature_json));
 }
 
 export { DB_PATH, DATA_DIR };

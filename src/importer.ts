@@ -21,6 +21,7 @@ import {
   insertGame,
   insertGameStats,
   insertCoachingAnalysis,
+  insertSignatureStats,
   createSession,
   updateSession,
   type InsertGameParams,
@@ -141,6 +142,11 @@ export function importReplay(
     knockdownEntropy: playerInsights.afterKnockdown.entropy,
     shieldPressureEntropy: playerInsights.afterShieldPressure.entropy,
   });
+
+  // Store character-specific signature stats
+  if (player.signatureStats) {
+    insertSignatureStats(gameId, JSON.stringify(player.signatureStats));
+  }
 
   return { filePath: absolutePath, hash, skipped: false, gameId, gameSummary };
 }

@@ -4,18 +4,20 @@ import { Sessions } from "./pages/Sessions";
 import { Trends } from "./pages/Trends";
 import { Profile } from "./pages/Profile";
 import { Settings } from "./pages/Settings";
+import { Characters } from "./pages/Characters";
 import { THEMES, applyTheme, getResolvedTheme, type ColorMode } from "./themes";
 import {
-  CoachingIcon, SessionsIcon, TrendsIcon, ProfileIcon, SettingsIcon,
+  CoachingIcon, SessionsIcon, TrendsIcon, ProfileIcon, CharactersIcon, SettingsIcon,
 } from "./components/NavIcons";
 
-type Page = "dashboard" | "sessions" | "trends" | "profile" | "settings";
+type Page = "dashboard" | "sessions" | "trends" | "profile" | "characters" | "settings";
 
 const NAV_ITEMS: { id: Page; label: string; Icon: React.FC<{ size?: number }> }[] = [
   { id: "dashboard", label: "Coaching", Icon: CoachingIcon },
   { id: "sessions", label: "Sessions", Icon: SessionsIcon },
   { id: "trends", label: "Trends", Icon: TrendsIcon },
   { id: "profile", label: "Profile", Icon: ProfileIcon },
+  { id: "characters", label: "Characters", Icon: CharactersIcon },
   { id: "settings", label: "Settings", Icon: SettingsIcon },
 ];
 
@@ -121,6 +123,9 @@ export function App() {
         </div>
         <div className={page === "profile" ? "" : "page-hidden"}>
           <Profile refreshKey={refreshKey} />
+        </div>
+        <div className={page === "characters" ? "" : "page-hidden"}>
+          <Characters refreshKey={refreshKey} />
         </div>
         <div className={page === "settings" ? "" : "page-hidden"}>
           <Settings onImport={handleImport} themeId={themeId} onThemeChange={handleThemeChange} />
