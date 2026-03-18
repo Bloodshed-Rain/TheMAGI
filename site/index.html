@@ -174,25 +174,6 @@ nav.scrolled{background:rgba(10,10,12,0.95);border-bottom-color:rgba(115,240,160
 .stat-bar-wrap .stat-val-out{position:absolute;right:8px;top:50%;transform:translateY(-50%);
   font-family:var(--font-mono);font-size:0.65rem;color:var(--txd)}
 
-/* ── CHARACTER GRID ── */
-.char-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:3rem}
-.char-chip{display:flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;
-  background:var(--bg2);border:1px solid var(--bdr);border-radius:4px;
-  transition:all 0.3s;cursor:default}
-.char-chip:hover{border-color:var(--chip-color);background:rgba(255,255,255,0.03)}
-.char-emoji{font-size:1rem}
-.char-name{font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.04em;color:var(--tx)}
-.char-stat{font-family:var(--font-mono);font-size:0.55rem;color:var(--txd);letter-spacing:0.04em;
-  margin-left:auto;text-transform:uppercase}
-
-/* ── ARCHITECTURE ── */
-.arch-flow{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-top:3rem;
-  font-family:var(--font-mono);font-size:0.7rem}
-.arch-node{padding:0.6rem 1.2rem;border:1px solid var(--bdr);background:var(--bg2);
-  color:var(--txm);transition:all 0.3s;border-radius:3px}
-.arch-node:hover{border-color:var(--acc);color:var(--acc)}
-.arch-arrow{color:var(--txd);font-size:1.2rem}
-
 /* ── CTA ── */
 .cta-section{text-align:center;padding:10rem 2rem;position:relative}
 .cta-section::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
@@ -256,7 +237,6 @@ footer .foot-right a:hover{color:var(--acc)}
     <a href="#features">Features</a>
     <a href="#coaching">Coaching</a>
     <a href="#stats">Stats</a>
-    <a href="#characters">Characters</a>
   </div>
   <a href="https://github.com/Bloodshed-Rain/Coach-Clippi" target="_blank" class="nav-cta">GitHub →</a>
 </nav>
@@ -383,39 +363,6 @@ footer .foot-right a:hover{color:var(--acc)}
   </div>
 </section>
 
-<!-- ═══════ CHARACTERS ═══════ -->
-<section class="section" id="characters">
-  <div class="section-inner">
-    <div class="sec-tag reveal">Character Depth</div>
-    <div class="sec-title reveal">Every character.<br>Signature stats.</div>
-    <div class="sec-desc reveal">All 26 Melee characters get dedicated stat tracking — Fox shine spikes, Falcon gentlemen, Puff rest setups, ICs wobble detection, Marth Ken combos, and more. Each character gets a six-axis radar chart.</div>
-    <div class="char-grid reveal" id="char-grid"></div>
-  </div>
-</section>
-
-<!-- ═══════ ARCHITECTURE ═══════ -->
-<section class="section" style="background:var(--bg2);border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr)">
-  <div class="section-inner">
-    <div class="sec-tag reveal">Architecture</div>
-    <div class="sec-title reveal">How it flows.</div>
-    <div class="arch-flow reveal">
-      <div class="arch-node">.slp files</div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-node">slippi-js parser</div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-node">stat engine</div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-node">SQLite</div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-node">LLM queue</div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-node" style="border-color:var(--acc);color:var(--acc)">coaching output</div>
-    </div>
-    <p style="color:var(--txd);font-size:0.75rem;margin-top:2rem;font-family:var(--font-mono);letter-spacing:0.04em" class="reveal">
-      Electron + React + TypeScript · better-sqlite3 · Recharts · chokidar · Vite · electron-updater
-    </p>
-  </div>
-</section>
 
 <!-- ═══════ CTA ═══════ -->
 <section class="cta-section">
@@ -532,43 +479,6 @@ const demoObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.3 });
 demoObserver.observe(document.getElementById('demo-term'));
 
-// ── CHARACTER GRID ──
-const characters = [
-  { name: 'Fox', emoji: '🦊', color: '#d4a058', stat: 'Shine Spikes' },
-  { name: 'Falco', emoji: '🦅', color: '#4a7cff', stat: 'Pillar Combos' },
-  { name: 'Marth', emoji: '⚔️', color: '#6b8cff', stat: 'Ken Combos' },
-  { name: 'Sheik', emoji: '🥷', color: '#8b5cf6', stat: 'Tech Chases' },
-  { name: 'Falcon', emoji: '🦅', color: '#f59e0b', stat: 'Gentlemen' },
-  { name: 'Puff', emoji: '🎀', color: '#ec4899', stat: 'Rest Setups' },
-  { name: 'Peach', emoji: '🍑', color: '#f472b6', stat: 'Turnip Pulls' },
-  { name: 'ICs', emoji: '🧊', color: '#67e8f9', stat: 'Wobble Detect' },
-  { name: 'Pikachu', emoji: '⚡', color: '#facc15', stat: 'Thunder Kills' },
-  { name: 'Samus', emoji: '🔫', color: '#f97316', stat: 'Charge Shots' },
-  { name: 'Luigi', emoji: '🟢', color: '#22c55e', stat: 'Misfire Kills' },
-  { name: 'Mario', emoji: '🔴', color: '#ef4444', stat: 'Cape Gimp Kills' },
-  { name: 'Doc', emoji: '💊', color: '#f8fafc', stat: 'Fair Spikes' },
-  { name: 'Yoshi', emoji: '🦎', color: '#4ade80', stat: 'Parries' },
-  { name: 'Ganon', emoji: '👊', color: '#7c3aed', stat: 'Stomp Kills' },
-  { name: 'Link', emoji: '🗡️', color: '#22c55e', stat: 'Bomb Recoveries' },
-  { name: 'YLink', emoji: '🏹', color: '#84cc16', stat: 'Bomb Combos' },
-  { name: 'Roy', emoji: '🔥', color: '#dc2626', stat: 'Dair Spikes' },
-  { name: 'Zelda', emoji: '✨', color: '#c084fc', stat: 'Lightning Kicks' },
-  { name: 'DK', emoji: '🦍', color: '#92400e', stat: 'Cargo Throws' },
-  { name: 'Bowser', emoji: '🐢', color: '#65a30d', stat: 'Up-B OOS Kills' },
-  { name: 'Ness', emoji: '🧢', color: '#ef4444', stat: 'PK Thunder KOs' },
-  { name: 'Mewtwo', emoji: '🔮', color: '#a78bfa', stat: 'Confusion Gimps' },
-  { name: 'Kirby', emoji: '🩷', color: '#fb7185', stat: 'Inhale Copies' },
-  { name: 'G&W', emoji: '🔔', color: '#94a3b8', stat: 'Judge 9s' },
-  { name: 'Pichu', emoji: '⚡', color: '#fde047', stat: 'Self-Damage' },
-];
-const charGrid = document.getElementById('char-grid');
-characters.forEach(c => {
-  const el = document.createElement('div');
-  el.className = 'char-chip';
-  el.style.setProperty('--chip-color', c.color);
-  el.innerHTML = `<span class="char-emoji">${c.emoji}</span><span class="char-name">${c.name}</span><span class="char-stat">${c.stat}</span>`;
-  charGrid.appendChild(el);
-});
 </script>
 </body>
 </html>
