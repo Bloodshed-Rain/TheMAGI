@@ -63,11 +63,16 @@ function resolveLLMConfig(): LLMConfig {
 }
 
 function createWindow(): void {
+  const iconPath = process.env["VITE_DEV_SERVER_URL"]
+    ? path.resolve(__dirname, "../../build/icon.png")
+    : path.resolve(process.resourcesPath ?? __dirname, "icon.png");
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    icon: iconPath,
     webPreferences: {
       preload: process.env["VITE_DEV_SERVER_URL"]
         ? path.resolve(__dirname, "..", "preload", "entry.js")

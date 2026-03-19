@@ -13,6 +13,9 @@
 </script>
 <title>MAGI — Melee Analysis through Generative Intelligence</title>
 <meta name="description" content="Import your Slippi replays. Get frame-data-grounded AI coaching. Track improvement. Currently free, local-first, open source.">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 <style>
@@ -50,15 +53,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0.8rem 2rem;
   backdrop-filter:blur(16px);background:rgba(10,10,12,0.75);
   border-bottom:1px solid rgba(68,208,128,0.06);transition:all 0.4s}
 nav.scrolled{background:rgba(10,10,12,0.95);border-bottom-color:rgba(68,208,128,0.12)}
-.nav-brand{display:flex;align-items:center;gap:0.6rem}
-.nav-logo-icon{width:30px;height:30px;border-radius:var(--radius-sm);background:var(--accent);
-  display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.nav-logo-icon svg{width:18px;height:18px}
-.nav-brand-text{display:flex;flex-direction:column}
-.nav-brand-name{font-family:var(--font-body);font-size:14px;font-weight:700;
-  color:var(--accent);letter-spacing:-0.2px;line-height:1.1}
-.nav-brand-sub{font-size:9px;font-weight:500;color:var(--text-dim);
-  text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.nav-brand{display:flex;align-items:center}
+.nav-brand img{height:36px;width:auto;object-fit:contain;
+  filter:drop-shadow(0 0 8px rgba(68,208,128,0.15))}
 .nav-links{display:flex;gap:2rem;font-size:0.82rem;font-weight:400;letter-spacing:0.04em;color:var(--text-dim)}
 .nav-links a{transition:color 0.2s}
 .nav-links a:hover{color:var(--accent)}
@@ -270,17 +267,7 @@ footer .foot-right a:hover{color:var(--accent)}
 <!-- NAV — mirrors app sidebar brand -->
 <nav id="nav">
   <div class="nav-brand">
-    <div class="nav-logo-icon">
-      <svg viewBox="0 0 32 32" fill="none">
-        <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" stroke="#0a0a0c" stroke-width="1.5" fill="none"/>
-        <path d="M12 20l4-8 4 8" stroke="#0a0a0c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="16" cy="13" r="2" fill="#0a0a0c"/>
-      </svg>
-    </div>
-    <div class="nav-brand-text">
-      <div class="nav-brand-name">MAGI</div>
-      <div class="nav-brand-sub">Melee Analysis through Generative Intelligence</div>
-    </div>
+    <img src="magilogo.png" alt="MAGI">
   </div>
   <div class="nav-links">
     <a href="#coaching">Coaching</a>

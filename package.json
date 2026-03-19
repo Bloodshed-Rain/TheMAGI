@@ -38,6 +38,10 @@
         "from": "key.env",
         "to": ".",
         "filter": ["key.env"]
+      },
+      {
+        "from": "build/icon.png",
+        "to": "."
       }
     ],
     "win": {
