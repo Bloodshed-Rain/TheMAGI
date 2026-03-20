@@ -13,7 +13,8 @@ MAGI (Melee Analysis through Generative Intelligence) is an Electron + React des
 - **Platform builds**: `npm run build:linux`, `build:win`, `build:mac`
 - **Run pipeline CLI**: `npx tsx src/pipeline.ts <file.slp> [--target player] [--json]`
 - **Type-check main process**: `npx tsc -p tsconfig.main.json --noEmit`
-- **No test suite configured** (`npm test` exits with error)
+- **Run tests**: `npm test` — runs vitest (pipeline, config, db, importer tests)
+- **Watch tests**: `npm run test:watch` — vitest in watch mode
 
 ## Architecture
 

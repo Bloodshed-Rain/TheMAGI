@@ -10,9 +10,16 @@
     "build:win": "tsc -p tsconfig.main.json && vite build && electron-builder --win",
     "build:mac": "tsc -p tsconfig.main.json && vite build && electron-builder --mac",
     "build:linux": "tsc -p tsconfig.main.json && vite build && electron-builder --linux",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
-  "keywords": ["melee", "slippi", "coaching", "ai", "smash-bros"],
+  "keywords": [
+    "melee",
+    "slippi",
+    "coaching",
+    "ai",
+    "smash-bros"
+  ],
   "author": {
     "name": "Bloodshed-Rain",
     "email": "268419293+Bloodshed-Rain@users.noreply.github.com"
@@ -37,7 +44,9 @@
       {
         "from": "key.env",
         "to": ".",
-        "filter": ["key.env"]
+        "filter": [
+          "key.env"
+        ]
       },
       {
         "from": "build/icon.png",
@@ -48,11 +57,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico"
@@ -61,7 +74,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "build/icon.icns",
@@ -71,11 +87,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.png",
@@ -116,6 +136,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^8.0.0",
+    "vitest": "^4.1.0",
     "wait-on": "^9.0.4"
   }
 }
