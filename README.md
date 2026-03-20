@@ -6,6 +6,29 @@ Import your `.slp` files, get personalized coaching analysis from an LLM, track 
 
 ---[Screencast_20260319_190122.webm](https://github.com/user-attachments/assets/e41e7616-ed56-41b9-aa28-3ef38f0d0d97)
 
+## Screenshots
+
+### Coaching — Click any game for AI analysis
+![Coaching tab](screenshots/Screenshot_20260319_191141.png)
+
+### AI Coaching Analysis — Expanded
+![Coaching analysis expanded](screenshots/Screenshot_20260319_191208.png)
+
+### Trends — Line charts with MAGI commentary
+![Trends with AI commentary](screenshots/Screenshot_20260319_191347.png)
+
+### Profile — Player radar chart and matchup records
+![Profile tab](screenshots/Screenshot_20260319_191401.png)
+
+### Sessions — Opponent history
+![Sessions tab](screenshots/Screenshot_20260319_191239.png)
+
+### Characters — Grid view with card art
+![Characters grid](screenshots/Screenshot_20260319_191414.png)
+
+### Characters — Detail view with signature stats
+![Characters detail](screenshots/Screenshot_20260319_190919.png)
+
 ---
 
 ## What it does
