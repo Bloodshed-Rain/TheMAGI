@@ -412,12 +412,50 @@ Open with a quick vibe check on their overall trajectory, then hit the highlight
       throw new Error(`Replay file not found: ${replayPath}`);
     }
 
+    // Slippi Playback Dolphin uses JSON comm mode:
+    //   -i <comm.json>   replay command file
+    //   -e <melee.iso>   game ISO
+    //   -u <user_dir>    user config/data directory
     const { spawn } = require("child_process") as typeof import("child_process");
-    const child = spawn(dolphinPath, ["-e", replayPath], {
+    const { randomUUID } = require("crypto") as typeof import("crypto");
+    const home = require("os").homedir();
+
+    // Build JSON comm file telling Dolphin to play this replay
+    const commFile = path.join(require("os").tmpdir(), `magi-comm-${Date.now()}.json`);
+    fs.writeFileSync(commFile, JSON.stringify({
+      mode: "mirror",
+      replay: replayPath,
+      isRealTimeMode: false,
+      commandId: randomUUID(),
+    }));
+
+    // Find Melee ISO — check Slippi Launcher settings first, then config
+    let isoPath: string | null = null;
+    try {
+      const slippiSettingsPath = path.join(home, ".config/Slippi Launcher/Settings");
+      if (fs.existsSync(slippiSettingsPath)) {
+        const slippiSettings = JSON.parse(fs.readFileSync(slippiSettingsPath, "utf-8"));
+        if (slippiSettings?.settings?.isoPath && fs.existsSync(slippiSettings.settings.isoPath)) {
+          isoPath = slippiSettings.settings.isoPath;
+        }
+      }
+    } catch { /* ignore parse errors */ }
+
+    // User dir for playback Dolphin
+    const userDir = path.join(home, ".config/SlippiPlayback");
+
+    const args = ["-i", commFile];
+    if (isoPath) args.push("-e", isoPath);
+    if (fs.existsSync(userDir)) args.push("-u", userDir);
+
+    const child = spawn(dolphinPath, args, {
       detached: true,
       stdio: "ignore",
     });
     child.unref();
+
+    // Clean up comm file after a delay
+    setTimeout(() => { try { fs.unlinkSync(commFile); } catch {} }, 30000);
 
     return true;
   });
