@@ -25,6 +25,7 @@ import {
   insertSignatureStats,
   createSession,
   updateSession,
+  getPlayerHistory,
   type InsertGameParams,
   type InsertGameStatsParams,
 } from "./db";
@@ -265,7 +266,9 @@ export async function importAndAnalyze(
     lastResult.derivedInsights[lastP1Idx].adaptationSignals = p1Signals;
   }
 
-  const userPrompt = assembleUserPrompt(gameResults, targetTag);
+  // Query player history for contextual coaching
+  const playerHistory = getPlayerHistory(targetTag) ?? undefined;
+  const userPrompt = assembleUserPrompt(gameResults, targetTag, playerHistory);
   const userCfg = loadConfig();
   const llmConfig: LLMConfig = {
     modelId: userCfg.llmModelId ?? LLM_DEFAULTS.modelId,

@@ -74,6 +74,16 @@ const api = {
     ipcRenderer.on("watcher:error", listener);
     return () => ipcRenderer.removeListener("watcher:error", listener);
   },
+  onAnalysisStream: (callback) => {
+    const listener = (_event, chunk) => callback(chunk);
+    ipcRenderer.on("analyze:stream", listener);
+    return () => ipcRenderer.removeListener("analyze:stream", listener);
+  },
+  onAnalysisStreamEnd: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on("analyze:stream-end", listener);
+    return () => ipcRenderer.removeListener("analyze:stream-end", listener);
+  },
 };
 
 contextBridge.exposeInMainWorld("clippi", api);

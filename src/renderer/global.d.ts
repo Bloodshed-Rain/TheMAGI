@@ -40,6 +40,8 @@ declare global {
       stopWatcher: () => Promise<boolean>;
       onImported: (callback: (result: any) => void) => () => void;
       onWatcherError: (callback: (message: string) => void) => () => void;
+      onAnalysisStream: (callback: (chunk: string) => void) => () => void;
+      onAnalysisStreamEnd: (callback: () => void) => () => void;
     };
   }
 }

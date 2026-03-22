@@ -427,3 +427,29 @@ export type GameResult = {
   derivedInsights: [DerivedInsights, DerivedInsights];
   startAt: string | null;
 };
+
+/** Historical player context for LLM coaching prompts */
+export interface PlayerHistory {
+  overallRecord: { wins: number; losses: number; totalGames: number };
+  characterWinRates: { character: string; wins: number; losses: number; totalGames: number; winRate: number }[];
+  topMatchups: { opponentCharacter: string; wins: number; losses: number; totalGames: number; winRate: number }[];
+  recentStats: {
+    avgNeutralWinRate: number;
+    avgLCancelRate: number;
+    avgConversionRate: number;
+    avgOpeningsPerKill: number;
+    avgDamagePerOpening: number;
+    avgEdgeguardSuccessRate: number;
+    gamesCount: number;
+  } | null;
+  overallStats: {
+    avgNeutralWinRate: number;
+    avgLCancelRate: number;
+    avgConversionRate: number;
+    avgOpeningsPerKill: number;
+    avgDamagePerOpening: number;
+    avgEdgeguardSuccessRate: number;
+    gamesCount: number;
+  } | null;
+  currentStreak: { type: "win" | "loss"; count: number } | null;
+}

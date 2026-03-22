@@ -27,7 +27,7 @@ function loadEnvFile(): void {
 loadEnvFile();
 
 import { loadConfig } from "../config";
-import { getDb, closeDb } from "../db";
+import { getDb, closeDb, getPlayerHistory } from "../db";
 import { processGame, assembleUserPrompt, SYSTEM_PROMPT } from "../pipeline";
 import { callLLM, LLM_DEFAULTS, type LLMConfig } from "../llm";
 import { setAnalysisGenerator } from "../replayAnalyzer";
@@ -104,7 +104,9 @@ app.whenReady().then(() => {
         result.gameSummary.players.find((p) => p.tag.toLowerCase() !== "unknown")?.tag ??
         result.gameSummary.players[0].tag;
     }
-    const userPrompt = assembleUserPrompt([result], targetTag);
+    // Query player history for contextual coaching
+    const playerHistory = getPlayerHistory(targetTag) ?? undefined;
+    const userPrompt = assembleUserPrompt([result], targetTag, playerHistory);
     // Queue the API call — waits its turn, respects rate limits
     const analysisText = await llmQueue.enqueue(() =>
       callLLM({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }),

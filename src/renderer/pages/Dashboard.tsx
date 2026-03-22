@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Markdown, { type Components } from "react-markdown";
 import { useStagger, useGlitchText } from "../hooks";
+import { Onboarding } from "../components/Onboarding";
 
 const FPS = 60;
 const FIRST_PLAYABLE = -123; // Frames.FIRST_PLAYABLE from slippi-js
@@ -118,6 +119,7 @@ function SessionPulse({ games }: { games: RecentGame[] }) {
 export function Dashboard({ refreshKey }: { refreshKey: number }) {
   const [games, setGames] = useState<RecentGame[]>([]);
   const [loading, setLoading] = useState(true);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const title = useGlitchText("COACHING", 500);
 
   // Per-game analysis state
@@ -127,6 +129,9 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [dolphinError, setDolphinError] = useState<string | null>(null);
   const [launchingDolphin, setLaunchingDolphin] = useState<number | null>(null);
+  // Streaming state: text accumulating in real-time
+  const [streamingText, setStreamingText] = useState<string>("");
+  const [isStreaming, setIsStreaming] = useState(false);
 
   const handleWatchReplay = async (e: React.MouseEvent, game: RecentGame) => {
     e.stopPropagation();
@@ -167,15 +172,33 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
     if (analysisCache[game.id]) return;
 
     setAnalyzingGame(game.id);
+    setStreamingText("");
+    setIsStreaming(true);
+
+    // Subscribe to streaming chunks
+    const unsubStream = window.clippi.onAnalysisStream((chunk: string) => {
+      setStreamingText((prev) => prev + chunk);
+    });
+    const unsubEnd = window.clippi.onAnalysisStreamEnd(() => {
+      setIsStreaming(false);
+    });
+
     try {
       const config = await window.clippi.loadConfig();
       const target = config?.connectCode || config?.targetPlayer || "";
       const result = await window.clippi.analyzeReplays([game.replayPath], target);
+      // Cache the final complete text (from the invoke return value)
       setAnalysisCache((prev) => ({ ...prev, [game.id]: result }));
+      setStreamingText("");
     } catch (err: unknown) {
       setAnalyzeError(err instanceof Error ? err.message : String(err));
+      setStreamingText("");
+    } finally {
+      unsubStream();
+      unsubEnd();
+      setIsStreaming(false);
+      setAnalyzingGame(null);
     }
-    setAnalyzingGame(null);
   };
 
   if (loading) {
@@ -184,6 +207,18 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
         <div className="spinner" style={{ margin: "0 auto 16px" }} />
         INITIALIZING MAGI SYSTEMS...
       </div>
+    );
+  }
+
+  if (games.length === 0 && !onboardingDismissed) {
+    return (
+      <Onboarding
+        onComplete={() => {
+          setOnboardingDismissed(true);
+          load();
+        }}
+        onSkip={() => setOnboardingDismissed(true)}
+      />
     );
   }
 
@@ -323,13 +358,23 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                           <span style={{ color: "var(--red)", fontSize: 12, fontFamily: "var(--font-mono)" }}>{dolphinError}</span>
                         )}
                       </div>
-                      {isAnalyzing && (
+                      {isAnalyzing && !isStreaming && !streamingText && analyzingGame === game.id && (
                         <div className="analyze-loading">
                           <div className="spinner" />
                           <span>MAGI ANALYZING ENGAGEMENT...</span>
                         </div>
                       )}
-                      {analyzeError && expandedGame === game.id && !cached && (
+                      {analyzingGame === game.id && (isStreaming || streamingText) && !cached && (
+                        <div className="analysis-text">
+                          <Markdown components={makeTimestampComponents(game.replayPath)}>
+                            {injectTimestampLinks(streamingText)}
+                          </Markdown>
+                          {isStreaming && (
+                            <span className="streaming-cursor" />
+                          )}
+                        </div>
+                      )}
+                      {analyzeError && expandedGame === game.id && !cached && !streamingText && (
                         <p style={{ color: "var(--red)", fontSize: 13, fontFamily: "var(--font-mono)" }}>{analyzeError}</p>
                       )}
                       {cached && (

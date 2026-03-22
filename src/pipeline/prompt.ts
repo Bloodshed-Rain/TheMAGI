@@ -1,4 +1,4 @@
-import type { GameResult } from "./types.js";
+import type { GameResult, PlayerHistory } from "./types.js";
 import { moveIdToName, getMoveName } from "./helpers.js";
 
 // ── System prompt ─────────────────────────────────────────────────────
@@ -268,19 +268,104 @@ function stripNulls(obj: unknown): unknown {
   return obj;
 }
 
+/**
+ * Format historical player data into a concise text block for the LLM.
+ * Kept under ~500 tokens to avoid bloating the prompt.
+ */
+export function assemblePlayerContext(history: PlayerHistory): string {
+  const lines: string[] = ["=== PLAYER PROFILE (Historical Context) ===", ""];
+
+  // Overall record
+  const { wins, losses, totalGames } = history.overallRecord;
+  const overallWinRate = totalGames > 0 ? ((wins / totalGames) * 100).toFixed(1) : "0.0";
+  lines.push(`Lifetime record: ${wins}W-${losses}L (${overallWinRate}% win rate, ${totalGames} games)`);
+
+  // Current streak
+  if (history.currentStreak) {
+    lines.push(`Current streak: ${history.currentStreak.count}-game ${history.currentStreak.type} streak`);
+  }
+
+  // Character usage
+  if (history.characterWinRates.length > 0) {
+    const charParts = history.characterWinRates.map(
+      (c) => `${c.character}: ${c.wins}W-${c.losses}L (${(c.winRate * 100).toFixed(0)}%)`,
+    );
+    lines.push(`Characters played: ${charParts.join(", ")}`);
+  }
+
+  // Top matchups
+  if (history.topMatchups.length > 0) {
+    lines.push("");
+    lines.push("Top matchups:");
+    for (const m of history.topMatchups) {
+      lines.push(`  vs ${m.opponentCharacter}: ${m.wins}W-${m.losses}L (${(m.winRate * 100).toFixed(0)}%, ${m.totalGames} games)`);
+    }
+  }
+
+  // Trend comparison: recent vs overall
+  if (history.recentStats && history.overallStats && history.recentStats.gamesCount >= 3) {
+    const recent = history.recentStats;
+    const overall = history.overallStats;
+    lines.push("");
+    lines.push(`Recent trend (last ${recent.gamesCount} games vs overall ${overall.gamesCount} games):`);
+
+    const formatTrend = (label: string, recentVal: number, overallVal: number, asPercent: boolean, lowerIsBetter: boolean = false): string => {
+      const diff = recentVal - overallVal;
+      const absDiff = Math.abs(diff);
+      if (asPercent) {
+        const rStr = (recentVal * 100).toFixed(1);
+        const oStr = (overallVal * 100).toFixed(1);
+        const direction = diff > 0.005 ? (lowerIsBetter ? "declining" : "improving") :
+                          diff < -0.005 ? (lowerIsBetter ? "improving" : "declining") : "stable";
+        if (direction === "stable") return `  ${label}: ${rStr}% (stable)`;
+        const arrow = direction === "improving" ? "^" : "v";
+        return `  ${label}: ${rStr}% (${arrow} from ${oStr}% overall)`;
+      }
+      const rStr = recentVal.toFixed(1);
+      const oStr = overallVal.toFixed(1);
+      const direction = absDiff < 0.3 ? "stable" :
+                        diff > 0 ? (lowerIsBetter ? "declining" : "improving") :
+                        (lowerIsBetter ? "improving" : "declining");
+      if (direction === "stable") return `  ${label}: ${rStr} (stable)`;
+      const arrow = direction === "improving" ? "^" : "v";
+      return `  ${label}: ${rStr} (${arrow} from ${oStr} overall)`;
+    };
+
+    lines.push(formatTrend("Neutral win rate", recent.avgNeutralWinRate, overall.avgNeutralWinRate, true));
+    lines.push(formatTrend("L-cancel rate", recent.avgLCancelRate, overall.avgLCancelRate, true));
+    lines.push(formatTrend("Conversion rate", recent.avgConversionRate, overall.avgConversionRate, true));
+    lines.push(formatTrend("Openings/kill", recent.avgOpeningsPerKill, overall.avgOpeningsPerKill, false, true));
+    lines.push(formatTrend("Damage/opening", recent.avgDamagePerOpening, overall.avgDamagePerOpening, false));
+    lines.push(formatTrend("Edgeguard success", recent.avgEdgeguardSuccessRate, overall.avgEdgeguardSuccessRate, true));
+  }
+
+  return lines.join("\n");
+}
+
 export function assembleUserPrompt(
   gameResults: GameResult[],
   targetPlayerTag: string,
+  playerHistory?: PlayerHistory | undefined,
 ): string {
   const first = gameResults[0]!;
   const p1 = first.gameSummary.players[0];
   const p2 = first.gameSummary.players[1];
 
-  const lines: string[] = [
+  const lines: string[] = [];
+
+  // Include player profile context if available
+  if (playerHistory) {
+    lines.push(assemblePlayerContext(playerHistory));
+    lines.push("");
+    lines.push("Use the player profile above to contextualize your analysis — reference historical trends, matchup records, and improvement trajectories where relevant. Do not simply recite the profile data.");
+    lines.push("");
+  }
+
+  lines.push(
     `I'd like you to analyze the following ${gameResults.length > 1 ? "set" : "game"} between ${p1.tag} (${p1.character}) and ${p2.tag} (${p2.character}).`,
     "",
     `Please analyze from the perspective of ${targetPlayerTag}.`,
-  ];
+  );
 
   for (const result of gameResults) {
     const g = result.gameSummary;

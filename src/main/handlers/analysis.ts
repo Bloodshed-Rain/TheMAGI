@@ -1,14 +1,15 @@
 import { loadConfig } from "../../config.js";
-import { getDb, insertCoachingAnalysis } from "../../db.js";
+import { getDb, insertCoachingAnalysis, getPlayerHistory } from "../../db.js";
 import {
   processGame, computeAdaptationSignals, findPlayerIdx,
   assembleUserPrompt, SYSTEM_PROMPT,
   type GameResult,
 } from "../../pipeline/index.js";
-import { callLLM, LLM_DEFAULTS, type LLMConfig } from "../../llm.js";
+import { callLLM, callLLMStream, LLM_DEFAULTS, type LLMConfig } from "../../llm.js";
 import { processReplay } from "../../replayAnalyzer.js";
 import { llmQueue } from "../../llmQueue.js";
 import { type SafeHandleFn, validatePath } from "../ipc.js";
+import { getMainWindow } from "../state.js";
 
 /** Build LLMConfig from user config + env vars */
 export function resolveLLMConfig(): LLMConfig {
@@ -45,15 +46,20 @@ function runMultiGameAnalysis(
     lastResult.derivedInsights[lastP1Idx].adaptationSignals = p1Signals;
   }
 
-  const userPrompt = assembleUserPrompt(gameResults, targetTag);
+  // Query player history for contextual coaching
+  const playerHistory = getPlayerHistory(targetTag) ?? undefined;
+
+  const userPrompt = assembleUserPrompt(gameResults, targetTag, playerHistory);
   return { targetTag, userPrompt };
 }
 
 export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
   // Analyze — deduplicated. Returns cached analysis if already exists.
+  // Streams LLM chunks to the renderer via "analyze:stream" IPC events when possible.
   safeHandle("analyze:run", async (_e, replayPaths: string[], targetPlayer: string) => {
     const safePaths = replayPaths.map(validatePath);
     const llmConfig = resolveLLMConfig();
+    const win = getMainWindow();
 
     // Single replay — use processReplay for dedup + caching
     // Note: processReplay uses the config's targetPlayer via the analysis generator,
@@ -74,9 +80,27 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     }
 
     const { userPrompt } = runMultiGameAnalysis(gameResults, targetPlayer);
+
+    // Use streaming when a window is available to receive chunks
     const analysis = await llmQueue.enqueue(() =>
-      callLLM({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }),
+      callLLMStream(
+        { systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig },
+        (chunk) => {
+          try {
+            win?.webContents.send("analyze:stream", chunk);
+          } catch {
+            // Window may have been closed during streaming — ignore
+          }
+        },
+      ),
     );
+
+    // Signal streaming is done
+    try {
+      win?.webContents.send("analyze:stream-end");
+    } catch {
+      // ignore
+    }
 
     insertCoachingAnalysis(null, null, llmConfig.modelId, analysis);
 
@@ -107,9 +131,24 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     }
 
     const { userPrompt } = runMultiGameAnalysis(gameResults, targetPlayer);
+    const win = getMainWindow();
     const analysis = await llmQueue.enqueue(() =>
-      callLLM({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }),
+      callLLMStream(
+        { systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig },
+        (chunk) => {
+          try {
+            win?.webContents.send("analyze:stream", chunk);
+          } catch {
+            // ignore
+          }
+        },
+      ),
     );
+    try {
+      win?.webContents.send("analyze:stream-end");
+    } catch {
+      // ignore
+    }
     insertCoachingAnalysis(null, null, llmConfig.modelId, analysis);
 
     return analysis;

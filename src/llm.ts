@@ -192,6 +192,46 @@ export async function callLLM(opts: CallLLMOptions): Promise<string> {
   }
 }
 
+// ── Streaming support ────────────────────────────────────────────────
+
+/** Callback invoked for each text chunk during streaming */
+export type StreamChunkCallback = (chunk: string) => void;
+
+/** Providers that support streaming */
+function supportsStreaming(provider: ProviderId): boolean {
+  return provider === "gemini";
+}
+
+/**
+ * Stream an LLM response, calling onChunk for each text fragment as it arrives.
+ * Returns the full accumulated text when complete.
+ * Falls back to non-streaming callLLM for providers that don't support streaming.
+ */
+export async function callLLMStream(
+  opts: CallLLMOptions,
+  onChunk: StreamChunkCallback,
+): Promise<string> {
+  const modelId = opts.modelOverride ?? opts.config.modelId;
+  const provider = getModelProvider(modelId);
+
+  if (!supportsStreaming(provider)) {
+    // Fallback: call non-streaming, emit full text as single chunk
+    const text = await callLLM(opts);
+    onChunk(text);
+    return text;
+  }
+
+  switch (provider) {
+    case "gemini":
+      return callGeminiStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+    default:
+      // Should not reach here due to supportsStreaming check, but satisfy TS
+      const text = await callLLM(opts);
+      onChunk(text);
+      return text;
+  }
+}
+
 // ── OpenRouter (OpenAI-compatible) ───────────────────────────────────
 
 async function callOpenRouter(
@@ -332,6 +372,134 @@ async function callGemini(
       await sleep(RETRY_DELAY_MS * attempt);
     } else {
       throw new EmptyResponseError(`finishReason: ${reason}`);
+    }
+  }
+
+  throw new EmptyResponseError("unknown");
+}
+
+// ── Gemini streaming ─────────────────────────────────────────────────
+
+async function callGeminiStream(
+  systemPrompt: string,
+  userPrompt: string,
+  modelId: string,
+  config: LLMConfig,
+  onChunk: StreamChunkCallback,
+): Promise<string> {
+  const apiKey = config.geminiApiKey ?? process.env["GEMINI_API_KEY"];
+  if (!apiKey) {
+    throw new Error(
+      "Gemini API key is not set. Add it in Settings or set the GEMINI_API_KEY environment variable.",
+    );
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?alt=sse`;
+  const body = JSON.stringify({
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ parts: [{ text: userPrompt }] }],
+    generationConfig: { maxOutputTokens: 8192 },
+  });
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+
+    if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
+      clearTimeout(timeout);
+      if (attempt < MAX_RETRIES) {
+        await sleep(RETRY_DELAY_MS * attempt * 2);
+        continue;
+      }
+      if (response.status === 429) {
+        throw new Error("Gemini rate limit exceeded. Please try again in a moment.");
+      }
+      const errorBody = await response.text();
+      throw new Error(`Gemini API error (${response.status}): ${errorBody}`);
+    }
+
+    if (!response.ok) {
+      clearTimeout(timeout);
+      const errorBody = await response.text();
+      throw new Error(`Gemini API error (${response.status}): ${errorBody}`);
+    }
+
+    // Parse the SSE stream
+    let accumulated = "";
+    try {
+      const reader = response.body?.getReader();
+      if (!reader) {
+        clearTimeout(timeout);
+        throw new Error("Gemini streaming response has no body");
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE events in the buffer
+        const lines = buffer.split("\n");
+        // Keep the last potentially incomplete line in the buffer
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === "data: [DONE]") continue;
+
+          if (trimmed.startsWith("data: ")) {
+            const jsonStr = trimmed.slice(6);
+            try {
+              const data = JSON.parse(jsonStr) as {
+                candidates?: {
+                  content?: { parts?: { text?: string }[] };
+                }[];
+              };
+
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                accumulated += text;
+                onChunk(text);
+              }
+            } catch {
+              // Malformed JSON chunk — skip it
+            }
+          }
+        }
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (accumulated) return accumulated;
+
+    if (attempt < MAX_RETRIES) {
+      console.error(
+        `Gemini stream returned empty response, retrying (${attempt}/${MAX_RETRIES})...`,
+      );
+      await sleep(RETRY_DELAY_MS * attempt);
+    } else {
+      throw new EmptyResponseError("streaming returned no text");
     }
   }
 

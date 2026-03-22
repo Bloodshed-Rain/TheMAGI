@@ -867,4 +867,136 @@ export function getCharacterGameStats(character: string): CharacterGameStat[] {
   `).all(character) as CharacterGameStat[];
 }
 
+// ── Player history for coaching context ──────────────────────────────
+
+import type { PlayerHistory } from "./pipeline/types.js";
+export type { PlayerHistory } from "./pipeline/types.js";
+
+/**
+ * Retrieve historical player context for LLM coaching prompts.
+ * Aggregates overall record, character win rates, top matchups,
+ * recent vs overall stat trends, and current streak.
+ *
+ * @param targetPlayer - Player tag or connect code to filter by
+ * @param recentLimit - Number of recent games for trend comparison (default 10)
+ */
+export function getPlayerHistory(targetPlayer: string, recentLimit: number = 10): PlayerHistory | null {
+  const database = getDb();
+
+  // Overall record
+  const overallRecord = database.prepare(`
+    SELECT
+      SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses,
+      COUNT(*) as totalGames
+    FROM games
+    WHERE player_tag = ? OR player_connect_code = ?
+  `).get(targetPlayer, targetPlayer) as { wins: number; losses: number; totalGames: number } | undefined;
+
+  if (!overallRecord || overallRecord.totalGames === 0) {
+    return null;
+  }
+
+  // Character win rates (player's own characters)
+  const characterWinRates = database.prepare(`
+    SELECT
+      player_character as character,
+      SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses,
+      COUNT(*) as totalGames,
+      ROUND(CAST(SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) AS REAL) / COUNT(*), 4) as winRate
+    FROM games
+    WHERE player_tag = ? OR player_connect_code = ?
+    GROUP BY player_character
+    ORDER BY totalGames DESC
+  `).all(targetPlayer, targetPlayer) as PlayerHistory["characterWinRates"];
+
+  // Top 3 most-played matchups with win rates
+  const topMatchups = database.prepare(`
+    SELECT
+      opponent_character as opponentCharacter,
+      SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses,
+      COUNT(*) as totalGames,
+      ROUND(CAST(SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) AS REAL) / COUNT(*), 4) as winRate
+    FROM games
+    WHERE player_tag = ? OR player_connect_code = ?
+    GROUP BY opponent_character
+    ORDER BY totalGames DESC
+    LIMIT 3
+  `).all(targetPlayer, targetPlayer) as PlayerHistory["topMatchups"];
+
+  // Recent stats (last N games) — subquery ensures LIMIT applies before aggregation
+  const recentStats = database.prepare(`
+    SELECT
+      ROUND(AVG(gs.neutral_win_rate), 4) as avgNeutralWinRate,
+      ROUND(AVG(gs.l_cancel_rate), 4) as avgLCancelRate,
+      ROUND(AVG(gs.conversion_rate), 4) as avgConversionRate,
+      ROUND(AVG(gs.openings_per_kill), 2) as avgOpeningsPerKill,
+      ROUND(AVG(gs.avg_damage_per_opening), 2) as avgDamagePerOpening,
+      ROUND(AVG(gs.edgeguard_success_rate), 4) as avgEdgeguardSuccessRate,
+      COUNT(*) as gamesCount
+    FROM game_stats gs
+    WHERE gs.game_id IN (
+      SELECT g.id FROM games g
+      WHERE (g.player_tag = ? OR g.player_connect_code = ?)
+        AND g.played_at IS NOT NULL
+      ORDER BY g.played_at DESC
+      LIMIT ?
+    )
+  `).get(targetPlayer, targetPlayer, recentLimit) as PlayerHistory["recentStats"];
+
+  // Overall stats (all games)
+  const overallStats = database.prepare(`
+    SELECT
+      ROUND(AVG(gs.neutral_win_rate), 4) as avgNeutralWinRate,
+      ROUND(AVG(gs.l_cancel_rate), 4) as avgLCancelRate,
+      ROUND(AVG(gs.conversion_rate), 4) as avgConversionRate,
+      ROUND(AVG(gs.openings_per_kill), 2) as avgOpeningsPerKill,
+      ROUND(AVG(gs.avg_damage_per_opening), 2) as avgDamagePerOpening,
+      ROUND(AVG(gs.edgeguard_success_rate), 4) as avgEdgeguardSuccessRate,
+      COUNT(*) as gamesCount
+    FROM game_stats gs
+    JOIN games g ON gs.game_id = g.id
+    WHERE g.player_tag = ? OR g.player_connect_code = ?
+  `).get(targetPlayer, targetPlayer) as PlayerHistory["overallStats"];
+
+  // Current streak — walk recent results to count consecutive wins or losses
+  const recentResults = database.prepare(`
+    SELECT result
+    FROM games
+    WHERE (player_tag = ? OR player_connect_code = ?)
+      AND played_at IS NOT NULL
+    ORDER BY played_at DESC
+    LIMIT 50
+  `).all(targetPlayer, targetPlayer) as { result: string }[];
+
+  let currentStreak: PlayerHistory["currentStreak"] = null;
+  if (recentResults.length > 0) {
+    const firstResult = recentResults[0]!.result;
+    if (firstResult === "win" || firstResult === "loss") {
+      let count = 0;
+      for (const row of recentResults) {
+        if (row.result === firstResult) {
+          count++;
+        } else {
+          break;
+        }
+      }
+      if (count >= 2) {
+        currentStreak = { type: firstResult, count };
+      }
+    }
+  }
+
+  return {
+    overallRecord,
+    characterWinRates,
+    topMatchups,
+    recentStats: recentStats && recentStats.gamesCount > 0 ? recentStats : null,
+    overallStats: overallStats && overallStats.gamesCount > 0 ? overallStats : null,
+    currentStreak,
+  };
+}
+
 export { DB_PATH, DATA_DIR };
