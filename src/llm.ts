@@ -2,8 +2,8 @@
  * Multi-LLM provider abstraction.
  *
  * Supports:
- *   - OpenRouter (DeepSeek, Claude, etc.)  ← default
- *   - Gemini direct
+ *   - OpenRouter (DeepSeek, Claude, etc.)
+ *   - Gemini direct  ← default (free tier, no key needed for end users)
  *   - Anthropic direct (Claude)
  *   - OpenAI direct
  *   - Local models via OpenAI-compatible API (Ollama, LM Studio)
@@ -100,7 +100,7 @@ export const MODELS: ModelOption[] = [
   },
 ];
 
-export const DEFAULT_MODEL_ID = "deepseek/deepseek-chat";
+export const DEFAULT_MODEL_ID = "gemini-2.5-flash";
 
 /** Get the provider for a given model ID */
 export function getModelProvider(modelId: string): ProviderId {

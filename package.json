@@ -48,6 +48,10 @@
       {
         "from": "build/icon.png",
         "to": "."
+      },
+      {
+        "from": "key.env",
+        "to": "."
       }
     ],
     "win": {

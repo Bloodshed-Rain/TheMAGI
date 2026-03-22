@@ -22,12 +22,12 @@ interface ModelOption {
 }
 
 const MODELS: ModelOption[] = [
-  { id: "deepseek/deepseek-chat", label: "DeepSeek V3", description: "Best cost/quality ratio — recommended" },
-  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: "Fast and capable" },
-  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", description: "Reliable and efficient" },
+  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: "Free tier — works out of the box" },
+  { id: "deepseek/deepseek-chat", label: "DeepSeek V3", description: "Best cost/quality ratio (requires OpenRouter key)" },
+  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", description: "Reliable and efficient (requires OpenAI key)" },
 ];
 
-const DEFAULT_MODEL_ID = "deepseek/deepseek-chat";
+const DEFAULT_MODEL_ID = "gemini-2.5-flash";
 
 // ── Component ────────────────────────────────────────────────────────
 
