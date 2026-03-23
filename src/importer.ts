@@ -152,6 +152,14 @@ export function importReplay(
       powerShieldCount: player.powerShieldCount,
       edgeguardAttempts: player.edgeguardAttempts,
       edgeguardSuccessRate: player.edgeguardSuccessRate,
+      shieldPressureSequences: player.shieldPressure.sequenceCount,
+      shieldPressureAvgDamage: player.shieldPressure.avgShieldDamage,
+      shieldBreaks: player.shieldPressure.shieldBreaks,
+      shieldPokeRate: player.shieldPressure.shieldPokeRate,
+      diSurvivalScore: player.diQuality.survivalDIScore,
+      diComboScore: player.diQuality.comboDIScore,
+      diAvgComboLengthReceived: player.diQuality.avgComboLengthReceived,
+      diAvgComboLengthDealt: player.diQuality.avgComboLengthDealt,
     });
 
     if (player.signatureStats) {
@@ -166,6 +174,16 @@ export function importReplay(
   return { filePath: absolutePath, hash, skipped: false, gameId, gameSummary, gameResult: { gameSummary, derivedInsights, startAt } };
 }
 
+// ── Progress callback ────────────────────────────────────────────────
+
+export interface ImportProgress {
+  current: number;
+  total: number;
+  lastFile: string;
+}
+
+export type ImportProgressCallback = (progress: ImportProgress) => void;
+
 // ── Batch import (a set of replays) ──────────────────────────────────
 
 export interface BatchImportResult {
@@ -177,6 +195,7 @@ export interface BatchImportResult {
 export function importReplays(
   filePaths: string[],
   targetPlayer: string | null,
+  onProgress?: ImportProgressCallback,
 ): BatchImportResult {
   if (filePaths.length === 0) {
     return { imported: [], skipped: 0, sessionId: null };
@@ -210,6 +229,15 @@ export function importReplays(
       console.error(`[import] Skipping ${path.basename(filePaths[i]!)}: ${err instanceof Error ? err.message : String(err)}`);
       skippedCount++;
     }
+
+    // Report progress after each file (whether success, skip, or error)
+    if (onProgress) {
+      onProgress({
+        current: i + 1,
+        total: filePaths.length,
+        lastFile: path.basename(filePaths[i]!),
+      });
+    }
   }
 
   const importedCount = results.filter((r) => !r.skipped).length;
@@ -225,9 +253,10 @@ export function importReplays(
 export async function importAndAnalyze(
   filePaths: string[],
   targetPlayer: string | null,
+  onProgress?: ImportProgressCallback,
 ): Promise<{ batchResult: BatchImportResult; analysis: string | null }> {
   // First import all replays
-  const batchResult = importReplays(filePaths, targetPlayer);
+  const batchResult = importReplays(filePaths, targetPlayer, onProgress);
 
   const importedFiles = batchResult.imported.filter((r) => !r.skipped);
   if (importedFiles.length === 0) {

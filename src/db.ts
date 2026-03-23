@@ -86,7 +86,15 @@ const SCHEMA = `
     shield_pressure_entropy REAL NOT NULL,
     power_shield_count INTEGER NOT NULL DEFAULT 0,
     edgeguard_attempts INTEGER NOT NULL DEFAULT 0,
-    edgeguard_success_rate REAL NOT NULL DEFAULT 0
+    edgeguard_success_rate REAL NOT NULL DEFAULT 0,
+    shield_pressure_sequences INTEGER NOT NULL DEFAULT 0,
+    shield_pressure_avg_damage REAL NOT NULL DEFAULT 0,
+    shield_breaks INTEGER NOT NULL DEFAULT 0,
+    shield_poke_rate REAL NOT NULL DEFAULT 0,
+    di_survival_score REAL NOT NULL DEFAULT 0.5,
+    di_combo_score REAL NOT NULL DEFAULT 0.5,
+    di_avg_combo_length_received REAL NOT NULL DEFAULT 0,
+    di_avg_combo_length_dealt REAL NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS coaching_analyses (
@@ -122,6 +130,129 @@ const SCHEMA = `
   );
 `;
 
+// ── Migration system ─────────────────────────────────────────────────
+
+interface Migration {
+  version: number;
+  description: string;
+  up: (db: Database.Database) => void;
+}
+
+/**
+ * Versioned migrations array. Each migration runs exactly once.
+ * Migrations must be idempotent — they check before altering.
+ * Never remove or reorder existing migrations; only append new ones.
+ */
+const migrations: Migration[] = [
+  {
+    version: 1,
+    description: "Add power_shield_count to game_stats",
+    up: (db) => {
+      const columns = db.pragma("table_info(game_stats)") as { name: string }[];
+      if (!columns.some(c => c.name === "power_shield_count")) {
+        db.exec("ALTER TABLE game_stats ADD COLUMN power_shield_count INTEGER NOT NULL DEFAULT 0");
+      }
+    },
+  },
+  {
+    version: 2,
+    description: "Add edgeguard_attempts and edgeguard_success_rate to game_stats",
+    up: (db) => {
+      const columns = db.pragma("table_info(game_stats)") as { name: string }[];
+      if (!columns.some(c => c.name === "edgeguard_attempts")) {
+        db.exec("ALTER TABLE game_stats ADD COLUMN edgeguard_attempts INTEGER NOT NULL DEFAULT 0");
+        db.exec("ALTER TABLE game_stats ADD COLUMN edgeguard_success_rate REAL NOT NULL DEFAULT 0");
+      }
+    },
+  },
+  {
+    version: 3,
+    description: "Add shield pressure and DI quality columns to game_stats",
+    up: (db) => {
+      const columns = db.pragma("table_info(game_stats)") as { name: string }[];
+      if (!columns.some(c => c.name === "shield_pressure_sequences")) {
+        db.exec("ALTER TABLE game_stats ADD COLUMN shield_pressure_sequences INTEGER NOT NULL DEFAULT 0");
+        db.exec("ALTER TABLE game_stats ADD COLUMN shield_pressure_avg_damage REAL NOT NULL DEFAULT 0");
+        db.exec("ALTER TABLE game_stats ADD COLUMN shield_breaks INTEGER NOT NULL DEFAULT 0");
+        db.exec("ALTER TABLE game_stats ADD COLUMN shield_poke_rate REAL NOT NULL DEFAULT 0");
+        db.exec("ALTER TABLE game_stats ADD COLUMN di_survival_score REAL NOT NULL DEFAULT 0.5");
+        db.exec("ALTER TABLE game_stats ADD COLUMN di_combo_score REAL NOT NULL DEFAULT 0.5");
+        db.exec("ALTER TABLE game_stats ADD COLUMN di_avg_combo_length_received REAL NOT NULL DEFAULT 0");
+        db.exec("ALTER TABLE game_stats ADD COLUMN di_avg_combo_length_dealt REAL NOT NULL DEFAULT 0");
+      }
+    },
+  },
+];
+
+/**
+ * Ensure the schema_version table exists and return current version.
+ * Returns 0 for brand new databases (no migrations have run yet).
+ */
+function getSchemaVersion(db: Database.Database): number {
+  // Create the version tracking table if it doesn't exist
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_version (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      version INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  const row = db.prepare("SELECT version FROM schema_version WHERE id = 1").get() as
+    | { version: number }
+    | undefined;
+
+  if (!row) {
+    // First run — determine starting version by inspecting existing state.
+    // If the ad-hoc columns already exist, we know those migrations were
+    // effectively applied before we had the version table.
+    let startVersion = 0;
+    const columns = db.pragma("table_info(game_stats)") as { name: string }[];
+    if (columns.some(c => c.name === "edgeguard_attempts")) {
+      startVersion = 2;
+    } else if (columns.some(c => c.name === "power_shield_count")) {
+      startVersion = 1;
+    }
+    db.prepare(
+      "INSERT INTO schema_version (id, version) VALUES (1, ?)",
+    ).run(startVersion);
+    return startVersion;
+  }
+
+  return row.version;
+}
+
+function setSchemaVersion(db: Database.Database, version: number): void {
+  db.prepare(
+    "UPDATE schema_version SET version = ?, updated_at = datetime('now') WHERE id = 1",
+  ).run(version);
+}
+
+/**
+ * Run all pending migrations in a single transaction.
+ * Each migration's version must be strictly greater than the current version.
+ */
+function runMigrations(db: Database.Database): void {
+  const currentVersion = getSchemaVersion(db);
+
+  const pending = migrations
+    .filter((m) => m.version > currentVersion)
+    .sort((a, b) => a.version - b.version);
+
+  if (pending.length === 0) return;
+
+  const migrate = db.transaction(() => {
+    for (const migration of pending) {
+      console.log(`[db] Running migration v${migration.version}: ${migration.description}`);
+      migration.up(db);
+      setSchemaVersion(db, migration.version);
+    }
+  });
+
+  migrate();
+  console.log(`[db] Migrations complete. Schema version: ${pending[pending.length - 1]!.version}`);
+}
+
 // ── Database instance ────────────────────────────────────────────────
 
 let db: Database.Database | null = null;
@@ -134,15 +265,7 @@ export function getDb(): Database.Database {
       db.pragma("journal_mode = WAL");
       db.pragma("foreign_keys = ON");
       db.exec(SCHEMA);
-      // Migrate: add power_shield_count if missing (for existing DBs)
-      const columns = db.pragma("table_info(game_stats)") as { name: string }[];
-      if (!columns.some(c => c.name === "power_shield_count")) {
-        db.exec("ALTER TABLE game_stats ADD COLUMN power_shield_count INTEGER NOT NULL DEFAULT 0");
-      }
-      if (!columns.some(c => c.name === "edgeguard_attempts")) {
-        db.exec("ALTER TABLE game_stats ADD COLUMN edgeguard_attempts INTEGER NOT NULL DEFAULT 0");
-        db.exec("ALTER TABLE game_stats ADD COLUMN edgeguard_success_rate REAL NOT NULL DEFAULT 0");
-      }
+      runMigrations(db);
     } catch (err) {
       db = null;
       throw new Error(
@@ -271,6 +394,14 @@ export interface InsertGameStatsParams {
   powerShieldCount: number;
   edgeguardAttempts: number;
   edgeguardSuccessRate: number;
+  shieldPressureSequences: number;
+  shieldPressureAvgDamage: number;
+  shieldBreaks: number;
+  shieldPokeRate: number;
+  diSurvivalScore: number;
+  diComboScore: number;
+  diAvgComboLengthReceived: number;
+  diAvgComboLengthDealt: number;
 }
 
 export function insertGameStats(params: InsertGameStatsParams): void {
@@ -286,7 +417,11 @@ export function insertGameStats(params: InsertGameStatsParams): void {
       recovery_attempts, recovery_success_rate,
       ledge_entropy, knockdown_entropy, shield_pressure_entropy,
       power_shield_count,
-      edgeguard_attempts, edgeguard_success_rate
+      edgeguard_attempts, edgeguard_success_rate,
+      shield_pressure_sequences, shield_pressure_avg_damage,
+      shield_breaks, shield_poke_rate,
+      di_survival_score, di_combo_score,
+      di_avg_combo_length_received, di_avg_combo_length_dealt
     ) VALUES (
       ?,
       ?, ?, ?, ?,
@@ -298,6 +433,10 @@ export function insertGameStats(params: InsertGameStatsParams): void {
       ?, ?,
       ?, ?, ?,
       ?,
+      ?, ?,
+      ?, ?,
+      ?, ?,
+      ?, ?,
       ?, ?
     )
   `);
@@ -314,6 +453,10 @@ export function insertGameStats(params: InsertGameStatsParams): void {
     params.ledgeEntropy, params.knockdownEntropy, params.shieldPressureEntropy,
     params.powerShieldCount,
     params.edgeguardAttempts, params.edgeguardSuccessRate,
+    params.shieldPressureSequences, params.shieldPressureAvgDamage,
+    params.shieldBreaks, params.shieldPokeRate,
+    params.diSurvivalScore, params.diComboScore,
+    params.diAvgComboLengthReceived, params.diAvgComboLengthDealt,
   );
 }
 
@@ -702,6 +845,136 @@ export function detectSets(gapMinutes: number = 15): DetectedSet[] {
   sets.push(currentSet);
 
   return sets;
+}
+
+// ── Opponent detail (head-to-head deep dive) ────────────────────────
+
+export interface OpponentDetailGame {
+  id: number;
+  playedAt: string | null;
+  playerCharacter: string;
+  opponentCharacter: string;
+  stage: string;
+  result: string;
+  playerFinalStocks: number;
+  opponentFinalStocks: number;
+  neutralWinRate: number;
+  lCancelRate: number;
+  openingsPerKill: number;
+  edgeguardSuccessRate: number;
+  replayPath: string;
+}
+
+export interface OpponentStageBreakdown {
+  stage: string;
+  wins: number;
+  losses: number;
+  totalGames: number;
+  winRate: number;
+}
+
+export interface OpponentCharacterBreakdown {
+  opponentCharacter: string;
+  wins: number;
+  losses: number;
+  totalGames: number;
+  winRate: number;
+}
+
+export interface OpponentDetail {
+  opponentTag: string;
+  opponentConnectCode: string | null;
+  wins: number;
+  losses: number;
+  totalGames: number;
+  winRate: number;
+  games: OpponentDetailGame[];
+  stageBreakdown: OpponentStageBreakdown[];
+  characterBreakdown: OpponentCharacterBreakdown[];
+}
+
+/**
+ * Get full head-to-head detail for a specific opponent.
+ * @param opponentKey - The opponent's connect code or tag (as used in COALESCE grouping)
+ */
+export function getOpponentDetail(opponentKey: string): OpponentDetail | null {
+  const database = getDb();
+
+  // Match games by connect code or tag
+  const games = database.prepare(`
+    SELECT
+      g.id, g.played_at as playedAt,
+      g.player_character as playerCharacter,
+      g.opponent_character as opponentCharacter,
+      g.stage, g.result,
+      g.player_final_stocks as playerFinalStocks,
+      g.opponent_final_stocks as opponentFinalStocks,
+      gs.neutral_win_rate as neutralWinRate,
+      gs.l_cancel_rate as lCancelRate,
+      gs.openings_per_kill as openingsPerKill,
+      gs.edgeguard_success_rate as edgeguardSuccessRate,
+      g.replay_path as replayPath
+    FROM games g
+    JOIN game_stats gs ON gs.game_id = g.id
+    WHERE g.opponent_connect_code = ? OR g.opponent_tag = ?
+    ORDER BY g.played_at DESC
+  `).all(opponentKey, opponentKey) as OpponentDetailGame[];
+
+  if (games.length === 0) return null;
+
+  // Get the tag and connect code from the first game row
+  const meta = database.prepare(`
+    SELECT opponent_tag, opponent_connect_code
+    FROM games
+    WHERE opponent_connect_code = ? OR opponent_tag = ?
+    ORDER BY played_at DESC
+    LIMIT 1
+  `).get(opponentKey, opponentKey) as { opponent_tag: string; opponent_connect_code: string | null } | undefined;
+
+  if (!meta) return null;
+
+  const wins = games.filter(g => g.result === "win").length;
+  const losses = games.filter(g => g.result === "loss").length;
+
+  // Stage breakdown
+  const stageBreakdown = database.prepare(`
+    SELECT
+      g.stage,
+      SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN g.result = 'loss' THEN 1 ELSE 0 END) as losses,
+      COUNT(*) as totalGames,
+      ROUND(CAST(SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) AS REAL) / COUNT(*), 4) as winRate
+    FROM games g
+    WHERE g.opponent_connect_code = ? OR g.opponent_tag = ?
+    GROUP BY g.stage
+    ORDER BY totalGames DESC
+  `).all(opponentKey, opponentKey) as OpponentStageBreakdown[];
+
+  // Character breakdown (opponent's characters)
+  const characterBreakdown = database.prepare(`
+    SELECT
+      g.opponent_character as opponentCharacter,
+      SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN g.result = 'loss' THEN 1 ELSE 0 END) as losses,
+      COUNT(*) as totalGames,
+      ROUND(CAST(SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) AS REAL) / COUNT(*), 4) as winRate
+    FROM games g
+    WHERE g.opponent_connect_code = ? OR g.opponent_tag = ?
+    GROUP BY g.opponent_character
+    ORDER BY totalGames DESC
+  `).all(opponentKey, opponentKey) as OpponentCharacterBreakdown[];
+
+  return {
+    opponentTag: meta.opponent_tag,
+    opponentConnectCode: meta.opponent_connect_code,
+    wins,
+    losses,
+    totalGames: games.length,
+    winRate: games.length > 0 ? wins / games.length : 0,
+    games,
+    stageBreakdown,
+    characterBreakdown,
+  };
 }
 
 // ── Clear all data ───────────────────────────────────────────────────

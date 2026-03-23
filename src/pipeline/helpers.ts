@@ -176,6 +176,23 @@ export const GUARD = 179;
 export const GUARD_SET_OFF = 181;
 export const GUARD_REFLECT = 182;
 
+// ── Shield break action state constants ─────────────────────────────
+// In Melee, shield break causes action states 205 (ShieldBreakFly),
+// 206 (ShieldBreakFall), and 207 (ShieldBreakDownU/D).
+// We detect the initial transition into 205 to count shield breaks.
+export const SHIELD_BREAK_FLY = 205;
+export const SHIELD_BREAK_FALL = 206;
+export const SHIELD_BREAK_DOWN_U = 207;
+export const SHIELD_BREAK_DOWN_D = 208;
+export const SHIELD_BREAK_STAND_U = 209;
+export const SHIELD_BREAK_STAND_D = 210;
+
+/** Full shield size in Melee (60 units). */
+export const FULL_SHIELD_SIZE = 60;
+
+/** Minimum shield size at which attacks can "poke" through shield gaps. */
+export const SHIELD_POKE_THRESHOLD = 15;
+
 // Move ID → human name mapping (slippi-js uses numeric move IDs in conversions)
 export const moveIdToName: Record<number, string> = {
   1: "misc",

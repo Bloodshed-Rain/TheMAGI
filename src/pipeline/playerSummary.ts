@@ -15,6 +15,7 @@ import {
   frameToTimestamp, isAirborne, isOnLedge, isOnPlatform, isOffstage,
   isDashDancing, stageBounds, moveIdToName,
   GUARD_ON, GUARD, GUARD_SET_OFF, GUARD_REFLECT,
+  SHIELD_BREAK_FLY, FULL_SHIELD_SIZE, SHIELD_POKE_THRESHOLD,
 } from "./helpers.js";
 import { detectSignatureStats } from "./signatureStats.js";
 
@@ -141,6 +142,22 @@ export function buildPlayerSummary(
   let shieldFrameCount = 0; // how many frames since shield was first activated
   let prevActionState = 0;
 
+  // Shield pressure tracking: detect sequences where THIS player attacks
+  // while OPPONENT is shielding, tracking shield health changes.
+  let shieldPressureSequences = 0;
+  let totalShieldDamageDealt = 0;
+  let shieldBreaks = 0;
+  let shieldPokeHits = 0;
+  let totalShieldHits = 0;
+  let inPressureSequence = false;
+  let currentSequenceShieldDamage = 0;
+  let prevOppShieldSize = FULL_SHIELD_SIZE;
+  let prevOppActionState = 0;
+  let framesWithoutPressure = 0;
+  // Gap tolerance: shield pressure sequence ends if >30 frames pass without
+  // the opponent being in shield while this player is in an attack state.
+  const PRESSURE_GAP_TOLERANCE = 30;
+
   for (let f = Frames.FIRST_PLAYABLE; f <= lastFrame; f++) {
     const frame = frames[f];
     if (!frame) continue;
@@ -171,6 +188,68 @@ export function buildPlayerSummary(
     }
     prevActionState = actionState;
 
+    // ── Shield pressure detection ──────────────────────────────────
+    const oppPost = frame.players[opponentIndex]?.post;
+    if (oppPost) {
+      const oppAction = oppPost.actionStateId ?? 0;
+      const oppShield = oppPost.shieldSize ?? FULL_SHIELD_SIZE;
+      const oppStocks = oppPost.stocksRemaining ?? 0;
+
+      // Detect shield break: opponent transitions into ShieldBreakFly (205)
+      if (oppAction === SHIELD_BREAK_FLY && prevOppActionState !== SHIELD_BREAK_FLY && oppStocks > 0) {
+        shieldBreaks++;
+        // End current pressure sequence — it resulted in a break
+        if (inPressureSequence) {
+          totalShieldDamageDealt += currentSequenceShieldDamage;
+          currentSequenceShieldDamage = 0;
+          inPressureSequence = false;
+        }
+      }
+
+      // Is opponent currently shielding?
+      const oppShielding = oppAction === GUARD_ON || oppAction === GUARD || oppAction === GUARD_SET_OFF;
+
+      // Is this player currently in an attack action state?
+      const myAction = actionState;
+      const inAttackState =
+        (myAction >= State.GROUND_ATTACK_START && myAction <= State.GROUND_ATTACK_END) ||
+        (myAction >= State.AERIAL_ATTACK_START && myAction <= 69) || // AERIAL_DAIR
+        myAction === State.DASH_GRAB || myAction === State.GRAB;
+
+      if (oppShielding && inAttackState) {
+        if (!inPressureSequence) {
+          // Start a new pressure sequence
+          shieldPressureSequences++;
+          inPressureSequence = true;
+          currentSequenceShieldDamage = 0;
+        }
+        framesWithoutPressure = 0;
+
+        // Track shield damage: decrease in opponent's shield size
+        const shieldLost = prevOppShieldSize - oppShield;
+        if (shieldLost > 0) {
+          currentSequenceShieldDamage += shieldLost;
+          totalShieldHits++;
+          // Shield poke: attack connected while opponent's shield was very low
+          if (oppShield < SHIELD_POKE_THRESHOLD) {
+            shieldPokeHits++;
+          }
+        }
+      } else if (inPressureSequence) {
+        framesWithoutPressure++;
+        if (framesWithoutPressure > PRESSURE_GAP_TOLERANCE) {
+          // End pressure sequence
+          totalShieldDamageDealt += currentSequenceShieldDamage;
+          currentSequenceShieldDamage = 0;
+          inPressureSequence = false;
+          framesWithoutPressure = 0;
+        }
+      }
+
+      prevOppShieldSize = oppShield;
+      prevOppActionState = oppAction;
+    }
+
     totalX += posX;
     const airborne = pd.isAirborne === true || isAirborne(actionState);
     const onLedge = isOnLedge(actionState);
@@ -179,6 +258,11 @@ export function buildPlayerSummary(
     if (airborne) airFrames++;
     if (onLedge) ledgeFrames++;
     if (isDashDancing(actionState)) dashDanceFrameCount++;
+  }
+
+  // Close any still-open pressure sequence
+  if (inPressureSequence) {
+    totalShieldDamageDealt += currentSequenceShieldDamage;
   }
 
   const avgX = playableFrames > 0 ? totalX / playableFrames : 0;
@@ -532,6 +616,88 @@ export function buildPlayerSummary(
 
   const kenCombos = detectKenCombos(player.characterId, myConversions);
 
+  // ── Shield pressure stats ──────────────────────────────────────────
+  const shieldPressure = {
+    sequenceCount: shieldPressureSequences,
+    avgShieldDamage: shieldPressureSequences > 0
+      ? Math.round((totalShieldDamageDealt / shieldPressureSequences) * 100) / 100
+      : 0,
+    shieldBreaks,
+    shieldPokeRate: totalShieldHits > 0 ? ratio(shieldPokeHits, totalShieldHits) : 0,
+  };
+
+  // ── DI quality estimation ─────────────────────────────────────────
+  // conversion.playerIndex = VICTIM. So:
+  //   conversions where I am the victim: c.playerIndex === playerIndex
+  //   conversions where opponent is the victim: c.playerIndex !== playerIndex (= myConversions)
+  const conversionsReceived = allConversions.filter(
+    (c) => c.playerIndex === playerIndex && c.moves.length > 0,
+  );
+  const avgComboLengthReceived = conversionsReceived.length > 0
+    ? Math.round(
+        (conversionsReceived.reduce((sum, c) => sum + c.moves.length, 0) /
+          conversionsReceived.length) *
+          100,
+      ) / 100
+    : 0;
+
+  const myConversionsWithMoves = myConversions.filter((c) => c.moves.length > 0);
+  const avgComboLengthDealt = myConversionsWithMoves.length > 0
+    ? Math.round(
+        (myConversionsWithMoves.reduce((sum, c) => sum + c.moves.length, 0) /
+          myConversionsWithMoves.length) *
+          100,
+      ) / 100
+    : 0;
+
+  // comboDIScore: how effectively this player escapes combos via DI.
+  // Heuristic: compare received combo length against dealt combo length.
+  // If you receive shorter combos than you deal, your DI is relatively good.
+  // Baseline expectation: avgComboLengthReceived ~ avgComboLengthDealt.
+  // Score 0.5 = average DI, >0.5 = good DI (escaping early), <0.5 = poor DI.
+  // Uses a sigmoid-like mapping centered on the ratio.
+  let comboDIScore = 0.5;
+  if (avgComboLengthDealt > 0 && avgComboLengthReceived > 0) {
+    // ratio < 1 = you escape faster than opponent (good DI)
+    // ratio > 1 = you get comboed harder than opponent (bad DI)
+    const comboRatio = avgComboLengthReceived / avgComboLengthDealt;
+    // Map: ratio 0.5 → 1.0, ratio 1.0 → 0.5, ratio 2.0 → 0.0
+    // Using clamped linear: score = 1 - (comboRatio - 0.5) / 1.5
+    comboDIScore = Math.max(0, Math.min(1,
+      Math.round((1 - (comboRatio - 0.5) / 1.5) * 10000) / 10000,
+    ));
+  } else if (conversionsReceived.length === 0 && myConversionsWithMoves.length > 0) {
+    // Never got comboed — perfect DI score
+    comboDIScore = 1;
+  }
+
+  // survivalDIScore: how long the player survives before dying.
+  // Higher average death percent relative to a baseline = better survival DI.
+  // Baseline depends on character weight class, but we use a universal heuristic:
+  //   - Typical death percent range: 60% (very light / poor DI) to 160% (heavy / great DI)
+  //   - Map avgDeathPercent into 0..1 within that range
+  // Only counts actual deaths (avgDeathPercent > 0 means deaths occurred).
+  let survivalDIScore = 0.5;
+  if (avgDeathPercent > 0) {
+    const DEATH_PCT_LOW = 60;   // poor survival baseline
+    const DEATH_PCT_HIGH = 160; // excellent survival baseline
+    survivalDIScore = Math.max(0, Math.min(1,
+      Math.round(
+        ((avgDeathPercent - DEATH_PCT_LOW) / (DEATH_PCT_HIGH - DEATH_PCT_LOW)) * 10000,
+      ) / 10000,
+    ));
+  } else if (deaths.length === 0) {
+    // Never died — perfect survival DI
+    survivalDIScore = 1;
+  }
+
+  const diQuality = {
+    survivalDIScore,
+    comboDIScore,
+    avgComboLengthReceived,
+    avgComboLengthDealt,
+  };
+
   return {
     tag,
     connectCode,
@@ -560,6 +726,8 @@ export function buildPlayerSummary(
     wavedashCount: actionCounts.wavedashCount,
     dashDanceFrames: dashDanceFrameCount,
     powerShieldCount,
+    shieldPressure,
+    diQuality,
     moveUsage,
     stocks: stockBreakdown,
     turnipPulls,

@@ -48,6 +48,20 @@ export interface PlayerSummary {
   kenCombos: KenComboStats | null;
   /** Power shield count (projectile reflects + physical attack powershields). */
   powerShieldCount: number;
+  /** Shield pressure sequences initiated against the opponent */
+  shieldPressure: {
+    sequenceCount: number;
+    avgShieldDamage: number;
+    shieldBreaks: number;
+    shieldPokeRate: number;
+  };
+  /** DI quality estimation based on conversion and stock data */
+  diQuality: {
+    survivalDIScore: number;
+    comboDIScore: number;
+    avgComboLengthReceived: number;
+    avgComboLengthDealt: number;
+  };
   /** Character-specific signature stats. Null for unsupported characters. */
   signatureStats: CharacterSignatureStats | null;
 }

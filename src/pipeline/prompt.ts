@@ -66,19 +66,34 @@ For each game in the set, provide:
    - Edgeguard success and strategy
 
 5. **Defense & Recovery Assessment**
-   - DI quality (inferred from combo lengths received — long combos = poor DI)
+   - DI quality: use diQuality.comboDIScore (0-1 scale, higher = better combo escape DI)
+     and diQuality.survivalDIScore (0-1 scale, higher = surviving to higher percents).
+     Compare avgComboLengthReceived vs avgComboLengthDealt for context — if the player
+     receives longer combos than they deal, their DI needs work.
    - Recovery patterns and predictability
    - Ledge option distribution and entropy
    - Tech option distribution when knocked down
 
+6. **Shield Pressure Assessment**
+   - shieldPressure.sequenceCount = how many shield pressure sequences the player initiated.
+     A "sequence" is consecutive attacks on the opponent's shield.
+   - shieldPressure.avgShieldDamage = average shield health removed per sequence (out of 60
+     max shield HP). Higher = more threatening pressure.
+   - shieldPressure.shieldBreaks = times the player broke the opponent's shield entirely.
+   - shieldPressure.shieldPokeRate = rate of hits that connected through low shield (shield
+     pokes). High poke rate with low break rate means the player is chipping away but not
+     finishing pressure sequences.
+   - Evaluate whether the player's pressure is safe (can they be punished OOS between
+     hits?) and varied (mixing high/low shield poke options).
+
 For a multi-game SET, also provide:
 
-6. **Set-Level Analysis**
+7. **Set-Level Analysis**
    - Did either player adapt between games? Show the data.
    - What changed on counterpick stages?
    - Overall set narrative: who had momentum, when did it shift, why?
 
-7. **Practice Plan** (3 specific drills)
+8. **Practice Plan** (3 specific drills)
    Based on the weaknesses identified, recommend exactly 3 things to practice.
    Each drill should be:
    - Specific (not "practice neutral" — instead "practice reacting to Fox
@@ -86,7 +101,7 @@ For a multi-game SET, also provide:
    - Measurable (how do they know they're improving?)
    - Ranked by impact
 
-8. **Coach's Wisdom** (1 paragraph)
+9. **Coach's Wisdom** (1 paragraph)
    This is where you earn your keep. Step back from the numbers and deliver
    ONE golden insight — something that connects the dots across the data in
    a way the player wouldn't see on their own. Maybe it's a subtle correlation

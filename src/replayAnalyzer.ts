@@ -204,6 +204,14 @@ function buildInsertGameStatsParams(
     powerShieldCount: player.powerShieldCount,
     edgeguardAttempts: player.edgeguardAttempts,
     edgeguardSuccessRate: player.edgeguardSuccessRate,
+    shieldPressureSequences: player.shieldPressure.sequenceCount,
+    shieldPressureAvgDamage: player.shieldPressure.avgShieldDamage,
+    shieldBreaks: player.shieldPressure.shieldBreaks,
+    shieldPokeRate: player.shieldPressure.shieldPokeRate,
+    diSurvivalScore: player.diQuality.survivalDIScore,
+    diComboScore: player.diQuality.comboDIScore,
+    diAvgComboLengthReceived: player.diQuality.avgComboLengthReceived,
+    diAvgComboLengthDealt: player.diQuality.avgComboLengthDealt,
   };
 }
 

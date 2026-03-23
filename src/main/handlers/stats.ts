@@ -5,6 +5,7 @@ import {
   getCharacterList, getCharacterMatchups,
   getCharacterStageStats, getCharacterSignatureAggregates,
   getCharacterGameStats,
+  getOpponentDetail,
 } from "../../db.js";
 import type { SafeHandleFn } from "../ipc.js";
 
@@ -21,6 +22,7 @@ export function registerStatsHandlers(safeHandle: SafeHandleFn): void {
   safeHandle("stats:characterStages", (_e, character: string) => getCharacterStageStats(character));
   safeHandle("stats:characterSignature", (_e, character: string) => getCharacterSignatureAggregates(character));
   safeHandle("stats:characterGameStats", (_e, character: string) => getCharacterGameStats(character));
+  safeHandle("stats:opponentDetail", (_e, opponentKey: string) => getOpponentDetail(opponentKey));
   safeHandle("data:clearAll", () => {
     clearAllGames();
     return true;

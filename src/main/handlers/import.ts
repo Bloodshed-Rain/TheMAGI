@@ -1,6 +1,16 @@
 import * as path from "path";
-import { importReplays, importAndAnalyze } from "../../importer.js";
+import { importReplays, importAndAnalyze, type ImportProgressCallback } from "../../importer.js";
 import { type SafeHandleFn, validatePath } from "../ipc.js";
+import { getMainWindow } from "../state.js";
+
+function createProgressSender(): ImportProgressCallback {
+  return (progress) => {
+    const win = getMainWindow();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("import:progress", progress);
+    }
+  };
+}
 
 export function registerImportHandlers(safeHandle: SafeHandleFn): void {
   safeHandle("import:folder", async (_e, folderPath: string, targetPlayer: string) => {
@@ -26,7 +36,8 @@ export function registerImportHandlers(safeHandle: SafeHandleFn): void {
 
     files.sort();
 
-    const result = importReplays(files, targetPlayer);
+    const onProgress = createProgressSender();
+    const result = importReplays(files, targetPlayer, onProgress);
     return {
       imported: result.imported.filter((r) => !r.skipped).length,
       skipped: result.skipped,
@@ -35,6 +46,7 @@ export function registerImportHandlers(safeHandle: SafeHandleFn): void {
   });
 
   safeHandle("import:analyze", async (_e, filePaths: string[], targetPlayer: string) => {
-    return importAndAnalyze(filePaths, targetPlayer);
+    const onProgress = createProgressSender();
+    return importAndAnalyze(filePaths, targetPlayer, onProgress);
   });
 }

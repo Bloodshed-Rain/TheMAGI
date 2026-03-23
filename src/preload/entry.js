@@ -41,6 +41,7 @@ const api = {
   getCharacterStageStats: (character) => ipcRenderer.invoke("stats:characterStages", character),
   getCharacterSignatureStats: (character) => ipcRenderer.invoke("stats:characterSignature", character),
   getCharacterGameStats: (character) => ipcRenderer.invoke("stats:characterGameStats", character),
+  getOpponentDetail: (opponentKey) => ipcRenderer.invoke("stats:opponentDetail", opponentKey),
 
   // LLM
   getLLMModels: () => ipcRenderer.invoke("llm:models"),
@@ -73,6 +74,11 @@ const api = {
     const listener = (_event, message) => callback(message);
     ipcRenderer.on("watcher:error", listener);
     return () => ipcRenderer.removeListener("watcher:error", listener);
+  },
+  onImportProgress: (callback) => {
+    const listener = (_event, progress) => callback(progress);
+    ipcRenderer.on("import:progress", listener);
+    return () => ipcRenderer.removeListener("import:progress", listener);
   },
   onAnalysisStream: (callback) => {
     const listener = (_event, chunk) => callback(chunk);

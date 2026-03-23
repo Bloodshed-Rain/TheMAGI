@@ -52,6 +52,7 @@ export function Settings({ onImport }: SettingsProps) {
   const [showKeys, setShowKeys] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; lastFile: string } | null>(null);
   const [watching, setWatching] = useState(false);
 
   // Load user config
@@ -66,6 +67,19 @@ export function Settings({ onImport }: SettingsProps) {
     }
     load();
   }, []);
+
+  // Import progress events
+  useEffect(() => {
+    if (!importing) return;
+    const unsub = window.clippi.onImportProgress((progress) => {
+      setImportProgress(progress);
+      setImportStatus(`Importing ${progress.current}/${progress.total}...`);
+    });
+    return () => {
+      unsub();
+      setImportProgress(null);
+    };
+  }, [importing]);
 
   // Watcher events
   useEffect(() => {
@@ -106,17 +120,20 @@ export function Settings({ onImport }: SettingsProps) {
       return;
     }
     setImporting(true);
-    setImportStatus("Importing replays...");
+    setImportProgress(null);
+    setImportStatus("Scanning for replays...");
     try {
       const result = await window.clippi.importFolder(
         config.replayFolder,
         config.connectCode ?? config.targetPlayer,
       );
+      setImportProgress(null);
       setImportStatus(
         `Imported ${result.imported} games, skipped ${result.skipped} duplicates (${result.total} total files).`,
       );
       onImport();
     } catch (err: unknown) {
+      setImportProgress(null);
       setImportStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
     setImporting(false);
@@ -213,6 +230,25 @@ export function Settings({ onImport }: SettingsProps) {
             {watching ? "Stop Watching" : "Watch for New Games"}
           </button>
         </div>
+        {importProgress && importing && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{
+              width: "100%",
+              height: 6,
+              background: "var(--bg-secondary, #1a1a2e)",
+              borderRadius: 3,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                width: `${Math.round((importProgress.current / importProgress.total) * 100)}%`,
+                height: "100%",
+                background: "var(--accent, #00d4aa)",
+                borderRadius: 3,
+                transition: "width 0.15s ease-out",
+              }} />
+            </div>
+          </div>
+        )}
         {importStatus && (
           <p className="import-status">{importStatus}</p>
         )}

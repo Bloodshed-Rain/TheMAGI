@@ -120,6 +120,9 @@ export function computeAdaptationSignals(
     { metric: "grab frequency", extract: (p) => getGrabFrequency(p), higherIsBetter: true },
     { metric: "power shields", extract: (p) => p.powerShieldCount, higherIsBetter: true },
     { metric: "edgeguard success", extract: (p) => p.edgeguardSuccessRate, higherIsBetter: true },
+    { metric: "shield pressure sequences", extract: (p) => p.shieldPressure.sequenceCount, higherIsBetter: true },
+    { metric: "combo DI score", extract: (p) => p.diQuality.comboDIScore, higherIsBetter: true },
+    { metric: "survival DI score", extract: (p) => p.diQuality.survivalDIScore, higherIsBetter: true },
   ];
 
   // Build trajectory (per-game values) for each metric

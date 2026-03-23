@@ -34,6 +34,7 @@ declare global {
       getCharacterStageStats: (character: string) => Promise<any[]>;
       getCharacterSignatureStats: (character: string) => Promise<any>;
       getCharacterGameStats: (character: string) => Promise<any[]>;
+      getOpponentDetail: (opponentKey: string) => Promise<any>;
       openInDolphin: (replayPath: string) => Promise<boolean>;
       openFileDialog: (title: string, filters: { name: string; extensions: string[] }[]) => Promise<string | null>;
       startWatcher: (replayFolder: string, targetPlayer: string) => Promise<boolean>;

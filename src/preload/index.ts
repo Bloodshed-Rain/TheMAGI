@@ -41,6 +41,7 @@ const api = {
   getCharacterStageStats: (character: string) => ipcRenderer.invoke("stats:characterStages", character),
   getCharacterSignatureStats: (character: string) => ipcRenderer.invoke("stats:characterSignature", character),
   getCharacterGameStats: (character: string) => ipcRenderer.invoke("stats:characterGameStats", character),
+  getOpponentDetail: (opponentKey: string) => ipcRenderer.invoke("stats:opponentDetail", opponentKey),
 
   // Dolphin playback
   openInDolphin: (replayPath: string) =>
@@ -73,6 +74,11 @@ const api = {
     const listener = () => callback();
     ipcRenderer.on("update:ready", listener);
     return () => ipcRenderer.removeListener("update:ready", listener);
+  },
+  onImportProgress: (callback: (progress: { current: number; total: number; lastFile: string }) => void) => {
+    const listener = (_event: unknown, progress: { current: number; total: number; lastFile: string }) => callback(progress);
+    ipcRenderer.on("import:progress", listener);
+    return () => ipcRenderer.removeListener("import:progress", listener);
   },
   onAnalysisStream: (callback: (chunk: string) => void) => {
     const listener = (_event: unknown, chunk: string) => callback(chunk);
