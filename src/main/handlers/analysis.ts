@@ -1,3 +1,5 @@
+import crypto from "crypto";
+import fs from "fs";
 import { loadConfig } from "../../config.js";
 import { getDb, insertCoachingAnalysis, getPlayerHistory } from "../../db.js";
 import {
@@ -6,7 +8,6 @@ import {
   type GameResult,
 } from "../../pipeline/index.js";
 import { callLLM, callLLMStream, LLM_DEFAULTS, type LLMConfig } from "../../llm.js";
-import { processReplay } from "../../replayAnalyzer.js";
 import { llmQueue } from "../../llmQueue.js";
 import { type SafeHandleFn, validatePath } from "../ipc.js";
 import { getMainWindow } from "../state.js";
@@ -61,12 +62,23 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     const llmConfig = resolveLLMConfig();
     const win = getMainWindow();
 
-    // Single replay — use processReplay for dedup + caching
-    // Note: processReplay uses the config's targetPlayer via the analysis generator,
-    // but we still pass through to the multi-game path below if targetPlayer differs
-    if (safePaths.length === 1 && !targetPlayer) {
-      const result = await processReplay(safePaths[0]!, getDb());
-      return result.analysisText;
+    // Check DB cache for single replays — skip LLM if already analyzed
+    if (safePaths.length === 1) {
+      const db = getDb();
+      const fileHash = crypto.createHash("sha256").update(fs.readFileSync(safePaths[0]!)).digest("hex");
+      const currentModelId = llmConfig.modelId;
+      const existingGame = db.prepare(
+        "SELECT id FROM games WHERE replay_hash = ?",
+      ).get(fileHash) as { id: number } | undefined;
+      if (existingGame) {
+        const cachedAnalysis = db.prepare(
+          "SELECT analysis_text FROM coaching_analyses WHERE game_id = ? AND model_used = ? ORDER BY created_at DESC LIMIT 1",
+        ).get(existingGame.id, currentModelId) as { analysis_text: string } | undefined;
+        if (cachedAnalysis) {
+          return cachedAnalysis.analysis_text;
+        }
+      }
+      // Not cached — fall through to streaming path
     }
 
     // Multi-replay (set analysis) — run full pipeline

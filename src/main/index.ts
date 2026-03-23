@@ -66,6 +66,19 @@ function createWindow(): void {
     mainWindow?.show();
   });
 
+  // Block ALL navigation — this is a single-page app, never navigate away.
+  // Prevents timestamp: protocol links from crashing/reloading the app.
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    const devServer = process.env["VITE_DEV_SERVER_URL"];
+    if (devServer && url.startsWith(devServer)) return; // allow HMR
+    event.preventDefault();
+  });
+
+  // Also block window.open and new-window attempts
+  mainWindow.webContents.setWindowOpenHandler(() => {
+    return { action: "deny" };
+  });
+
   setMainWindow(mainWindow);
 
   // In dev, load from Vite dev server; in prod, load built files
