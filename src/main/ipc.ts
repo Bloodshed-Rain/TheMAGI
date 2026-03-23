@@ -50,6 +50,7 @@ import { registerImportHandlers } from "./handlers/import.js";
 import { registerLlmHandlers } from "./handlers/llm.js";
 import { registerStatsHandlers } from "./handlers/stats.js";
 import { registerWatcherHandlers } from "./handlers/watcher.js";
+import { registerStockTimelineHandlers } from "./handlers/stockTimeline.js";
 
 export function setupIPC(): void {
   registerConfigHandlers(safeHandle);
@@ -60,4 +61,5 @@ export function setupIPC(): void {
   registerStatsHandlers(safeHandle);
   registerWatcherHandlers(safeHandle);
   registerDolphinHandlers(safeHandle);
+  registerStockTimelineHandlers(safeHandle);
 }

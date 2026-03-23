@@ -38,7 +38,6 @@
     },
     "files": [
       "src/main/entry.js",
-      "src/preload/entry.js",
       "dist/main/**/*",
       "dist/renderer/**/*",
       "node_modules/**/*",

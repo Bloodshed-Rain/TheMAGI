@@ -52,8 +52,8 @@ function createWindow(): void {
     icon: iconPath,
     webPreferences: {
       preload: process.env["VITE_DEV_SERVER_URL"]
-        ? path.resolve(__dirname, "..", "preload", "entry.js")
-        : path.resolve(__dirname, "../../../src/preload/entry.js"),
+        ? path.resolve(__dirname, "../../dist/main/preload/index.js")
+        : path.resolve(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false, // needed for preload to use require()

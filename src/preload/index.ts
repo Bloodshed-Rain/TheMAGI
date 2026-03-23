@@ -43,6 +43,10 @@ const api = {
   getCharacterGameStats: (character: string) => ipcRenderer.invoke("stats:characterGameStats", character),
   getOpponentDetail: (opponentKey: string) => ipcRenderer.invoke("stats:opponentDetail", opponentKey),
 
+  // Stock timeline
+  getStockTimeline: (replayPath: string) =>
+    ipcRenderer.invoke("stats:stockTimeline", replayPath),
+
   // Dolphin playback
   openInDolphin: (replayPath: string) =>
     ipcRenderer.invoke("replay:openInDolphin", replayPath),

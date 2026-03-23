@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Markdown, { type Components } from "react-markdown";
 import { useStagger, useGlitchText } from "../hooks";
 import { Onboarding } from "../components/Onboarding";
+import { StockTimeline } from "../components/StockTimeline";
 
 const FPS = 60;
 const FIRST_PLAYABLE = -123; // Frames.FIRST_PLAYABLE from slippi-js
@@ -358,6 +359,11 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                           <span style={{ color: "var(--red)", fontSize: 12, fontFamily: "var(--font-mono)" }}>{dolphinError}</span>
                         )}
                       </div>
+                      <StockTimeline
+                        replayPath={game.replayPath}
+                        playerCharacter={game.playerCharacter}
+                        opponentCharacter={game.opponentCharacter}
+                      />
                       {isAnalyzing && !isStreaming && !streamingText && analyzingGame === game.id && (
                         <div className="analyze-loading">
                           <div className="spinner" />

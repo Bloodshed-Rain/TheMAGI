@@ -18,6 +18,7 @@ function SystemUptime() {
 import {
   CoachingIcon, SessionsIcon, TrendsIcon, ProfileIcon, CharactersIcon, SettingsIcon,
 } from "./components/NavIcons";
+import { CommandPalette } from "./components/CommandPalette";
 
 type Page = "dashboard" | "sessions" | "trends" | "profile" | "characters" | "settings";
 
@@ -134,10 +135,19 @@ export function App() {
     setRefreshKey((k) => k + 1);
   }, []);
 
+  const handleToggleTheme = useCallback(() => {
+    const next: ColorMode = colorMode === "dark" ? "light" : "dark";
+    handleModeChange(next);
+  }, [colorMode, handleModeChange]);
+
   const navigateTo = useCallback((target: Page) => {
     prevPageRef.current = PAGE_INDEX[page];
     setPage(target);
   }, [page]);
+
+  const handleCommandImport = useCallback(() => {
+    navigateTo("settings");
+  }, [navigateTo]);
 
   // Directional transitions
   const direction = PAGE_INDEX[page] >= prevPageRef.current ? 1 : -1;
@@ -152,6 +162,11 @@ export function App() {
     <div className="app-layout">
       <NeuralMesh />
       <ParticleField />
+      <CommandPalette
+        navigateTo={navigateTo}
+        onToggleTheme={handleToggleTheme}
+        onImport={handleCommandImport}
+      />
       <nav className="sidebar" role="tablist" aria-label="Main navigation">
         <div className="sidebar-brand">
           <div className="sidebar-logo">

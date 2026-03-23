@@ -20,6 +20,14 @@ if (fs.existsSync(envPath)) {
 }
 
 async function main() {
+  // Compile main+preload TypeScript so the preload script is available as JS
+  const { execSync } = require("child_process");
+  console.log("Compiling main/preload TypeScript...");
+  execSync("npx tsc -p tsconfig.main.json", {
+    cwd: path.resolve(__dirname, ".."),
+    stdio: "inherit",
+  });
+
   // Start Vite dev server
   const vite = await createServer({
     configFile: path.resolve(__dirname, "../vite.config.ts"),
@@ -28,7 +36,7 @@ async function main() {
   const url = vite.resolvedUrls?.local?.[0] ?? "http://localhost:5173";
   console.log(`Vite dev server: ${url}`);
 
-  // Compile main + preload with tsx, then start Electron
+  // Start Electron
   const electron = spawn(
     require("electron"),
     ["."],
