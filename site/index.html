@@ -1,528 +1,557 @@
-import { useState, useEffect, useRef, useCallback } from “react”;
+<!DOCTYPE html>
 
-const SLIPPI = “#21BA45”;
-const SLIPPI_DIM = “rgba(33,186,69,0.4)”;
-const SLIPPI_GLOW = “rgba(33,186,69,0.15)”;
-const PHOSPHOR = “#1de84a”;
-const DARK = “#0a0c0a”;
-const SCREEN_BG = “#050805”;
-const BEZEL = “#1a1a1c”;
-const BEZEL_EDGE = “#2a2a2e”;
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAGI — Melee Analysis through Generative Intelligence</title>
+<meta name="description" content="AI-powered Melee coaching from your Slippi replays. The first tool that actually watches you play.">
+<meta name="theme-color" content="#050805">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --slippi:#21BA45;
+  --phosphor:#1de84a;
+  --dim:rgba(33,186,69,0.4);
+  --ghost:rgba(33,186,69,0.15);
+  --faint:rgba(33,186,69,0.07);
+  --screen:#050805;
+  --bezel:#1a1a1c;
+  --bezel-hi:#2a2a2e;
+  --room:#030303;
+}
+html,body{margin:0;height:100%;background:var(--room);overflow:hidden}
+body{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Courier New',Courier,monospace;
+  padding:12px;
+}
+
+/* ═══ KEYFRAMES ═══ */
+@keyframes crt-on{
+0%{opacity:0;transform:scaleY(.005) scaleX(.3);filter:brightness(30)}
+20%{opacity:1;transform:scaleY(.005) scaleX(1);filter:brightness(10)}
+40%{transform:scaleY(1.1) scaleX(1);filter:brightness(2)}
+60%{transform:scaleY(.95);filter:brightness(1.2)}
+80%{transform:scaleY(1.02);filter:brightness(1)}
+100%{transform:scaleY(1);filter:brightness(1);opacity:1}
+}
+@keyframes scan-move{
+0%{transform:translateY(-100%)}
+100%{transform:translateY(100%)}
+}
+@keyframes flicker{
+0%,100%{opacity:1}92%{opacity:1}93%{opacity:.82}94%{opacity:1}
+}
+@keyframes glow-pulse{
+0%,100%{box-shadow:0 0 60px rgba(33,186,69,.06),0 0 120px rgba(33,186,69,.03),inset 0 0 60px rgba(33,186,69,.04)}
+50%{box-shadow:0 0 80px rgba(33,186,69,.1),0 0 160px rgba(33,186,69,.05),inset 0 0 80px rgba(33,186,69,.06)}
+}
+@keyframes blink{50%{opacity:0}}
+@keyframes led-pulse{0%,100%{opacity:.6}50%{opacity:1}}
+
+/* ═══ MONITOR SHELL ═══ */
+.monitor{
+width:100%;max-width:720px;
+background:linear-gradient(170deg,var(–bezel-hi) 0%,var(–bezel) 30%,#111113 100%);
+border-radius:18px;padding:18px 18px 24px;
+position:relative;
+box-shadow:0 30px 80px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.03);
+}
+.monitor-brand{
+text-align:center;font-family:‘Helvetica Neue’,Helvetica,Arial,sans-serif;
+font-size:10px;font-weight:700;letter-spacing:.35em;text-transform:uppercase;
+color:rgba(255,255,255,.08);margin-bottom:10px;user-select:none;
+}
+
+/* ═══ SCREEN ═══ */
+.screen{
+background:var(–screen);border-radius:6px;overflow:hidden;
+position:relative;border:1px solid var(–faint);
+}
+.screen.on{animation:glow-pulse 4s ease-in-out infinite}
+
+/* CRT power-on wrapper */
+.crt-wrap{
+opacity:0;transform-origin:center center;
+}
+.crt-wrap.powered{animation:crt-on .6s cubic-bezier(.23,1,.32,1) forwards}
+
+/* Scanlines */
+.scanlines{
+position:absolute;inset:0;z-index:10;pointer-events:none;
+background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px);
+}
+/* Moving scan beam */
+.scan-beam{position:absolute;inset:0;z-index:11;pointer-events:none;overflow:hidden}
+.scan-beam::after{
+content:’’;display:block;width:100%;height:8px;
+background:linear-gradient(180deg,transparent,rgba(33,186,69,.07),transparent);
+animation:scan-move 4s linear infinite;
+}
+/* Flicker */
+.flicker{animation:flicker 8s linear infinite}
+
+/* ═══ TAB BAR ═══ */
+.tabs{
+display:flex;border-bottom:1px solid rgba(33,186,69,.1);
+background:rgba(33,186,69,.02);position:relative;z-index:5;
+overflow-x:auto;scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+flex:0 0 auto;padding:10px 16px;background:transparent;
+border:none;border-bottom:2px solid transparent;
+color:var(–dim);font-family:inherit;font-size:10px;font-weight:700;
+letter-spacing:.2em;cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.tab:hover{color:rgba(33,186,69,.6)}
+.tab.active{
+background:rgba(33,186,69,.08);border-bottom-color:var(–slippi);
+color:var(–phosphor);text-shadow:0 0 8px var(–slippi);
+}
+.tab.disabled{color:rgba(33,186,69,.15);cursor:default}
+.tab.disabled:hover{color:rgba(33,186,69,.15)}
+.tab-status{
+margin-left:auto;padding:10px 16px;font-size:9px;
+letter-spacing:.15em;color:var(–dim);display:flex;
+align-items:center;gap:12px;white-space:nowrap;
+}
+.status-dot{
+width:5px;height:5px;border-radius:50%;
+background:rgba(33,186,69,.3);display:inline-block;
+margin-right:4px;vertical-align:middle;
+}
+.status-dot.live{background:var(–phosphor);box-shadow:0 0 6px var(–slippi)}
+
+/* ═══ CONTENT AREA ═══ */
+.content{
+height:clamp(300px,52vh,520px);
+overflow-y:auto;overflow-x:hidden;
+padding:24px 20px;font-size:12px;line-height:1.8;
+scrollbar-width:thin;scrollbar-color:var(–dim) transparent;
+white-space:pre-wrap;word-break:break-word;
+}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-track{background:transparent}
+.content::-webkit-scrollbar-thumb{background:var(–dim);border-radius:2px}
+
+/* Text styles */
+.t-title{color:var(–phosphor);font-size:16px;font-weight:700;text-shadow:0 0 10px var(–slippi),0 0 30px var(–ghost);letter-spacing:.15em}
+.t-sub{color:var(–dim);font-size:12px;letter-spacing:.05em}
+.t-normal{color:rgba(33,186,69,.7)}
+.t-success{color:var(–phosphor);font-weight:600;text-shadow:0 0 8px var(–slippi)}
+.t-dim{color:var(–dim);font-size:11px}
+.t-body{color:rgba(33,186,69,.75)}
+
+/* Cursor */
+.cursor{
+display:inline-block;width:8px;height:15px;
+background:var(–phosphor);box-shadow:0 0 6px var(–slippi);
+animation:blink 1s step-end infinite;vertical-align:text-bottom;
+}
+
+/* ═══ BOTTOM STATUS BAR ═══ */
+.status-bar{
+display:flex;justify-content:space-between;align-items:center;
+padding:8px 16px;border-top:1px solid rgba(33,186,69,.08);
+font-size:9px;letter-spacing:.1em;
+color:rgba(33,186,69,.25);position:relative;z-index:5;
+flex-wrap:wrap;gap:4px 16px;
+}
+
+/* ═══ MONITOR CHIN ═══ */
+.chin{
+display:flex;align-items:center;justify-content:space-between;
+padding:14px 8px 0;
+}
+.power-led{
+width:7px;height:7px;border-radius:50%;
+background:rgba(255,255,255,.05);
+transition:all .5s;
+}
+.power-led.on{
+background:var(–slippi);
+box-shadow:0 0 8px var(–slippi),0 0 16px var(–ghost);
+animation:led-pulse 3s ease-in-out infinite;
+}
+.chin-label{
+font-family:‘Helvetica Neue’,Helvetica,Arial,sans-serif;
+font-size:8px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;
+color:rgba(255,255,255,.06);user-select:none;
+}
+.chin-center{
+font-family:‘Helvetica Neue’,Helvetica,Arial,sans-serif;
+font-size:11px;font-weight:900;letter-spacing:.25em;
+color:rgba(255,255,255,.04);text-transform:uppercase;user-select:none;
+}
+
+/* ═══ LINKS INSIDE CONTENT ═══ */
+.content a{
+color:var(–phosphor);text-decoration:none;
+text-shadow:0 0 6px var(–ghost);
+border-bottom:1px solid rgba(33,186,69,.2);
+transition:all .2s;
+}
+.content a:hover{
+border-bottom-color:var(–phosphor);
+text-shadow:0 0 10px var(–slippi);
+}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:480px){
+body{padding:8px;align-items:flex-start;padding-top:max(8px,env(safe-area-inset-top))}
+.monitor{border-radius:12px;padding:12px 10px 16px}
+.tab{padding:10px 12px;font-size:9px;letter-spacing:.12em}
+.tab-status{padding:8px 10px;font-size:8px;gap:8px}
+.content{height:clamp(260px,58vh,480px);padding:18px 14px;font-size:11px}
+.status-bar{padding:6px 12px;font-size:8px}
+.t-title{font-size:13px}
+}
+</style>
+
+</head>
+<body>
+
+<div class="monitor">
+  <div class="monitor-brand">MAGI Systems</div>
+
+  <div class="screen" id="screen">
+    <div class="crt-wrap" id="crtWrap">
+      <div class="scanlines"></div>
+      <div class="scan-beam"></div>
+      <div class="flicker">
+        <!-- Tabs -->
+        <div class="tabs" id="tabs">
+          <button class="tab active" data-tab="boot">BOOT</button>
+          <button class="tab disabled" data-tab="about">ABOUT</button>
+          <button class="tab disabled" data-tab="features">FEATURES</button>
+          <button class="tab disabled" data-tab="install">INSTALL</button>
+          <button class="tab disabled" data-tab="links">LINKS</button>
+          <div class="tab-status">
+            <span><span class="status-dot" id="statusDot"></span><span id="statusText">BOOT</span></span>
+            <span id="clock"></span>
+          </div>
+        </div>
+
+```
+    <!-- Content -->
+    <div class="content" id="content"></div>
+
+    <!-- Bottom bar -->
+    <div class="status-bar">
+      <span>ELECTRON // REACT // SLIPPI-JS</span>
+      <span>MIT LICENSE</span>
+      <span>WIN / MAC / LINUX</span>
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <div class="chin">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="power-led" id="powerLed"></div>
+      <span class="chin-label">POWER</span>
+    </div>
+    <div class="chin-center">◆ MAGI ◆</div>
+    <span class="chin-label">MDL-2026</span>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   MAGI CRT LANDING — VANILLA JS ENGINE
+═══════════════════════════════════════ */
 
 const BOOT_LINES = [
-{ text: “MAGI SYSTEM v1.3.0”, delay: 0, style: “title” },
-{ text: “Melee Analysis through Generative Intelligence”, delay: 200, style: “sub” },
-{ text: “”, delay: 300, style: “normal” },
-{ text: “[ INIT ] Loading slippi-js parser…………. OK”, delay: 400, style: “normal” },
-{ text: “[ INIT ] SQLite database connected………… OK”, delay: 600, style: “normal” },
-{ text: “[ INIT ] LLM queue initialized (6 providers).. OK”, delay: 800, style: “normal” },
-{ text: “[ INIT ] Stat engine armed (40+ metrics)…… OK”, delay: 1000, style: “normal” },
-{ text: “[ INIT ] Character modules loaded (26)…….. OK”, delay: 1200, style: “normal” },
-{ text: “[ INIT ] File watcher standby…………….. OK”, delay: 1400, style: “normal” },
-{ text: “”, delay: 1500, style: “normal” },
-{ text: “All systems nominal. MAGI is online.”, delay: 1600, style: “success” },
-{ text: “”, delay: 1800, style: “normal” },
-{ text: “Type ‘help’ or select a panel above.”, delay: 2000, style: “dim” },
+  { text: "MAGI SYSTEM v1.3.0", delay: 0, cls: "t-title" },
+  { text: "Melee Analysis through Generative Intelligence", delay: 200, cls: "t-sub" },
+  { text: "", delay: 300, cls: "t-normal" },
+  { text: "[ INIT ] Loading slippi-js parser............. OK", delay: 400, cls: "t-normal" },
+  { text: "[ INIT ] SQLite database connected............ OK", delay: 600, cls: "t-normal" },
+  { text: "[ INIT ] LLM queue initialized (6 providers).. OK", delay: 800, cls: "t-normal" },
+  { text: "[ INIT ] Stat engine armed (40+ metrics)...... OK", delay: 1000, cls: "t-normal" },
+  { text: "[ INIT ] Character modules loaded (26)........ OK", delay: 1200, cls: "t-normal" },
+  { text: "[ INIT ] File watcher standby................. OK", delay: 1400, cls: "t-normal" },
+  { text: "", delay: 1500, cls: "t-normal" },
+  { text: "All systems nominal. MAGI is online.", delay: 1600, cls: "t-success" },
+  { text: "", delay: 1800, cls: "t-normal" },
+  { text: "Select a panel above to explore.", delay: 2000, cls: "t-dim" },
 ];
 
-const TABS = [“BOOT”, “ABOUT”, “FEATURES”, “INSTALL”, “LINKS”];
+const PANELS = {
+about: `MAGI \u2014 The First AI Coach for Super Smash Bros. Melee
 
-const ABOUT_CONTENT = `MAGI — The First AI Coach for Super Smash Bros. Melee
+Drop your .slp files. MAGI parses every frame, computes 40+ stats
+per game, then sends structured context to an LLM that returns
+specific, actionable coaching \u2014 not generic advice, but
+observations grounded in YOUR data.
 
-Drop your .slp files. MAGI parses every frame, computes 40+ stats per
-game, then sends structured context to an LLM that returns specific,
-actionable coaching — not generic advice, but observations grounded
-in YOUR data.
-
-◆ Neutral win rate, L-cancel %, openings per kill
-◆ Habit entropy analysis — detects predictable patterns
-◆ DI quality scoring, shield pressure tracking
-◆ 26 character signature stats (Fox waveshines, Falco pillars,
-Marth Ken combos, Sheik tech chases, Falcon knees…)
-◆ Opponent Rivalry Dossier — deep dive any player
-◆ Trend tracking with 5-game rolling averages
-◆ MAGI commentary — blunt, witty AI personality
+  \u25C6 Neutral win rate, L-cancel %, openings per kill
+  \u25C6 Habit entropy analysis \u2014 detects predictable patterns
+  \u25C6 DI quality scoring, shield pressure tracking
+  \u25C6 26 character signature stats (Fox waveshines, Falco
+    pillars, Marth Ken combos, Sheik tech chases,
+    Falcon knees, Puff rests, Peach turnips...)
+  \u25C6 Opponent Rivalry Dossier \u2014 deep dive any player
+  \u25C6 Trend tracking with 5-game rolling averages
+  \u25C6 MAGI commentary \u2014 blunt, witty AI personality
 
 Slippi gives you replays. Unclepunch gives you training mode.
 Nobody gives you a coach. Until now.
 
-Free · Local-first · Open source · No account · No server
-Windows · macOS · Linux`;
+  Free \u00B7 Local-first \u00B7 Open source \u00B7 No account \u00B7 No server
+  Windows \u00B7 macOS \u00B7 Linux`,
 
-const FEATURES_CONTENT = `CORE SYSTEMS
-─────────────────────────────────────────
+features: `CORE SYSTEMS
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 [AI COACHING]
-Streaming LLM analysis grounded in your match data.
-Player history context — references your trends and habits.
-Cached per-game. Re-reading costs $0.
+  Streaming LLM analysis grounded in your match data.
+  Player history context \u2014 references your trends
+  and habits. Cached per-game. Re-reading costs $0.
 
 [MULTI-LLM]
-Gemini Flash (free, default) · OpenRouter · Claude
-GPT-4o · Ollama · LM Studio
-Zero lock-in. BYOK or run fully local.
+  Gemini Flash (free, default) \u00B7 OpenRouter \u00B7 Claude
+  GPT-4o \u00B7 Ollama \u00B7 LM Studio
+  Zero lock-in. BYOK or run fully local.
 
 [STAT ENGINE]
-40+ per-game metrics. Frame-level forensics.
-Six-axis player archetype radar.
-Habit entropy. DI quality. Shield pressure.
+  40+ per-game metrics. Frame-level forensics.
+  Six-axis player archetype radar.
+  Habit entropy. DI quality. Shield pressure.
 
 [26 CHARACTERS]
-Signature stats unique to each kit.
-Character-themed UI skins with card art.
-Per-character radar charts and matchup records.
+  Signature stats unique to each kit.
+  Character-themed UI skins with card art.
+  Per-character radar charts and matchup records.
 
 [OPPONENT INTEL]
-Rivalry Dossier — head-to-head deep dive.
-Auto-detected sets within 15-min windows.
-Stage/character breakdowns per opponent.
+  Rivalry Dossier \u2014 head-to-head deep dive.
+  Auto-detected sets within 15-min windows.
+  Stage/character breakdowns per opponent.
 
 [TRENDS]
-Rolling averages. Line charts. AI commentary.
-Track your arc across sessions and months.`;
+  Rolling averages. Line charts. AI commentary.
+  Track your arc across sessions and months.`,
 
-const INSTALL_CONTENT = `QUICK START
-─────────────────────────────────────────
+install: `QUICK START
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-$ git clone https://github.com/Bloodshed-Rain/TheMAGI.git
-$ cd TheMAGI
-$ npm install && npx electron-rebuild
-$ npm run dev
+  $ git clone https://github.com/Bloodshed-Rain/TheMAGI.git
+  $ cd TheMAGI
+  $ npm install && npx electron-rebuild
+  $ npm run dev
 
 Or grab a release binary:
-→ github.com/Bloodshed-Rain/TheMAGI/releases/latest
+  \u2192 github.com/Bloodshed-Rain/TheMAGI/releases/latest
 
 FIRST RUN
-─────────────────────────────────────────
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-1. Onboarding wizard walks you through setup
-1. Enter your display name / tag
-1. Browse to your Slippi replay folder
-1. Import replays → get coached
+  1. Onboarding wizard walks you through setup
+  2. Enter your display name / tag
+  3. Browse to your Slippi replay folder
+  4. Import replays \u2192 get coached
 
 AI coaching works immediately with Gemini 2.5 Flash
 (free tier, no API key). Configure other providers
 in Settings.
 
 PLATFORMS
-─────────────────────────────────────────
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-Windows · macOS · Linux
-Node.js 18+ required for dev builds`;
+  Windows \u00B7 macOS \u00B7 Linux
+  Node.js 18+ required for dev builds`,
 
-const LINKS_CONTENT = `LINKS
-─────────────────────────────────────────
+links: `LINKS
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-Repository    github.com/Bloodshed-Rain/TheMAGI
-Releases      github.com/Bloodshed-Rain/TheMAGI/releases
-License       MIT
+  Repository    {{https://github.com/Bloodshed-Rain/TheMAGI|github.com/Bloodshed-Rain/TheMAGI}}
+  Releases      {{https://github.com/Bloodshed-Rain/TheMAGI/releases|github.com/.../releases}}
+  License       MIT
 
 BUILT WITH
-─────────────────────────────────────────
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-Electron · React · TypeScript · Vite
-slippi-js · SQLite · Vitest
+  Electron \u00B7 React \u00B7 TypeScript \u00B7 Vite
+  slippi-js \u00B7 SQLite \u00B7 Vitest
 
 CONNECT
-─────────────────────────────────────────
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-Star the repo. Open issues. Submit PRs.
+  Star the repo. Open issues. Submit PRs.
 
-This project is free and open source.
-If enough people use it, I’ll figure out
-how to cover API costs. Local LLM models
-and BYOK will always be supported.`;
-
-function useTypewriter(text, speed = 12, startDelay = 0, active = true) {
-const [displayed, setDisplayed] = useState(””);
-const [done, setDone] = useState(false);
-const frameRef = useRef(null);
-const idxRef = useRef(0);
-const startRef = useRef(null);
-
-useEffect(() => {
-if (!active) {
-setDisplayed(””);
-setDone(false);
-idxRef.current = 0;
-startRef.current = null;
-return;
-}
-
-```
-const timeout = setTimeout(() => {
-  const step = (timestamp) => {
-    if (!startRef.current) startRef.current = timestamp;
-    const elapsed = timestamp - startRef.current;
-    const targetIdx = Math.min(Math.floor(elapsed / speed), text.length);
-
-    if (targetIdx !== idxRef.current) {
-      idxRef.current = targetIdx;
-      setDisplayed(text.slice(0, targetIdx));
-    }
-
-    if (targetIdx < text.length) {
-      frameRef.current = requestAnimationFrame(step);
-    } else {
-      setDone(true);
-    }
-  };
-  frameRef.current = requestAnimationFrame(step);
-}, startDelay);
-
-return () => {
-  clearTimeout(timeout);
-  if (frameRef.current) cancelAnimationFrame(frameRef.current);
+  This project is free and open source.
+  If enough people use it, I'll figure out
+  how to cover API costs. Local LLM models
+  and BYOK will always be supported.`
 };
-```
 
-}, [text, speed, startDelay, active]);
+/* ═══ DOM REFS ═══ */
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+const screen = $("#screen");
+const crtWrap = $("#crtWrap");
+const content = $("#content");
+const statusDot = $("#statusDot");
+const statusText = $("#statusText");
+const clockEl = $("#clock");
+const powerLed = $("#powerLed");
 
-return { displayed, done };
+let booted = false;
+let activeTab = "boot";
+let typewriterRAF = null;
+
+/* ═══ CLOCK ═══ */
+function tickClock() {
+  const d = new Date();
+  const t = d.toLocaleTimeString("en-US", { hour12: false });
+  const ms = String(d.getMilliseconds()).padStart(3, "0").slice(0, 2);
+  clockEl.textContent = t + "." + ms;
 }
+tickClock();
+setInterval(tickClock, 47);
 
-function BootSequence({ onComplete }) {
-const [visibleLines, setVisibleLines] = useState([]);
-const [complete, setComplete] = useState(false);
-
-useEffect(() => {
-const timers = BOOT_LINES.map((line, i) =>
+/* ═══ POWER ON ═══ */
 setTimeout(() => {
-setVisibleLines((prev) => […prev, line]);
-if (i === BOOT_LINES.length - 1) {
-setTimeout(() => {
-setComplete(true);
-onComplete();
-}, 800);
-}
-}, line.delay)
-);
-return () => timers.forEach(clearTimeout);
-}, [onComplete]);
+  crtWrap.classList.add("powered");
+  screen.classList.add("on");
+  powerLed.classList.add("on");
+  runBoot();
+}, 400);
 
-const getStyle = (s) => {
-switch (s) {
-case “title”:
-return { color: PHOSPHOR, fontSize: “16px”, fontWeight: 700, textShadow: `0 0 10px ${SLIPPI}, 0 0 30px ${SLIPPI_GLOW}`, letterSpacing: “0.15em” };
-case “sub”:
-return { color: SLIPPI_DIM, fontSize: “12px”, letterSpacing: “0.05em” };
-case “success”:
-return { color: PHOSPHOR, fontWeight: 600, textShadow: `0 0 8px ${SLIPPI}` };
-case “dim”:
-return { color: SLIPPI_DIM, fontSize: “11px” };
-default:
-return { color: “rgba(33,186,69,0.7)” };
-}
-};
+/* ═══ BOOT SEQUENCE ═══ */
+function runBoot() {
+  content.innerHTML = "";
+  const timers = [];
+  BOOT_LINES.forEach((line, i) => {
+    timers.push(setTimeout(() => {
+      const div = document.createElement("div");
+      div.className = line.cls;
+      div.textContent = line.text || "\u00A0";
+      content.appendChild(div);
+      content.scrollTop = content.scrollHeight;
 
-return (
-<div style={{ padding: “24px 20px”, minHeight: “100%” }}>
-{visibleLines.map((line, i) => (
-<div key={i} style={{ …getStyle(line.style), fontFamily: “inherit”, lineHeight: 1.9, whiteSpace: “pre” }}>
-{line.text || “\u00A0”}
-</div>
-))}
-{!complete && (
-<span style={{ display: “inline-block”, width: 8, height: 15, background: PHOSPHOR, boxShadow: `0 0 6px ${SLIPPI}`, animation: “crt-blink 1s step-end infinite”, verticalAlign: “text-bottom”, marginTop: 4 }} />
-)}
-</div>
-);
+      if (i === BOOT_LINES.length - 1) {
+        const cur = document.createElement("span");
+        cur.className = "cursor";
+        content.appendChild(cur);
+        setTimeout(finishBoot, 800);
+      }
+    }, line.delay));
+  });
 }
 
-function PanelContent({ content, active }) {
-const { displayed, done } = useTypewriter(content, 4, 50, active);
-
-return (
-<div style={{ padding: “24px 20px”, minHeight: “100%”, whiteSpace: “pre-wrap”, wordBreak: “break-word” }}>
-<span style={{ color: “rgba(33,186,69,0.75)”, lineHeight: 1.8 }}>{displayed}</span>
-{!done && (
-<span style={{ display: “inline-block”, width: 8, height: 14, background: PHOSPHOR, boxShadow: `0 0 6px ${SLIPPI}`, animation: “crt-blink 1s step-end infinite”, verticalAlign: “text-bottom”, marginLeft: 2 }} />
-)}
-</div>
-);
+function finishBoot() {
+  booted = true;
+  statusDot.classList.add("live");
+  statusText.textContent = "LIVE";
+  $$(".tab.disabled").forEach((t) => {
+    t.classList.remove("disabled");
+  });
 }
 
-const CONTENT_MAP = {
-ABOUT: ABOUT_CONTENT,
-FEATURES: FEATURES_CONTENT,
-INSTALL: INSTALL_CONTENT,
-LINKS: LINKS_CONTENT,
-};
+/* ═══ TAB SWITCHING ═══ */
+$$("#tabs .tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab;
+    if (tab === "boot" || (!booted && tab !== "boot")) return;
+    if (tab === activeTab) return;
 
-export default function MAGILanding() {
-const [booted, setBooted] = useState(false);
-const [activeTab, setActiveTab] = useState(“BOOT”);
-const [time, setTime] = useState(””);
-const [powerOn, setPowerOn] = useState(false);
-const scrollRef = useRef(null);
+    activeTab = tab;
+    $$(".tab").forEach((t) => t.classList.remove("active"));
+    btn.classList.add("active");
 
-const handleBootComplete = useCallback(() => setBooted(true), []);
+    if (typewriterRAF) cancelAnimationFrame(typewriterRAF);
+    content.innerHTML = "";
 
-useEffect(() => {
-const t = setTimeout(() => setPowerOn(true), 300);
-return () => clearTimeout(t);
-}, []);
-
-useEffect(() => {
-const tick = () => {
-const d = new Date();
-setTime(d.toLocaleTimeString(“en-US”, { hour12: false }) + “.” + String(d.getMilliseconds()).padStart(3, “0”).slice(0, 2));
-};
-tick();
-const id = setInterval(tick, 50);
-return () => clearInterval(id);
-}, []);
-
-useEffect(() => {
-if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    typewritePanel(PANELS[tab]);
+  });
 });
 
-const handleTab = (tab) => {
-if (tab === “BOOT” || !booted) return;
-setActiveTab(tab);
-};
+/* ═══ TYPEWRITER ENGINE ═══ */
+function typewritePanel(raw) {
+  content.innerHTML = "";
 
-return (
-<div style={{ background: “#030303”, minHeight: “100vh”, display: “flex”, alignItems: “center”, justifyContent: “center”, padding: “20px”, fontFamily: “‘Courier New’, Courier, monospace” }}>
-<style>{`@keyframes crt-blink { 50% { opacity: 0 } } @keyframes crt-on { 0% { opacity: 0; transform: scaleY(0.005) scaleX(0.3); filter: brightness(30); } 20% { opacity: 1; transform: scaleY(0.005) scaleX(1); filter: brightness(10); } 40% { transform: scaleY(1.1) scaleX(1); filter: brightness(2); } 60% { transform: scaleY(0.95); filter: brightness(1.2); } 80% { transform: scaleY(1.02); filter: brightness(1); } 100% { transform: scaleY(1); filter: brightness(1); opacity: 1; } } @keyframes scanline-move { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } } @keyframes flicker { 0%, 100% { opacity: 1; } 92% { opacity: 1; } 93% { opacity: 0.85; } 94% { opacity: 1; } } @keyframes glow-pulse { 0%, 100% { box-shadow: 0 0 60px rgba(33,186,69,0.06), 0 0 120px rgba(33,186,69,0.03), inset 0 0 60px rgba(33,186,69,0.04); } 50% { box-shadow: 0 0 80px rgba(33,186,69,0.1), 0 0 160px rgba(33,186,69,0.05), inset 0 0 80px rgba(33,186,69,0.06); } } @keyframes power-led { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }`}</style>
+  /* Parse {{url|label}} link syntax into segments */
+  const segments = [];
+  let remaining = raw;
+  const linkRe = /\{\{([^|]+)\|([^}]+)\}\}/;
+  while (true) {
+    const m = remaining.match(linkRe);
+    if (!m) { segments.push({ type: "text", value: remaining }); break; }
+    const before = remaining.slice(0, m.index);
+    if (before) segments.push({ type: "text", value: before });
+    segments.push({ type: "link", url: m[1], label: m[2] });
+    remaining = remaining.slice(m.index + m[0].length);
+  }
 
-```
-  {/* THE MONITOR */}
-  <div style={{
-    width: "100%",
-    maxWidth: 720,
-    background: `linear-gradient(170deg, ${BEZEL_EDGE} 0%, ${BEZEL} 30%, #111113 100%)`,
-    borderRadius: 18,
-    padding: "18px 18px 24px",
-    position: "relative",
-    boxShadow: "0 30px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03)",
-  }}>
-    {/* Monitor brand label */}
-    <div style={{
-      textAlign: "center",
-      fontFamily: "'Helvetica Neue', sans-serif",
-      fontSize: 10,
-      fontWeight: 700,
-      letterSpacing: "0.35em",
-      textTransform: "uppercase",
-      color: "rgba(255,255,255,0.08)",
-      marginBottom: 10,
-      userSelect: "none",
-    }}>
-      MAGI Systems
-    </div>
+  /* Build flat char array with metadata */
+  const chars = [];
+  segments.forEach((seg) => {
+    if (seg.type === "text") {
+      for (const ch of seg.value) chars.push({ ch, link: null });
+    } else {
+      for (const ch of seg.label) chars.push({ ch, link: seg.url });
+    }
+  });
 
-    {/* SCREEN */}
-    <div style={{
-      background: SCREEN_BG,
-      borderRadius: 6,
-      overflow: "hidden",
-      position: "relative",
-      border: `1px solid rgba(33,186,69,0.06)`,
-      animation: powerOn ? "glow-pulse 4s ease-in-out infinite" : "none",
-    }}>
-      {/* CRT power-on effect wrapper */}
-      <div style={{
-        opacity: powerOn ? 1 : 0,
-        animation: powerOn ? "crt-on 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards" : "none",
-        transformOrigin: "center center",
-      }}>
-        {/* Scanline overlay */}
-        <div style={{
-          position: "absolute", inset: 0, zIndex: 10, pointerEvents: "none",
-          background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)",
-        }} />
+  const span = document.createElement("span");
+  span.className = "t-body";
+  content.appendChild(span);
 
-        {/* Moving scanline */}
-        <div style={{
-          position: "absolute", inset: 0, zIndex: 11, pointerEvents: "none", overflow: "hidden",
-        }}>
-          <div style={{
-            width: "100%", height: "8px",
-            background: `linear-gradient(180deg, transparent, rgba(33,186,69,0.07), transparent)`,
-            animation: "scanline-move 4s linear infinite",
-          }} />
-        </div>
+  const cursor = document.createElement("span");
+  cursor.className = "cursor";
+  content.appendChild(cursor);
 
-        {/* Flicker effect */}
-        <div style={{
-          animation: "flicker 8s linear infinite",
-        }}>
-          {/* Tab bar */}
-          <div style={{
-            display: "flex",
-            borderBottom: `1px solid rgba(33,186,69,0.1)`,
-            background: "rgba(33,186,69,0.02)",
-            position: "relative",
-            zIndex: 5,
-            overflowX: "auto",
-          }}>
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab;
-              const isDisabled = tab !== "BOOT" && !booted;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => handleTab(tab)}
-                  style={{
-                    flex: "0 0 auto",
-                    padding: "10px 16px",
-                    background: isActive ? "rgba(33,186,69,0.08)" : "transparent",
-                    border: "none",
-                    borderBottom: isActive ? `2px solid ${SLIPPI}` : "2px solid transparent",
-                    color: isActive ? PHOSPHOR : isDisabled ? "rgba(33,186,69,0.15)" : SLIPPI_DIM,
-                    fontFamily: "inherit",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.2em",
-                    cursor: isDisabled ? "default" : "pointer",
-                    textShadow: isActive ? `0 0 8px ${SLIPPI}` : "none",
-                    transition: "all 0.2s",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {tab}
-                </button>
-              );
-            })}
+  let idx = 0;
+  let currentLink = null;
+  let currentAnchor = null;
+  const speed = 3;
+  let lastTime = 0;
 
-            {/* Status readout */}
-            <div style={{
-              marginLeft: "auto",
-              padding: "10px 16px",
-              fontSize: 9,
-              letterSpacing: "0.15em",
-              color: SLIPPI_DIM,
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              whiteSpace: "nowrap",
-            }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{
-                  width: 5, height: 5, borderRadius: "50%",
-                  background: booted ? PHOSPHOR : "rgba(33,186,69,0.3)",
-                  boxShadow: booted ? `0 0 6px ${SLIPPI}` : "none",
-                }} />
-                {booted ? "LIVE" : "BOOT"}
-              </span>
-              <span>{time}</span>
-            </div>
-          </div>
+  function step(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const elapsed = timestamp - lastTime;
+    const target = Math.min(Math.floor(elapsed / speed), chars.length);
 
-          {/* Content area */}
-          <div
-            ref={scrollRef}
-            style={{
-              height: "clamp(340px, 55vh, 520px)",
-              overflowY: "auto",
-              overflowX: "hidden",
-              fontSize: 12,
-              lineHeight: 1.7,
-              scrollbarWidth: "thin",
-              scrollbarColor: `${SLIPPI_DIM} transparent`,
-            }}
-          >
-            {activeTab === "BOOT" && (
-              <BootSequence onComplete={handleBootComplete} />
-            )}
-            {activeTab !== "BOOT" && CONTENT_MAP[activeTab] && (
-              <PanelContent
-                key={activeTab}
-                content={CONTENT_MAP[activeTab]}
-                active={activeTab !== "BOOT"}
-              />
-            )}
-          </div>
+    while (idx < target) {
+      const c = chars[idx];
+      if (c.link && c.link !== currentLink) {
+        currentLink = c.link;
+        currentAnchor = document.createElement("a");
+        currentAnchor.href = c.link;
+        currentAnchor.target = "_blank";
+        currentAnchor.rel = "noopener";
+        span.appendChild(currentAnchor);
+      } else if (!c.link && currentLink) {
+        currentLink = null;
+        currentAnchor = null;
+      }
 
-          {/* Bottom status bar */}
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "8px 16px",
-            borderTop: `1px solid rgba(33,186,69,0.08)`,
-            fontSize: 9,
-            letterSpacing: "0.1em",
-            color: "rgba(33,186,69,0.25)",
-            position: "relative",
-            zIndex: 5,
-            flexWrap: "wrap",
-            gap: "4px 16px",
-          }}>
-            <span>ELECTRON // REACT // SLIPPI-JS</span>
-            <span>MIT LICENSE</span>
-            <span>WIN / MAC / LINUX</span>
-          </div>
-        </div>
-      </div>
+      const textNode = document.createTextNode(c.ch);
+      if (currentAnchor) {
+        currentAnchor.appendChild(textNode);
+      } else {
+        span.appendChild(textNode);
+      }
+      idx++;
+    }
 
-      {/* Screen off state */}
-      {!powerOn && (
-        <div style={{
-          height: "clamp(400px, 55vh, 580px)",
-          background: "#020302",
-        }} />
-      )}
-    </div>
+    content.scrollTop = content.scrollHeight;
 
-    {/* Monitor chin */}
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingTop: 14,
-      paddingLeft: 8,
-      paddingRight: 8,
-    }}>
-      {/* Power LED */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          background: powerOn ? SLIPPI : "rgba(255,255,255,0.05)",
-          boxShadow: powerOn ? `0 0 8px ${SLIPPI}, 0 0 16px ${SLIPPI_GLOW}` : "none",
-          animation: powerOn ? "power-led 3s ease-in-out infinite" : "none",
-        }} />
-        <span style={{
-          fontSize: 8,
-          fontWeight: 700,
-          letterSpacing: "0.3em",
-          textTransform: "uppercase",
-          color: "rgba(255,255,255,0.06)",
-          fontFamily: "'Helvetica Neue', sans-serif",
-        }}>
-          POWER
-        </span>
-      </div>
-
-      {/* Center logo mark */}
-      <div style={{
-        fontSize: 11,
-        fontWeight: 900,
-        letterSpacing: "0.25em",
-        color: "rgba(255,255,255,0.04)",
-        fontFamily: "'Helvetica Neue', sans-serif",
-        textTransform: "uppercase",
-        userSelect: "none",
-      }}>
-        ◆ MAGI ◆
-      </div>
-
-      {/* Model number */}
-      <span style={{
-        fontSize: 8,
-        letterSpacing: "0.2em",
-        color: "rgba(255,255,255,0.04)",
-        fontFamily: "'Helvetica Neue', sans-serif",
-      }}>
-        MDL-2026
-      </span>
-    </div>
-  </div>
-</div>
-```
-
-);
+    if (idx < chars.length) {
+      typewriterRAF = requestAnimationFrame(step);
+    } else {
+      cursor.remove();
+    }
+  }
+  typewriterRAF = requestAnimationFrame(step);
 }
+</script>
+
+</body>
+</html>
