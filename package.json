@@ -1,6 +1,6 @@
 {
   "name": "magi-melee",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "AI-powered Melee coaching from your Slippi replays",
   "main": "src/main/entry.js",
   "scripts": {
