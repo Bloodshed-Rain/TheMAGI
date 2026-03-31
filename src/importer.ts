@@ -253,6 +253,8 @@ export async function importReplays(
   let errorCount = 0;
   let importedCount = 0;
   const errorDetails: FileError[] = [];
+  let earliestGameTime: string | null = null;
+  let latestGameTime: string | null = null;
 
   // Step 1: Hash and filter duplicates in parallel (with limit)
   const toParse: { filePath: string; hash: string; gameNumber: number }[] = [];
@@ -428,6 +430,11 @@ export async function importReplays(
           insertSignatureStats(gameId, JSON.stringify(player.signatureStats));
         }
 
+        if (startAt) {
+          if (!earliestGameTime || startAt < earliestGameTime) earliestGameTime = startAt;
+          if (!latestGameTime || startAt > latestGameTime) latestGameTime = startAt;
+        }
+
         if (gameSummary.result.winner === targetTag) {
           winsCount++;
         }
@@ -481,7 +488,11 @@ export async function importReplays(
     await yieldToEventLoop();
   }
 
-  updateSession(sessionId, now, importedCount, winsCount);
+  // Use actual game timestamps for the session; fall back to import time
+  if (earliestGameTime) {
+    getDb().prepare("UPDATE sessions SET started_at = ? WHERE id = ?").run(earliestGameTime, sessionId);
+  }
+  updateSession(sessionId, latestGameTime ?? now, importedCount, winsCount);
 
   return { imported: finalResults, skipped: skippedCount, errors: errorCount, errorDetails, sessionId };
 }

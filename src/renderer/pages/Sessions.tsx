@@ -8,6 +8,7 @@ import {
   useConfig,
 } from "../hooks/queries";
 import { CoachingModal } from "../components/CoachingModal";
+import { formatGameDate } from "../hooks";
 
 interface DetectedSet {
   opponentTag: string;
@@ -272,7 +273,7 @@ function OpponentDetailPanel({
                 return (
                   <tr key={g.id}>
                     <td className="mono-cell">
-                      {g.playedAt ? new Date(g.playedAt).toLocaleDateString() : ""}
+                      {formatGameDate(g.playedAt)}
                     </td>
                     <td className="mono-cell">{g.playerCharacter}</td>
                     <td className="mono-cell">{g.opponentCharacter}</td>
@@ -505,7 +506,7 @@ export function Sessions({ refreshKey }: { refreshKey: number }) {
                     return (
                       <tr key={i}>
                         <td className="mono-cell">
-                          {new Date(set.startedAt).toLocaleDateString()}
+                          {formatGameDate(set.startedAt)}
                         </td>
                         <td style={{ fontWeight: 600 }}>{set.opponentTag}</td>
                         <td className="mono-cell">{set.opponentCharacter}</td>
@@ -534,7 +535,7 @@ export function Sessions({ refreshKey }: { refreshKey: number }) {
                               setScopedCoaching({
                                 scope: "session",
                                 id: set.sessionId || 0, // Fallback
-                                title: `Set vs ${set.opponentTag} (${new Date(set.startedAt).toLocaleDateString()})`
+                                title: `Set vs ${set.opponentTag} (${formatGameDate(set.startedAt)})`
                               });
                             }}
                           >
@@ -638,7 +639,7 @@ export function Sessions({ refreshKey }: { refreshKey: number }) {
                           </td>
                           <td><WinRateIndicator rate={o.winRate} /></td>
                           <td className="mono-cell dim">
-                            {o.lastPlayed ? new Date(o.lastPlayed).toLocaleDateString() : ""}
+                            {formatGameDate(o.lastPlayed)}
                           </td>
                         </tr>
                       );

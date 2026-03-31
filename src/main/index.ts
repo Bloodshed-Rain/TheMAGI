@@ -69,8 +69,16 @@ function createWindow(): void {
   // Block ALL navigation — this is a single-page app, never navigate away.
   // Prevents timestamp: protocol links from crashing/reloading the app.
   mainWindow.webContents.on("will-navigate", (event, url) => {
+    // Allow Vite HMR full-reload (exact URL only, not link clicks to sub-paths)
     const devServer = process.env["VITE_DEV_SERVER_URL"];
-    if (devServer && url.startsWith(devServer)) return; // allow HMR
+    if (devServer) {
+      const devOrigin = new URL(devServer).origin;
+      const navOrigin = new URL(url).origin;
+      // Only allow if it's the exact root URL or a Vite HMR internal reload
+      if (navOrigin === devOrigin && (url === devServer || url === devServer + "/" || url.includes("/@vite"))) {
+        return;
+      }
+    }
     event.preventDefault();
   });
 

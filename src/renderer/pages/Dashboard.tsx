@@ -5,6 +5,7 @@ import { Onboarding } from "../components/Onboarding";
 import { StockTimeline } from "../components/StockTimeline";
 import { Tooltip } from "../components/Tooltip";
 import { useRecentGames, useConfig } from "../hooks/queries";
+import { formatGameDate } from "../hooks";
 
 const FPS = 60;
 const FIRST_PLAYABLE = -123; // Frames.FIRST_PLAYABLE from slippi-js
@@ -19,20 +20,23 @@ function timestampToFrame(ts: string): number {
   return (minutes * 60 + seconds) * FPS + FIRST_PLAYABLE;
 }
 
-/** Pre-process coaching markdown to convert [M:SS] timestamps into clickable links */
+/** Pre-process coaching markdown to convert [M:SS] timestamps into inline code spans */
 function injectTimestampLinks(text: string): string {
-  return text.replace(/\[(\d{1,2}:\d{2})\]/g, "[▶ $1](timestamp:$1)");
+  return text.replace(/\[(\d{1,2}:\d{2})\]/g, "`ts:$1`");
 }
 
-/** Create react-markdown components that render timestamp links as clickable buttons */
+/** Create react-markdown components that render timestamp code spans as clickable buttons */
 function makeTimestampComponents(replayPath: string): Components {
   return {
-    a: ({ href, children }) => {
-      if (href?.startsWith("timestamp:")) {
-        const ts = href.slice("timestamp:".length);
+    code: ({ children }) => {
+      const text = String(children);
+      const match = text.match(/^ts:(\d{1,2}:\d{2})$/);
+      if (match) {
+        const ts = match[1]!;
         const frame = timestampToFrame(ts);
         const handleClick = async (e: React.MouseEvent) => {
           e.preventDefault();
+          e.stopPropagation();
           try {
             await window.clippi.openInDolphinAtFrame(replayPath, frame);
           } catch (err) {
@@ -45,11 +49,19 @@ function makeTimestampComponents(replayPath: string): Components {
             className="timestamp-link"
             title={`Jump to ${ts} in replay`}
           >
-            {children}
+            ▶ {ts}
           </button>
         );
       }
-      return <a href={href}>{children}</a>;
+      return <code>{children}</code>;
+    },
+    a: ({ href, children }) => {
+      // Prevent any remaining links from navigating the Electron renderer
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.preventDefault()}>
+          {children}
+        </a>
+      );
     },
   };
 }
@@ -132,12 +144,14 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
   const [discovery, setDiscovery] = useState<string | null>(null);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoveryStream, setDiscoveryStream] = useState("");
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
 
   // Per-game analysis state
   const [expandedGame, setExpandedGame] = useState<number | null>(null);
   const [analysisCache, setAnalysisCache] = useState<Record<number, string>>({});
   const [analyzingGame, setAnalyzingGame] = useState<number | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [queueStatus, setQueueStatus] = useState<{ pending: number; processing: boolean } | null>(null);
   const [dolphinError, setDolphinError] = useState<string | null>(null);
   const [launchingDolphin, setLaunchingDolphin] = useState<number | null>(null);
   // Streaming state: text accumulating in real-time
@@ -174,10 +188,15 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
 
     setAnalyzingGame(game.id);
     setStreamingText("");
-    setIsStreaming(true);
+    setIsStreaming(false);
+    setQueueStatus(null);
+
+    // Fetch queue status for progress feedback
+    window.clippi.getQueueStatus().then(setQueueStatus).catch(() => {});
 
     // Subscribe to streaming chunks
     const unsubStream = window.clippi.onAnalysisStream((chunk: string) => {
+      setIsStreaming(true);
       setStreamingText((prev) => prev + chunk);
     });
     const unsubEnd = window.clippi.onAnalysisStreamEnd(() => {
@@ -198,6 +217,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
       unsubEnd();
       setIsStreaming(false);
       setAnalyzingGame(null);
+      setQueueStatus(null);
     }
   };
 
@@ -205,6 +225,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
     setIsDiscovering(true);
     setDiscoveryStream("");
     setDiscovery(null);
+    setDiscoveryError(null);
 
     const unsubStream = window.clippi.onAnalysisStream((chunk: string) => {
       setDiscoveryStream((prev) => prev + chunk);
@@ -218,7 +239,13 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
       setDiscovery(result);
       setDiscoveryStream("");
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error("Discovery failed:", err);
+      if (msg.includes("minimum 5 games")) {
+        setDiscoveryError("Deep Discovery requires at least 5 imported games. Import more replays and try again.");
+      } else {
+        setDiscoveryError(msg);
+      }
     } finally {
       unsubStream();
       unsubEnd();
@@ -331,6 +358,12 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
             )}
           </div>
 
+          {discoveryError && (
+            <div style={{ marginTop: '16px', padding: '12px 16px', background: 'rgba(255,60,60,0.08)', border: '1px solid var(--red)', borderRadius: '6px', color: 'var(--red)', fontSize: '13px', fontFamily: 'var(--font-mono)' }}>
+              {discoveryError}
+            </div>
+          )}
+
           {(isDiscovering || discovery || discoveryStream) && (
             <div style={{ marginTop: '24px', padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(var(--accent-rgb), 0.1)' }}>
               {isDiscovering && !discoveryStream && (
@@ -390,7 +423,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                   <div className="game-card-details">
                     <span className="game-card-stage">{game.stage}</span>
                     <span className="game-card-date">
-                      {game.playedAt ? new Date(game.playedAt).toLocaleDateString() : ""}
+                      {formatGameDate(game.playedAt)}
                     </span>
                   </div>
                   <div className="game-card-stats">
@@ -476,10 +509,10 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                         playerCharacter={game.playerCharacter}
                         opponentCharacter={game.opponentCharacter}
                       />
-                      {isAnalyzing && !isStreaming && !streamingText && analyzingGame === game.id && (
+                      {analyzingGame === game.id && !isStreaming && !streamingText && !cached && (
                         <div className="analyze-loading">
                           <div className="spinner" />
-                          <span>Analyzing...</span>
+                          <span>{queueStatus && queueStatus.pending > 0 ? `Queued (position ${queueStatus.pending})...` : "Starting analysis..."}</span>
                         </div>
                       )}
                       {analyzingGame === game.id && (isStreaming || streamingText) && !cached && (

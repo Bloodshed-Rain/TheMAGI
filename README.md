@@ -4,36 +4,15 @@ AI-powered Melee coaching from your Slippi replays.
 
 Import your `.slp` files, get personalized coaching analysis from an LLM, track your stats over time, and spot trends across sessions. No other tool in the Melee ecosystem does this.
 
----[Screencast_20260319_190122.webm](https://github.com/user-attachments/assets/e41e7616-ed56-41b9-aa28-3ef38f0d0d97)
-
-## Screenshots
-
-### Coaching — Click any game for AI analysis
-![Coaching tab](screenshots/Screenshot_20260319_191141.png)
-
-### AI Coaching Analysis — Expanded
-![Coaching analysis expanded](screenshots/Screenshot_20260319_191208.png)
-
-### Trends — Line charts with MAGI commentary
-![Trends with AI commentary](screenshots/Screenshot_20260319_191347.png)
-
-### Profile — Player radar chart and matchup records
-![Profile tab](screenshots/Screenshot_20260319_191401.png)
-
-### Sessions — Opponent history
-![Sessions tab](screenshots/Screenshot_20260319_191239.png)
-
-### Characters — Grid view with card art
-![Characters grid](screenshots/Screenshot_20260319_191414.png)
-
-### Characters — Detail view with signature stats
-![Characters detail](screenshots/Screenshot_20260319_190919.png)
-
 ---
 
 ## What it does
 
 **Click a game, get coached.** MAGI parses your Slippi replay data, computes detailed stats (neutral win rate, L-cancel rate, conversion efficiency, habit patterns, recovery success, and more), then sends structured context to an LLM that returns specific, actionable coaching feedback — not generic advice, but observations grounded in *your* data.
+
+**Analyze at any scope.** Get coaching for a single game, an entire set, a character matchup, a stage, a specific opponent, or your full career. Every scope assembles the right stats and asks the right questions.
+
+**Deep Discovery.** MAGI mines your entire game history for hidden patterns — stat correlations, situational win conditions, and non-obvious tendencies you'd never spot manually. Requires 5+ imported games.
 
 **Track your trajectory.** Every game you import gets stored locally. Over time, MAGI shows you trends: is your neutral game improving? Are your ledge options getting predictable? Are you performing worse in game 3 of a set? Line charts, rolling averages, and AI commentary on your trajectory.
 
@@ -46,11 +25,13 @@ Import your `.slp` files, get personalized coaching analysis from an LLM, track 
 ## Features
 
 ### AI Coaching
+- **Multi-scope analysis** — coaching for games, sets, characters, stages, opponents, or your full career
+- **Deep Discovery** — AI pattern mining across your entire history for hidden insights and win conditions
 - **Streaming AI coaching** — real-time text generation with blinking cursor, no waiting for a full response
 - **Player history context** — coaching references your historical trends, improvement areas, and recurring habits
-- **Multi-LLM provider** — OpenRouter (full model catalog), Gemini direct, Anthropic direct, OpenAI direct, or local models via Ollama/LM Studio
+- **Multi-LLM provider** — Gemini (default/free), OpenRouter (100+ models), Anthropic, OpenAI, DeepSeek, or local via Ollama/LM Studio
 - **Analysis caching** — coaching results stored in the database; clicking the same game twice costs $0
-- **Rate-limited API queue** — LLM calls processed one at a time with backoff, handles 429 rate limits gracefully
+- **Queue management** — LLM calls processed sequentially with queue position feedback, 429 rate-limit handling, and exponential backoff
 - **MAGI trend commentary** — AI personality that reacts to your trajectory with blunt, witty feedback
 
 ### Stats & Tracking
@@ -58,14 +39,15 @@ Import your `.slp` files, get personalized coaching analysis from an LLM, track 
 - **26-character signature stats** — character-specific tech tracking (Fox waveshines, Falco pillars, Marth Ken combos, Sheik tech chases, Falcon knees, Puff rests, Peach turnips, and more)
 - **Shield pressure tracking** — shield damage, shield breaks, and shield poke rate
 - **DI quality estimation** — survival DI and combo DI scoring
-- **Player archetype detection** — six-axis radar (Neutral, Punish, Tech Skill, Defense, Aggression, Consistency)
-- **Habit entropy analysis** — detects predictable patterns in your play
+- **Player archetype detection** — six-axis radar (Neutral, Punish, Tech Skill, Defense, Edgeguard, Consistency) with dynamic archetype labels
+- **Habit entropy analysis** — detects predictable patterns in recovery, ledge, tech roll, shield drop, and neutral DI options
 
 ### Visualization & Navigation
 - **Stock timeline** — per-stock strip chart showing duration, damage dealt/taken, kill moves, and momentum shifts
-- **Trend charts** — 5-game rolling averages for every tracked stat with visual line graphs
-- **Command palette** — Cmd/Ctrl+K for quick navigation and search across the app
+- **Trend charts** — 5-game rolling averages for 9 tracked metrics with area charts and change indicators
+- **Command palette** — Cmd/Ctrl+K for quick navigation, fuzzy search, opponent lookup, and actions
 - **Character pages** — per-character stats, radar charts, signature stats, matchup and stage records with character card art
+- **31 themes** — 5 base themes (dark, light, CRT, tournament, amber) + 26 character-themed skins
 
 ### Opponents & Matchups
 - **Opponent Rivalry Dossier** — deep dive into any opponent with record, stage/character breakdowns, and AI matchup analysis
@@ -74,15 +56,15 @@ Import your `.slp` files, get personalized coaching analysis from an LLM, track 
 - **Opponent history** — searchable by tag or connect code
 
 ### Replay Management
-- **Dolphin replay playback** — watch replays with clickable timestamps that jump to specific moments
-- **Import progress bar** — real-time progress indicator during bulk imports
+- **Dolphin replay playback** — watch replays with clickable `[M:SS]` timestamps that jump to specific frames
+- **Parallel import pipeline** — worker-based parsing, batched DB transactions, async hashing
+- **Import progress bar** — real-time progress indicator with file counts, errors, and detailed error logs
 - **File watcher** — point at your Slippi replay folder, auto-imports new games as you play
 - **SHA-256 deduplication** — never imports the same file twice
 
 ### Onboarding & UX
 - **Zero-friction onboarding** — AI coaching works immediately in releases, no API key needed
-- **Onboarding wizard** — 4-step guided setup on first launch
-- **Light/dark mode** — clean toggle in the sidebar
+- **Onboarding wizard** — 5-step guided setup (welcome, identity, replay folder, import, theme selection)
 - **Local-first** — your data stays on your machine, no account needed, no server
 - **Cross-platform** — Windows, macOS, and Linux
 
@@ -158,7 +140,7 @@ npx tsx src/watcher.ts /path/to/replays --target YourTag
     |
     +--> [SQLite] --> persistent stats, trends, opponent history
     |
-    +--> [LLM Queue] --> streaming API calls (OpenRouter/Gemini/Claude/OpenAI/local)
+    +--> [LLM Queue] --> streaming API calls (Gemini/OpenRouter/Claude/OpenAI/DeepSeek/local)
               |
               v
           [Coaching Analysis] --> cached in DB, streamed as markdown
@@ -166,25 +148,30 @@ npx tsx src/watcher.ts /path/to/replays --target YourTag
 
 Three Electron processes communicate via IPC:
 - **Main** (`src/main/`) — IPC handlers, pipeline orchestration, file watcher, DB/config management
-- **Preload** (`src/preload/`) — `contextBridge` exposing typed `window.api` wrappers
+- **Preload** (`src/preload/`) — `contextBridge` exposing typed `window.clippi` wrappers
 - **Renderer** (`src/renderer/`) — React SPA with Vite, pages and components
 
 Key modules:
 - `src/pipeline/` — replay parsing, stat computation, habit detection, signature stats, prompt assembly
 - `src/llm.ts` — multi-provider LLM abstraction with streaming, retry, and rate-limit handling
 - `src/db.ts` — SQLite schema, migrations, queries, trend/matchup/opponent data
-- `src/importer.ts` — batch import with SHA-256 dedup and progress reporting
+- `src/importer.ts` — parallel batch import with SHA-256 dedup and progress reporting
 
 ## Roadmap
 
-- [x] Multi-provider LLM support (OpenRouter, Claude, GPT-4o, Gemini, local)
+- [x] Multi-provider LLM support (OpenRouter, Claude, GPT-4o, Gemini, DeepSeek, local)
 - [x] Local model support (Ollama / LM Studio)
 - [x] Character-specific signature stats (26 characters)
 - [x] Streaming AI coaching
+- [x] Multi-scope analysis (game, set, character, stage, opponent, career)
+- [x] Deep Discovery pattern mining
 - [x] Opponent Rivalry Dossier
 - [x] Onboarding wizard
 - [x] Command palette
 - [x] Dolphin replay playback with clickable timestamps
+- [x] 31 themes (5 base + 26 character skins)
+- [x] Parallel import pipeline with queue management
+- [ ] Complete character card art (all 26 characters)
 - [ ] Dolphin HUD mode (wrap around the emulator window)
 - [ ] Practice plan tracking with progress indicators
 - [ ] Shareable coaching reports

@@ -88,3 +88,17 @@ export function useGlitchText(text: string, _durationMs: number = 600, _enabled:
 export function useUptime() {
   return "00:00:00";
 }
+
+/** Format a game timestamp as a short localized date+time, e.g. "Mar 29, 7:30 PM" */
+export function formatGameDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}

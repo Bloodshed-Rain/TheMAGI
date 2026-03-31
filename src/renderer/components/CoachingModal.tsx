@@ -14,15 +14,21 @@ export function CoachingModal({ isOpen, onClose, scope, id, title }: CoachingMod
   const [analysis, setAnalysis] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queuePos, setQueuePos] = useState<number>(0);
 
   const runAnalysis = useCallback(async () => {
     setLoading(true);
     setAnalysis("");
     setError(null);
+    setQueuePos(0);
 
     try {
+      // Get initial queue status for progress feedback
+      window.clippi.getQueueStatus().then(s => setQueuePos(s.pending)).catch(() => {});
+
       // Setup listener for streaming
       const removeListener = window.clippi.onAnalysisStream((chunk) => {
+        setQueuePos(0);
         setAnalysis((prev) => prev + chunk);
       });
 
@@ -30,11 +36,6 @@ export function CoachingModal({ isOpen, onClose, scope, id, title }: CoachingMod
         setLoading(false);
       });
 
-      await window.clippi.analyzeScoped(scope, id);
-      
-      // The promise resolves when the full analysis is returned (if not cached)
-      // or immediately if cached.
-      // If cached, it won't stream, so we should handle the return value.
       const result = await window.clippi.analyzeScoped(scope, id);
       if (result) {
         setAnalysis(result);
@@ -59,8 +60,8 @@ export function CoachingModal({ isOpen, onClose, scope, id, title }: CoachingMod
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 2000 }}>
-      <motion.div 
-        className="modal-content coaching-modal" 
+      <motion.div
+        className="modal-content coaching-modal"
         onClick={e => e.stopPropagation()}
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -91,7 +92,9 @@ export function CoachingModal({ isOpen, onClose, scope, id, title }: CoachingMod
           {!analysis && loading && (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <div className="spinner" />
-              <p className="text-sm text-dim animate-pulse">Consulting MAGI mainframe...</p>
+              <p className="text-sm text-dim animate-pulse">
+                {queuePos > 0 ? `Queued (position ${queuePos})...` : "Consulting MAGI mainframe..."}
+              </p>
             </div>
           )}
 
@@ -125,7 +128,7 @@ export function CoachingModal({ isOpen, onClose, scope, id, title }: CoachingMod
           border-radius: 8px;
           display: flex;
           align-items: center;
-          justifyContent: center;
+          justify-content: center;
           color: var(--accent);
         }
         .cursor-blink {

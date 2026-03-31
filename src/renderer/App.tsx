@@ -197,14 +197,6 @@ export function App() {
       />
 
       <nav className="sidebar" role="tablist" aria-label="Main navigation">
-        <div className="sidebar-brand">
-          <img src={magiLogo} alt="MAGI" className="sidebar-logo-img" width={42} />
-          <div className="sidebar-brand-text">
-            <span className="sidebar-wordmark">MAGI</span>
-            <span className="sidebar-subtitle">Melee Analysis</span>
-          </div>
-        </div>
-
         <div className="sidebar-nav">
           {NAV_ITEMS.map((item) => (
             <button
@@ -237,6 +229,7 @@ export function App() {
       </nav>
 
       <main className="main-content" role="tabpanel">
+        <img src={magiLogo} alt="" className="main-watermark" aria-hidden="true" />
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}

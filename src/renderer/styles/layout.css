@@ -21,7 +21,7 @@
   z-index: 10;
   flex-shrink: 0;
   transition: width 0.3s var(--ease-spring);
-  overflow: hidden;
+  overflow: visible;
 }
 .sidebar:hover {
   width: 160px;
@@ -45,37 +45,6 @@
   white-space: nowrap;
 }
 
-/* ── Brand — logo only, centered ─────────────────────────────── */
-
-.sidebar-brand {
-  padding: 16px 0 12px;
-  -webkit-app-region: drag;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.sidebar-logo {
-  display: flex;
-  align-items: center;
-  justifyContent: center;
-  width: 48px;
-  height: 32px;
-}
-
-.sidebar-logo-img {
-  width: 48px;
-  height: auto;
-  max-height: 32px;
-  object-fit: contain;
-}
-
-/* Hide brand text (wordmark + subtitle) */
-.sidebar-brand-text { display: none; }
-.sidebar-wordmark { display: none; }
-.sidebar-subtitle { display: none; }
-
 /* ── Navigation — icon-only, 40x40 squares ───────────────────── */
 
 .sidebar-nav {
@@ -83,7 +52,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 12px 0;
+  padding: 16px 0 12px;
   flex: 1;
   -webkit-app-region: no-drag;
 }
@@ -92,7 +61,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  justifyContent: center;
+  justify-content: center;
   width: 40px;
   height: 40px;
   padding: 0;
@@ -122,7 +91,7 @@
 .nav-item.active::before {
   content: '';
   position: absolute;
-  left: -12px;
+  left: 0;
   top: 25%;
   height: 50%;
   width: 3px;
@@ -161,7 +130,7 @@
   opacity: 0;
   transition: opacity 0.15s ease;
   box-shadow: var(--shadow-md);
-  z-index: 100;
+  z-index: 99999;
 }
 
 .nav-item:hover .nav-label {
@@ -248,6 +217,20 @@
   z-index: 1;
 }
 
+/* ── Background watermark logo ───────────────────────────────── */
+.main-watermark {
+  position: fixed;
+  bottom: -8%;
+  right: -4%;
+  width: 45vmin;
+  height: auto;
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
+  filter: grayscale(1);
+}
+
 /* CRT theme: scanlines instead of dots */
 [data-theme="crt"] .main-content::before {
   background-image: repeating-linear-gradient(
@@ -320,11 +303,6 @@
 .logo-subtitle,
 .system-status {
   display: none;
-}
-
-.system-status::before { display: none; }
-
-e;
 }
 
 .system-status::before { display: none; }

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useTypewriter } from "../hooks";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Markdown from "react-markdown";
 import {
   XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart,
