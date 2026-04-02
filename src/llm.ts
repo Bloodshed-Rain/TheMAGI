@@ -197,15 +197,9 @@ export async function callLLM(opts: CallLLMOptions): Promise<string> {
 /** Callback invoked for each text chunk during streaming */
 export type StreamChunkCallback = (chunk: string) => void;
 
-/** Providers that support streaming */
-function supportsStreaming(provider: ProviderId): boolean {
-  return provider === "gemini";
-}
-
 /**
  * Stream an LLM response, calling onChunk for each text fragment as it arrives.
  * Returns the full accumulated text when complete.
- * Falls back to non-streaming callLLM for providers that don't support streaming.
  */
 export async function callLLMStream(
   opts: CallLLMOptions,
@@ -214,23 +208,70 @@ export async function callLLMStream(
   const modelId = opts.modelOverride ?? opts.config.modelId;
   const provider = getModelProvider(modelId);
 
-  if (!supportsStreaming(provider)) {
-    // Fallback: call non-streaming, emit full text as single chunk
-    const text = await callLLM(opts);
-    onChunk(text);
-    return text;
-  }
-
   switch (provider) {
     case "gemini":
       return callGeminiStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
-    default: {
-      // Should not reach here due to supportsStreaming check, but satisfy TS
-      const text = await callLLM(opts);
-      onChunk(text);
-      return text;
-    }
+    case "openrouter":
+      return callOpenRouterStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+    case "anthropic":
+      return callAnthropicStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+    case "openai":
+      return callOpenAIStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+    case "local":
+      return callLocalStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
   }
+}
+
+// ── Shared SSE reader for OpenAI-compatible streams ─────────────────
+
+/**
+ * Reads an SSE stream from an OpenAI-compatible API (OpenRouter, OpenAI, Local).
+ * Parses `data: {"choices":[{"delta":{"content":"..."}}]}` events.
+ */
+async function readOpenAICompatibleStream(
+  response: Response,
+  onChunk: StreamChunkCallback,
+  timeoutHandle: ReturnType<typeof setTimeout>,
+): Promise<string> {
+  let accumulated = "";
+  try {
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Streaming response has no body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === "data: [DONE]") continue;
+        if (!trimmed.startsWith("data: ")) continue;
+
+        try {
+          const data = JSON.parse(trimmed.slice(6)) as {
+            choices?: { delta?: { content?: string } }[];
+          };
+          const text = data.choices?.[0]?.delta?.content;
+          if (text) {
+            accumulated += text;
+            onChunk(text);
+          }
+        } catch {
+          // Malformed JSON chunk — skip
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+  return accumulated;
 }
 
 // ── OpenRouter (OpenAI-compatible) ───────────────────────────────────
@@ -300,6 +341,85 @@ async function callOpenRouter(
       await sleep(RETRY_DELAY_MS * attempt);
     } else {
       throw new EmptyResponseError("empty choices");
+    }
+  }
+
+  throw new EmptyResponseError("unknown");
+}
+
+// ── OpenRouter streaming ────────────────────────────────────────────
+
+async function callOpenRouterStream(
+  systemPrompt: string,
+  userPrompt: string,
+  modelId: string,
+  config: LLMConfig,
+  onChunk: StreamChunkCallback,
+): Promise<string> {
+  const apiKey = config.openrouterApiKey ?? process.env["OPENROUTER_API_KEY"];
+  if (!apiKey) {
+    throw new Error("OpenRouter API key is not set. Add it in Settings or set the OPENROUTER_API_KEY environment variable.");
+  }
+
+  const url = "https://openrouter.ai/api/v1/chat/completions";
+  const body = JSON.stringify({
+    model: modelId,
+    max_tokens: 8192,
+    stream: true,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+  });
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://github.com/Bloodshed-Rain/MAGI",
+          "X-Title": "MAGI",
+        },
+        body,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+
+    if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
+      clearTimeout(timeout);
+      if (attempt < MAX_RETRIES) {
+        const retryAfter = parseInt(response.headers.get("retry-after") ?? "", 10);
+        await sleep(Number.isFinite(retryAfter) ? retryAfter * 1000 : RETRY_DELAY_MS * attempt * 2);
+        continue;
+      }
+      if (response.status === 429) throw new Error("OpenRouter rate limit exceeded. Please try again in a moment.");
+      const errorBody = await response.text();
+      throw new Error(`OpenRouter API error (${response.status}): ${errorBody}`);
+    }
+
+    if (!response.ok) {
+      clearTimeout(timeout);
+      const errorBody = await response.text();
+      throw new Error(`OpenRouter API error (${response.status}): ${errorBody}`);
+    }
+
+    const accumulated = await readOpenAICompatibleStream(response, onChunk, timeout);
+    if (accumulated) return accumulated;
+
+    if (attempt < MAX_RETRIES) {
+      console.error(`OpenRouter stream returned empty, retrying (${attempt}/${MAX_RETRIES})...`);
+      await sleep(RETRY_DELAY_MS * attempt);
+    } else {
+      throw new EmptyResponseError("streaming returned no text");
     }
   }
 
@@ -579,6 +699,120 @@ async function callAnthropic(
   throw new EmptyResponseError("unknown");
 }
 
+// ── Anthropic streaming ─────────────────────────────────────────────
+
+async function callAnthropicStream(
+  systemPrompt: string,
+  userPrompt: string,
+  modelId: string,
+  config: LLMConfig,
+  onChunk: StreamChunkCallback,
+): Promise<string> {
+  const apiKey = config.anthropicApiKey ?? process.env["ANTHROPIC_API_KEY"];
+  if (!apiKey) {
+    throw new Error("Anthropic API key is not set. Add it in Settings or set the ANTHROPIC_API_KEY environment variable.");
+  }
+
+  const url = "https://api.anthropic.com/v1/messages";
+  const body = JSON.stringify({
+    model: modelId,
+    max_tokens: 8192,
+    stream: true,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+
+    if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
+      clearTimeout(timeout);
+      if (attempt < MAX_RETRIES) {
+        const retryAfter = parseInt(response.headers.get("retry-after") ?? "", 10);
+        await sleep(Number.isFinite(retryAfter) ? retryAfter * 1000 : RETRY_DELAY_MS * attempt * 2);
+        continue;
+      }
+      if (response.status === 429) throw new Error("Anthropic rate limit exceeded. Please try again in a moment.");
+      const errorBody = await response.text();
+      throw new Error(`Anthropic API error (${response.status}): ${errorBody}`);
+    }
+
+    if (!response.ok) {
+      clearTimeout(timeout);
+      const errorBody = await response.text();
+      throw new Error(`Anthropic API error (${response.status}): ${errorBody}`);
+    }
+
+    // Anthropic uses a different SSE format: event: content_block_delta, data: {"delta":{"text":"..."}}
+    let accumulated = "";
+    try {
+      const reader = response.body?.getReader();
+      if (!reader) { clearTimeout(timeout); throw new Error("Streaming response has no body"); }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+          try {
+            const data = JSON.parse(trimmed.slice(6)) as {
+              type?: string;
+              delta?: { type?: string; text?: string };
+            };
+            if (data.type === "content_block_delta" && data.delta?.text) {
+              accumulated += data.delta.text;
+              onChunk(data.delta.text);
+            }
+          } catch {
+            // Malformed JSON — skip
+          }
+        }
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (accumulated) return accumulated;
+
+    if (attempt < MAX_RETRIES) {
+      console.error(`Anthropic stream returned empty, retrying (${attempt}/${MAX_RETRIES})...`);
+      await sleep(RETRY_DELAY_MS * attempt);
+    } else {
+      throw new EmptyResponseError("streaming returned no text");
+    }
+  }
+
+  throw new EmptyResponseError("unknown");
+}
+
 // ── OpenAI direct ────────────────────────────────────────────────────
 
 async function callOpenAI(
@@ -650,6 +884,83 @@ async function callOpenAI(
   throw new EmptyResponseError("unknown");
 }
 
+// ── OpenAI streaming ────────────────────────────────────────────────
+
+async function callOpenAIStream(
+  systemPrompt: string,
+  userPrompt: string,
+  modelId: string,
+  config: LLMConfig,
+  onChunk: StreamChunkCallback,
+): Promise<string> {
+  const apiKey = config.openaiApiKey ?? process.env["OPENAI_API_KEY"];
+  if (!apiKey) {
+    throw new Error("OpenAI API key is not set. Add it in Settings or set the OPENAI_API_KEY environment variable.");
+  }
+
+  const url = "https://api.openai.com/v1/chat/completions";
+  const body = JSON.stringify({
+    model: modelId,
+    max_tokens: 8192,
+    stream: true,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+  });
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+
+    if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
+      clearTimeout(timeout);
+      if (attempt < MAX_RETRIES) {
+        const retryAfter = parseInt(response.headers.get("retry-after") ?? "", 10);
+        await sleep(Number.isFinite(retryAfter) ? retryAfter * 1000 : RETRY_DELAY_MS * attempt * 2);
+        continue;
+      }
+      if (response.status === 429) throw new Error("OpenAI rate limit exceeded. Please try again in a moment.");
+      const errorBody = await response.text();
+      throw new Error(`OpenAI API error (${response.status}): ${errorBody}`);
+    }
+
+    if (!response.ok) {
+      clearTimeout(timeout);
+      const errorBody = await response.text();
+      throw new Error(`OpenAI API error (${response.status}): ${errorBody}`);
+    }
+
+    const accumulated = await readOpenAICompatibleStream(response, onChunk, timeout);
+    if (accumulated) return accumulated;
+
+    if (attempt < MAX_RETRIES) {
+      console.error(`OpenAI stream returned empty, retrying (${attempt}/${MAX_RETRIES})...`);
+      await sleep(RETRY_DELAY_MS * attempt);
+    } else {
+      throw new EmptyResponseError("streaming returned no text");
+    }
+  }
+
+  throw new EmptyResponseError("unknown");
+}
+
 // ── Local (OpenAI-compatible: Ollama, LM Studio) ─────────────────────
 
 async function callLocal(
@@ -708,4 +1019,58 @@ async function callLocal(
   }
 
   throw new EmptyResponseError("unknown");
+}
+
+// ── Local streaming (OpenAI-compatible) ─────────────────────────────
+
+async function callLocalStream(
+  systemPrompt: string,
+  userPrompt: string,
+  modelId: string,
+  config: LLMConfig,
+  onChunk: StreamChunkCallback,
+): Promise<string> {
+  const endpoint = config.localEndpoint ?? "http://localhost:1234/v1";
+  const url = `${endpoint}/chat/completions`;
+
+  const body = JSON.stringify({
+    model: modelId === "local" ? undefined : modelId,
+    max_tokens: 8192,
+    stream: true,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+  });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(`Local model at ${endpoint} timed out after ${FETCH_TIMEOUT_MS / 1000}s. The model may be loading or the request may be too large.`);
+    }
+    throw new Error(
+      `Could not reach local model at ${endpoint}. Is Ollama or LM Studio running?\n${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  if (!response.ok) {
+    clearTimeout(timeout);
+    const errorBody = await response.text();
+    throw new Error(`Local model API error (${response.status}): ${errorBody}`);
+  }
+
+  const accumulated = await readOpenAICompatibleStream(response, onChunk, timeout);
+  if (accumulated) return accumulated;
+  throw new EmptyResponseError("streaming returned no text");
 }
