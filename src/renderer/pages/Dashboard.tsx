@@ -126,7 +126,7 @@ function HighlightCard({ title, value, sub, color, icon, index }: {
 /** Build a compact stat summary for the LLM from recent games */
 function buildRecentSummary(games: RecentGame[]): string {
   const wins = games.filter(g => g.result === "win").length;
-  const losses = games.length - wins;
+  const losses = games.filter(g => g.result === "loss").length;
   const avg = (fn: (g: RecentGame) => number) =>
     (games.reduce((s, g) => s + fn(g), 0) / games.length);
 
@@ -248,8 +248,8 @@ function CompactGameRow({ game, index, onClick }: { game: RecentGame; index: num
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: Math.min(index * 0.02, 0.12), duration: 0.2 }}
     >
-      <span className={game.result === "win" ? "result-badge win" : "result-badge loss"}>
-        {game.result === "win" ? "W" : "L"}
+      <span className={`result-badge ${game.result === "win" ? "win" : game.result === "loss" ? "loss" : "draw"}`}>
+        {game.result === "win" ? "W" : game.result === "loss" ? "L" : "D"}
       </span>
       <span className="dash-game-stocks">{game.playerFinalStocks}-{game.opponentFinalStocks}</span>
       <span className="dash-game-matchup">
@@ -320,6 +320,10 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
     refetchHighlights();
   }, [refreshKey, refetch, refetchRecord, refetchHighlights]);
 
+  const avgNeutral = useMemo(() => games.length ? games.reduce((s, g) => s + g.neutralWinRate, 0) / games.length : 0, [games]);
+  const avgLCancel = useMemo(() => games.length ? games.reduce((s, g) => s + g.lCancelRate, 0) / games.length : 0, [games]);
+  const avgEdgeguard = useMemo(() => games.length ? games.reduce((s, g) => s + g.edgeguardSuccessRate, 0) / games.length : 0, [games]);
+
   if (loading) {
     return (
       <div className="loading">
@@ -359,9 +363,6 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
 
   const wins = record?.wins ?? 0;
   const losses = record?.losses ?? 0;
-  const avgNeutral = useMemo(() => games.reduce((s, g) => s + g.neutralWinRate, 0) / games.length, [games]);
-  const avgLCancel = useMemo(() => games.reduce((s, g) => s + g.lCancelRate, 0) / games.length, [games]);
-  const avgEdgeguard = useMemo(() => games.reduce((s, g) => s + g.edgeguardSuccessRate, 0) / games.length, [games]);
   const recordColor = wins > losses ? "var(--green)" : wins < losses ? "var(--red)" : "var(--text)";
 
   const trends = highlights?.trends;

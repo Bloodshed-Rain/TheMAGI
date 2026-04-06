@@ -307,6 +307,11 @@
   color: var(--red);
   border: 1px solid rgba(var(--red-rgb), 0.25);
 }
+.result-badge.draw {
+  background: var(--bg-hover);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
 
 /* ── Game Card Sub-elements ────────────────────────────────────── */
 .game-card-matchup { flex: 1; min-width: 0; }

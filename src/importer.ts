@@ -92,9 +92,13 @@ export async function importReplay(
   const opponent = gameSummary.players[opponentIdx];
   const playerInsights = derivedInsights[playerIdx];
 
-  // Determine result
+  // Determine result — if both players have stocks remaining, count as a draw (e.g. LRAS quit-out)
+  const pStocks = gameSummary.result.finalStocks[playerIdx];
+  const oStocks = gameSummary.result.finalStocks[opponentIdx];
   let result: "win" | "loss" | "draw";
-  if (gameSummary.result.winner === player.tag) {
+  if (pStocks > 0 && oStocks > 0) {
+    result = "draw";
+  } else if (gameSummary.result.winner === player.tag) {
     result = "win";
   } else if (gameSummary.result.winner === "Unknown") {
     result = "draw";
@@ -366,8 +370,13 @@ export async function importReplays(
         const opponent = gameSummary.players[opponentIdx];
         const playerInsights = derivedInsights[playerIdx];
 
+        // If both players have stocks remaining, count as a draw (e.g. LRAS quit-out)
+        const pStocks = gameSummary.result.finalStocks[playerIdx];
+        const oStocks = gameSummary.result.finalStocks[opponentIdx];
         let gameResultStr: "win" | "loss" | "draw";
-        if (gameSummary.result.winner === player.tag) {
+        if (pStocks > 0 && oStocks > 0) {
+          gameResultStr = "draw";
+        } else if (gameSummary.result.winner === player.tag) {
           gameResultStr = "win";
         } else if (gameSummary.result.winner === "Unknown") {
           gameResultStr = "draw";

@@ -104,7 +104,7 @@ function buildTrendSummary(
 ): string {
   const totalGames = chronological.length;
   const wins = chronological.filter((g) => g.result === "win").length;
-  const losses = totalGames - wins;
+  const losses = chronological.filter((g) => g.result === "loss").length;
   const winRate = ((wins / totalGames) * 100).toFixed(1);
 
   const matchupCounts: Record<string, number> = {};
@@ -136,9 +136,11 @@ function buildTrendSummary(
   }
 
   const last5 = chronological.slice(-5);
-  const last5Record = last5.filter((g) => g.result === "win").length;
+  const last5Wins = last5.filter((g) => g.result === "win").length;
+  const last5Losses = last5.filter((g) => g.result === "loss").length;
+  const last5Draws = last5.length - last5Wins - last5Losses;
   lines.push("");
-  lines.push(`Last ${last5.length} games: ${last5Record}W-${last5.length - last5Record}L`);
+  lines.push(`Last ${last5.length} games: ${last5Wins}W-${last5Losses}L${last5Draws > 0 ? `-${last5Draws}D` : ""}`);
 
   const recentAvg = (key: keyof RecentGame) =>
     last5.reduce((s, g) => s + (g[key] as number), 0) / last5.length;

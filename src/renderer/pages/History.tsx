@@ -260,8 +260,8 @@ export function History({ refreshKey: _refreshKey }: { refreshKey: number }) {
                     </div>
                     <div className="history-entry-right">
                       {entry.result && (
-                        <span className={entry.result === "win" ? "result-badge win" : "result-badge loss"}>
-                          {entry.result === "win" ? "W" : "L"}
+                        <span className={`result-badge ${entry.result === "win" ? "win" : entry.result === "loss" ? "loss" : "draw"}`}>
+                          {entry.result === "win" ? "W" : entry.result === "loss" ? "L" : "D"}
                         </span>
                       )}
                       <span className="history-entry-model">{entry.modelUsed.split("/").pop()}</span>

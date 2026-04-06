@@ -240,7 +240,7 @@ function OpponentDetailPanel({
             </thead>
             <tbody>
               {detail.games.map(g => {
-                const isWin = g.result === "win";
+                const badge = g.result === "win" ? "W" as const : g.result === "loss" ? "L" as const : "T" as const;
                 return (
                   <tr key={g.id}>
                     <td className="mono-cell">
@@ -250,7 +250,7 @@ function OpponentDetailPanel({
                     <td className="mono-cell">{g.opponentCharacter}</td>
                     <td className="mono-cell dim">{g.stage}</td>
                     <td>
-                      <ResultBadge result={isWin ? "W" : "L"} />
+                      <ResultBadge result={badge} />
                       <span className="sessions-stock-count">
                         {g.playerFinalStocks}-{g.opponentFinalStocks}
                       </span>
