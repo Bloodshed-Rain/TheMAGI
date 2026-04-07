@@ -485,6 +485,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const [importResult, setImportResult] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importDone, setImportDone] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; importedSoFar: number; skippedSoFar: number; errorsSoFar: number } | null>(null);
   const [selectedChar, setSelectedChar] = useState<string | null>(null);
 
   const { setColorMode } = useGlobalStore();
@@ -592,6 +593,15 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       runImport();
     }
   }, [step, folder, importing, importDone, importError, runImport]);
+
+  // Subscribe to import progress events while importing
+  useEffect(() => {
+    if (!importing) return;
+    const cleanup = window.clippi.onImportProgress((progress) => {
+      setImportProgress({ current: progress.current, total: progress.total, importedSoFar: progress.importedSoFar, skippedSoFar: progress.skippedSoFar, errorsSoFar: progress.errorsSoFar });
+    });
+    return cleanup;
+  }, [importing]);
 
   return (
     <div style={styles.overlay} role="dialog" aria-label="MAGI Setup Wizard" aria-modal="true">
@@ -713,7 +723,24 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 <div style={styles.stepTag}>Step 4 of 5</div>
                 <h2 style={styles.heading}>{importDone ? "Import Complete" : "Importing..."}</h2>
                 <div style={styles.importStatus}>
-                  {importing && <div className="spinner" />}
+                  {importing && (
+                    <>
+                      <div className="spinner" />
+                      {importProgress && importProgress.total > 0 && (
+                        <div style={{ marginTop: 12, textAlign: "center" as const }}>
+                          <div style={{ fontSize: 14, color: "var(--text-dim)", marginBottom: 8 }}>
+                            {importProgress.current} / {importProgress.total} files processed
+                          </div>
+                          <div style={{ width: "100%", height: 6, borderRadius: 3, background: "var(--bg-hover)", overflow: "hidden" }}>
+                            <div style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%`, height: "100%", borderRadius: 3, background: "var(--accent)", transition: "width 0.3s ease" }} />
+                          </div>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 6 }}>
+                            {importProgress.importedSoFar} imported · {importProgress.skippedSoFar} skipped · {importProgress.errorsSoFar} errors
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                   {importResult && <p style={styles.resultText}>{importResult}</p>}
                   {importError && <p style={styles.errorText}>Error: {importError}</p>}
                   <div style={styles.actions}>

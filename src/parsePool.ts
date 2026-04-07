@@ -31,7 +31,13 @@ interface WorkerOutput {
   error?: string;
 }
 
-const WORKER_PATH = path.resolve(__dirname, "parseWorker.ts");
+// In dev, tsx/cjs lets us run the .ts source directly.
+// In production (packaged exe), the compiled .js lives next to us — no tsx needed.
+import fs from "fs";
+const WORKER_TS = path.resolve(__dirname, "parseWorker.ts");
+const WORKER_JS = path.resolve(__dirname, "parseWorker.js");
+const IS_DEV = fs.existsSync(WORKER_TS);
+const WORKER_PATH = IS_DEV ? WORKER_TS : WORKER_JS;
 
 export class ParsePool {
   private poolSize: number;
@@ -117,7 +123,7 @@ export class ParsePool {
 
   private spawnWorker(): Worker {
     const worker = new Worker(WORKER_PATH, {
-      execArgv: ["--require", "tsx/cjs"],
+      ...(IS_DEV ? { execArgv: ["--require", "tsx/cjs"] } : {}),
     });
 
     worker.on("message", (output: WorkerOutput) => {
