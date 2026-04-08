@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { Compass, Clock, ExternalLink } from "lucide-react";
 import { CoachingCards } from "../components/CoachingCards";
 import { useAnalysisHistory } from "../hooks/queries";
 import { formatGameDate } from "../hooks";
@@ -70,6 +72,7 @@ function getPreview(text: string, maxLen: number = 120): string {
 }
 
 export function History({ refreshKey: _refreshKey }: { refreshKey: number }) {
+  const navigate = useNavigate();
   const [scopeFilter, setScopeFilter] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(0);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -174,9 +177,7 @@ export function History({ refreshKey: _refreshKey }: { refreshKey: number }) {
           <div className="discovery-header">
             <div className="discovery-title-row">
               <div className="discovery-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="rgba(var(--accent-rgb), 0.15)" stroke="currentColor"/>
-                </svg>
+                <Compass size={22} strokeWidth={1.5} />
               </div>
               <div>
                 <h2 className="discovery-heading">Deep Discovery</h2>
@@ -223,10 +224,7 @@ export function History({ refreshKey: _refreshKey }: { refreshKey: number }) {
       {analyses.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
+            <Clock size={64} strokeWidth={1.2} stroke="var(--accent)" />
           </div>
           <h2>No analyses yet</h2>
           <p>Run an AI analysis from the Dashboard or any page to see it here.</p>
@@ -259,6 +257,15 @@ export function History({ refreshKey: _refreshKey }: { refreshKey: number }) {
                       </div>
                     </div>
                     <div className="history-entry-right">
+                      {entry.gameId && (
+                        <button
+                          className="btn btn-icon-small"
+                          title="View game detail"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/game/${entry.gameId}`); }}
+                        >
+                          <ExternalLink size={12} />
+                        </button>
+                      )}
                       {entry.result && (
                         <span className={`result-badge ${entry.result === "win" ? "win" : entry.result === "loss" ? "loss" : "draw"}`}>
                           {entry.result === "win" ? "W" : entry.result === "loss" ? "L" : "D"}

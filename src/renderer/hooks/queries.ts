@@ -144,6 +144,15 @@ export const useRecentHighlights = (limit: number = 20) => {
   });
 };
 
+export const useGameDetail = (gameId: number | null) => {
+  return useQuery({
+    queryKey: ["gameDetail", gameId],
+    queryFn: () => window.clippi.getGameDetail(gameId!),
+    enabled: gameId != null,
+    gcTime: GC_10MIN,
+  });
+};
+
 export const useAnalysisHistory = (limit: number, offset: number, scopeFilter?: string) => {
   return useQuery({
     queryKey: ["analysisHistory", limit, offset, scopeFilter],

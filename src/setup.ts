@@ -11,7 +11,7 @@ function printConfig() {
   console.log(`  OpenRouter key:   ${config.openrouterApiKey ? "(set)" : "(not set)"}`);
   console.log(`  Gemini key:       ${config.geminiApiKey ? "(set)" : "(not set)"}`);
   console.log(`  Anthropic key:    ${config.anthropicApiKey ? "(set)" : "(not set)"}`);
-  console.log(`  OpenAI key:       ${config.openaiApiKey ? "(set)" : "(not set)"}`);
+  console.log(`  OpenAI:           (provided by MAGI proxy)`);
   console.log(`  Local endpoint:   ${config.localEndpoint ?? "(default: localhost:1234)"}`);
 }
 
@@ -54,9 +54,6 @@ function main() {
       i++;
     } else if (arg === "--anthropic-key" && next) {
       updates["anthropicApiKey"] = next;
-      i++;
-    } else if (arg === "--openai-key" && next) {
-      updates["openaiApiKey"] = next;
       i++;
     } else if (arg === "--local-endpoint" && next) {
       updates["localEndpoint"] = next;

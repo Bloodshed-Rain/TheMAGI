@@ -86,6 +86,13 @@ export const MODELS: ModelOption[] = [
   },
   // OpenAI direct
   {
+    id: "gpt-4o-mini",
+    label: "GPT-4o Mini (direct)",
+    provider: "openai",
+    costPer1kInput: 0.00015,
+    costPer1kOutput: 0.0006,
+  },
+  {
     id: "gpt-4o",
     label: "GPT-4o (direct)",
     provider: "openai",
@@ -100,7 +107,48 @@ export const MODELS: ModelOption[] = [
   },
 ];
 
-export const DEFAULT_MODEL_ID = "gemini-2.5-flash";
+export const DEFAULT_MODEL_ID = "gpt-4o-mini";
+
+/**
+ * Proxy URL for bundled OpenAI access.
+ * When set, OpenAI calls are routed through this server-side proxy so the
+ * real API key never ships in the desktop app.  Set to null to fall back
+ * to direct key-based calls (dev / CLI).
+ *
+ * After deploying proxy/worker.ts to Cloudflare Workers, paste the URL here.
+ */
+export const MAGI_PROXY_URL: string | null =
+  "https://magi-llm-proxy.magi-proxy.workers.dev";
+
+/** App version sent as X-MAGI-Version header to the proxy */
+const APP_VERSION: string = (() => {
+  try {
+    // Works in both dev and packaged builds
+    return (require("../../package.json") as { version: string }).version;
+  } catch {
+    return "unknown";
+  }
+})();
+
+/**
+ * HMAC shared secret for proxy request signing.
+ * Must match the HMAC_SECRET set on the Cloudflare Worker via `wrangler secret put HMAC_SECRET`.
+ *
+ * This lives in the binary — a determined reverse-engineer CAN extract it.
+ * But combined with rate limiting and model restriction, it prevents casual abuse.
+ * Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ */
+const HMAC_SECRET: string =
+  "353e54f8ff2e861f104c02bfc778b3375c9859e0a1e80112a307a3208e0a6643";
+
+/** Sign a request body with HMAC-SHA256 for the proxy */
+async function signRequest(body: string): Promise<{ timestamp: string; signature: string }> {
+  const crypto = require("crypto") as typeof import("crypto");
+  const timestamp = String(Date.now());
+  const hmac = crypto.createHmac("sha256", HMAC_SECRET);
+  hmac.update(`${timestamp}.${body}`);
+  return { timestamp, signature: hmac.digest("hex") };
+}
 
 /** Get the provider for a given model ID */
 export function getModelProvider(modelId: string): ProviderId {
@@ -831,7 +879,41 @@ async function callAnthropicStream(
   throw new EmptyResponseError("unknown");
 }
 
-// ── OpenAI direct ────────────────────────────────────────────────────
+// ── OpenAI (via proxy or direct) ────────────────────────────────────
+
+/** Resolve the OpenAI endpoint URL and auth headers.
+ *  When MAGI_PROXY_URL is set, signs the request body with HMAC. */
+async function resolveOpenAIEndpoint(
+  config: LLMConfig,
+  body: string,
+): Promise<{ url: string; headers: Record<string, string> }> {
+  if (MAGI_PROXY_URL) {
+    const { timestamp, signature } = await signRequest(body);
+    return {
+      url: MAGI_PROXY_URL,
+      headers: {
+        "Content-Type": "application/json",
+        "X-MAGI-Version": APP_VERSION,
+        "X-MAGI-Timestamp": timestamp,
+        "X-MAGI-Signature": signature,
+      },
+    };
+  }
+  // Fallback: direct OpenAI call (dev / CLI with key.env)
+  const apiKey = config.openaiApiKey ?? process.env["OPENAI_API_KEY"];
+  if (!apiKey) {
+    throw new Error(
+      "OpenAI API key is not set. Add it in Settings or set the OPENAI_API_KEY environment variable.",
+    );
+  }
+  return {
+    url: "https://api.openai.com/v1/chat/completions",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+  };
+}
 
 async function callOpenAI(
   systemPrompt: string,
@@ -839,14 +921,6 @@ async function callOpenAI(
   modelId: string,
   config: LLMConfig,
 ): Promise<string> {
-  const apiKey = config.openaiApiKey ?? process.env["OPENAI_API_KEY"];
-  if (!apiKey) {
-    throw new Error(
-      "OpenAI API key is not set. Add it in Settings or set the OPENAI_API_KEY environment variable.",
-    );
-  }
-
-  const url = "https://api.openai.com/v1/chat/completions";
   const body = JSON.stringify({
     model: modelId,
     max_completion_tokens: 8192,
@@ -855,14 +929,12 @@ async function callOpenAI(
       { role: "user", content: userPrompt },
     ],
   });
+  const { url, headers } = await resolveOpenAIEndpoint(config, body);
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const response = await fetchWithTimeout(url, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body,
     });
 
@@ -911,12 +983,6 @@ async function callOpenAIStream(
   config: LLMConfig,
   onChunk: StreamChunkCallback,
 ): Promise<string> {
-  const apiKey = config.openaiApiKey ?? process.env["OPENAI_API_KEY"];
-  if (!apiKey) {
-    throw new Error("OpenAI API key is not set. Add it in Settings or set the OPENAI_API_KEY environment variable.");
-  }
-
-  const url = "https://api.openai.com/v1/chat/completions";
   const body = JSON.stringify({
     model: modelId,
     max_completion_tokens: 8192,
@@ -926,6 +992,7 @@ async function callOpenAIStream(
       { role: "user", content: userPrompt },
     ],
   });
+  const { url, headers } = await resolveOpenAIEndpoint(config, body);
 
   let anyChunksSent = false;
   const wrappedOnChunk: StreamChunkCallback = (chunk) => { anyChunksSent = true; onChunk(chunk); };
@@ -938,10 +1005,7 @@ async function callOpenAIStream(
     try {
       response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body,
         signal: controller.signal,
       });

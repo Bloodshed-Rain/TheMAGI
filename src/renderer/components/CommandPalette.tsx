@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ChevronRight, Zap, UserCircle } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -22,28 +23,15 @@ interface CommandPaletteProps {
 // ── Icons ────────────────────────────────────────────────────────────
 
 function NavIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
-  );
+  return <ChevronRight size={14} />;
 }
 
 function ActionIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-  );
+  return <Zap size={14} />;
 }
 
 function UserIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
+  return <UserCircle size={14} />;
 }
 
 // ── Fuzzy match scoring ──────────────────────────────────────────────

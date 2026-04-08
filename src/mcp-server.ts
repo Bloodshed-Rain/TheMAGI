@@ -228,7 +228,7 @@ function handleTool(name: string, args: Args) {
         openrouterApiKey: redactKey(config.openrouterApiKey),
         geminiApiKey: redactKey(config.geminiApiKey),
         anthropicApiKey: redactKey(config.anthropicApiKey),
-        openaiApiKey: redactKey(config.openaiApiKey),
+        openaiApiKey: "(managed by MAGI proxy)",
       };
       return ok(redacted);
     }

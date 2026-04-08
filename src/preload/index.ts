@@ -52,6 +52,7 @@ const api = {
   getRecentHighlights: (limit: number) => ipcRenderer.invoke("stats:recentHighlights", limit),
   getAnalysisHistory: (limit: number, offset: number, scopeFilter?: string) =>
     ipcRenderer.invoke("stats:analysisHistory", limit, offset, scopeFilter),
+  getGameDetail: (gameId: number) => ipcRenderer.invoke("stats:gameDetail", gameId),
 
   // Stock timeline
   getStockTimeline: (replayPath: string) =>

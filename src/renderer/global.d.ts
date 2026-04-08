@@ -43,6 +43,7 @@ declare global {
       getGameHighlights: (gameId: number) => Promise<any[]>;
       getRecentHighlights: (limit: number) => Promise<any[]>;
       getAnalysisHistory: (limit: number, offset: number, scopeFilter?: string) => Promise<any[]>;
+      getGameDetail: (gameId: number) => Promise<any>;
       openInDolphin: (replayPath: string) => Promise<boolean>;
       openInDolphinAtFrame: (replayPath: string, frame: number) => Promise<boolean>;
       getStockTimeline: (replayPath: string) => Promise<any>;

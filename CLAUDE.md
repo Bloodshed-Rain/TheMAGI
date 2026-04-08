@@ -44,7 +44,7 @@ Three processes communicate via IPC:
 
 - `src/llm.ts`: Multi-provider LLM abstraction (OpenRouter, Gemini, Anthropic, OpenAI, local). All share: system prompt + user prompt → text.
 - `src/llmQueue.ts`: Queued LLM calls to prevent concurrent overload
-- `src/db.ts`: SQLite via better-sqlite3. Data dir: `~/.magi-melee/`, DB file: `magi.db`. Tables: `player_profile`, `sessions`, `games`, `game_stats`, `coaching_analyses`, `practice_plans`, `character_signature_stats`, `highlights`, `schema_version`. 5 migrations adding: power_shield_count, edgeguard stats, shield pressure + DI columns, coaching scope fields, highlights table.
+- `src/db.ts`: SQLite via better-sqlite3. Data dir: `~/.magi-melee/`, DB file: `magi.db`. Tables: `player_profile`, `sessions`, `games`, `game_stats`, `coaching_analyses`, `character_signature_stats`, `highlights`, `schema_version`. 5 migrations adding: power_shield_count, edgeguard stats, shield pressure + DI columns, coaching scope fields, highlights table.
 - `src/config.ts`: JSON config at `~/.magi-melee/config.json`. Stores target player, API keys, replay folder, theme.
 - `src/importer.ts`: Bulk imports replay folders, hashes files for dedup, inserts into DB, optionally triggers LLM analysis.
 - `src/replayAnalyzer.ts`: Single-replay analysis with DB caching (hash-based dedup, skips LLM if cached).

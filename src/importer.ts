@@ -594,7 +594,7 @@ export async function importAndAnalyze(
     openrouterApiKey: userCfg.openrouterApiKey,
     geminiApiKey: userCfg.geminiApiKey,
     anthropicApiKey: userCfg.anthropicApiKey,
-    openaiApiKey: userCfg.openaiApiKey,
+    openaiApiKey: null,
     localEndpoint: userCfg.localEndpoint,
   };
   const analysis = await callLLM({

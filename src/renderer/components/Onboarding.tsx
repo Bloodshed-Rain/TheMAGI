@@ -34,32 +34,32 @@ const STEP_DESCRIPTIONS: string[] = [
 ];
 
 const CHARACTERS = [
-  { id: "char-drmario", name: "Dr. Mario", image: "drmario.jpg" },
-  { id: "char-mario", name: "Mario", image: "mario.jpg" },
-  { id: "char-luigi", name: "Luigi", image: "luigi.jpg" },
-  { id: "char-bowser", name: "Bowser", image: "bowser.jpg" },
-  { id: "char-peach", name: "Peach", image: "peach.jpg" },
-  { id: "char-yoshi", name: "Yoshi", image: "yoshi.jpg" },
-  { id: "char-dk", name: "Donkey Kong", image: "dk.jpg" },
-  { id: "char-falcon", name: "Captain Falcon", image: "falcon.jpg" },
-  { id: "char-ganon", name: "Ganondorf", image: "ganon.jpg" },
-  { id: "char-falco", name: "Falco", image: "falco.jpg" },
-  { id: "char-fox", name: "Fox", image: "fox.jpg" },
-  { id: "char-ness", name: "Ness", image: "ness.jpg" },
-  { id: "char-ics", name: "Ice Climbers", image: "ics.jpg" },
-  { id: "char-kirby", name: "Kirby", image: "kirby.jpg" },
-  { id: "char-samus", name: "Samus", image: "samus.jpg" },
-  { id: "char-zelda", name: "Zelda", image: "zelda.jpg" },
-  { id: "char-sheik", name: "Sheik", image: "sheik.jpg" },
-  { id: "char-link", name: "Link", image: "link.jpg" },
-  { id: "char-ylink", name: "Young Link", image: "ylink.jpg" },
-  { id: "char-pichu", name: "Pichu", image: "pichu.jpg" },
-  { id: "char-pikachu", name: "Pikachu", image: "pikachu.jpg" },
-  { id: "char-puff", name: "Jigglypuff", image: "puff.jpg" },
-  { id: "char-mewtwo", name: "Mewtwo", image: "mewtwo.jpg" },
-  { id: "char-gnw", name: "Mr. G&W", image: "gnw.jpg" },
-  { id: "char-marth", name: "Marth", image: "marth.jpg" },
-  { id: "char-roy", name: "Roy", image: "roy.jpg" },
+  { id: "char-drmario", name: "Dr. Mario" },
+  { id: "char-mario", name: "Mario" },
+  { id: "char-luigi", name: "Luigi" },
+  { id: "char-bowser", name: "Bowser" },
+  { id: "char-peach", name: "Peach" },
+  { id: "char-yoshi", name: "Yoshi" },
+  { id: "char-dk", name: "Donkey Kong" },
+  { id: "char-falcon", name: "Captain Falcon" },
+  { id: "char-ganon", name: "Ganondorf" },
+  { id: "char-falco", name: "Falco" },
+  { id: "char-fox", name: "Fox" },
+  { id: "char-ness", name: "Ness" },
+  { id: "char-ics", name: "Ice Climbers" },
+  { id: "char-kirby", name: "Kirby" },
+  { id: "char-samus", name: "Samus" },
+  { id: "char-zelda", name: "Zelda" },
+  { id: "char-sheik", name: "Sheik" },
+  { id: "char-link", name: "Link" },
+  { id: "char-ylink", name: "Young Link" },
+  { id: "char-pichu", name: "Pichu" },
+  { id: "char-pikachu", name: "Pikachu" },
+  { id: "char-puff", name: "Jigglypuff" },
+  { id: "char-mewtwo", name: "Mewtwo" },
+  { id: "char-gnw", name: "Mr. G&W" },
+  { id: "char-marth", name: "Marth" },
+  { id: "char-roy", name: "Roy" },
 ];
 
 // ── Shared animation config ──────────────────────────────────────
@@ -405,14 +405,6 @@ const styles = {
     background: "var(--bg-card)",
   }),
 
-  charImage: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover" as const,
-    opacity: 0.8,
-    transition: "transform 0.5s ease, opacity 0.3s ease",
-  },
-
   charPlaceholder: {
     width: "100%",
     height: "100%",
@@ -457,21 +449,7 @@ function Check() {
 }
 
 function CharacterImage({ char }: { char: typeof CHARACTERS[0] }) {
-  const [error, setError] = useState(false);
-  const src = new URL(`../assets/characters/${char.image}`, import.meta.url).href;
-
-  if (error) {
-    return <div style={styles.charPlaceholder}>{char.name.charAt(0)}</div>;
-  }
-
-  return (
-    <img 
-      src={src} 
-      alt={char.name} 
-      style={styles.charImage} 
-      onError={() => setError(true)}
-    />
-  );
+  return <div style={styles.charPlaceholder}>{char.name.charAt(0)}</div>;
 }
 
 // ── Component ────────────────────────────────────────────────────

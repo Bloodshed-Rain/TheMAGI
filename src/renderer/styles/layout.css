@@ -180,11 +180,12 @@
 /* ── Background watermark logo ───────────────────────────────── */
 .main-watermark {
   position: fixed;
-  bottom: -8%;
-  right: -4%;
-  width: 45vmin;
+  top: 50%;
+  left: calc(50% + var(--rail-width, 80px) / 2);
+  transform: translate(-50%, -50%);
+  width: 70vmin;
   height: auto;
-  opacity: 0.03;
+  opacity: 0.04;
   pointer-events: none;
   z-index: 0;
   user-select: none;

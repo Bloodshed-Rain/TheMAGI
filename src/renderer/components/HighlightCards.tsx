@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Zap, Play } from "lucide-react";
 
 interface HighlightData {
   id: number;
@@ -123,9 +124,7 @@ function HighlightCard({
             title={`Open replay at ${highlight.timestamp}`}
             onClick={() => onPlayClick(highlight.replayPath!, highlight.startFrame)}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="5,3 19,12 5,21" />
-            </svg>
+            <Play size={14} fill="currentColor" />
           </button>
         )}
       </div>
@@ -167,9 +166,7 @@ export function HighlightCards({
   return (
     <div className="highlight-cards-container">
       <div className="highlight-cards-header">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-        </svg>
+        <Zap size={16} />
         <span>
           Highlights ({highlights.length})
         </span>

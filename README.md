@@ -22,7 +22,7 @@ Import your `.slp` files, get personalized coaching analysis from an LLM, track 
 
 **Scout your rivals.** The Opponent Rivalry Dossier gives you a deep dive into any opponent: head-to-head record, stage and character breakdowns, and AI-generated matchup analysis.
 
-**No setup required.** Download a release, open the app, import replays, get coached. AI coaching is powered by Gemini 2.5 Flash and works immediately — no API key needed.
+**No setup required.** Download a release, open the app, import replays, get coached. AI coaching is powered by GPT-4o Mini and works immediately — no API key needed.
 
 ## Features
 
@@ -36,7 +36,7 @@ Import your `.slp` files, get personalized coaching analysis from an LLM, track 
 - **Player history context** — coaching references your historical trends, improvement areas, and recurring habits
 - **Best Moments / Worst Misplays** — coaching highlights your cleanest plays and costliest mistakes with clickable timestamps
 - **Dynamic model selection** — Settings dropdown fetches live model lists from all configured providers (Gemini, OpenRouter, Anthropic, OpenAI) with custom model ID support
-- **Multi-LLM provider** — Gemini (default/free), OpenRouter (100+ models), Anthropic, OpenAI, DeepSeek, or local via Ollama/LM Studio
+- **Multi-LLM provider** — GPT-4o Mini (default, no key needed), OpenRouter (100+ models), Gemini, Anthropic, DeepSeek, or local via Ollama/LM Studio
 - **Analysis caching** — coaching results stored in the database; clicking the same game twice costs $0
 - **Queue management** — LLM calls processed sequentially with queue position feedback, 429 rate-limit handling, and exponential backoff
 - **MAGI trend commentary** — AI personality that reacts to your trajectory with blunt, witty feedback
@@ -86,7 +86,7 @@ Import your `.slp` files, get personalized coaching analysis from an LLM, track 
 
 ![Settings — 31 themes including character skins](screenshots/settings-themes.png)
 
-- **Zero-friction onboarding** — AI coaching works immediately in releases, no API key needed
+- **Zero-friction onboarding** — AI coaching works immediately via server-side proxy, no API key needed
 - **Onboarding wizard** — 5-step guided setup (welcome, identity, replay folder, import, theme selection)
 - **Local-first** — your data stays on your machine, no account needed, no server
 - **Cross-platform** — Windows, macOS, and Linux
@@ -113,7 +113,7 @@ Download the latest release for your platform from the [Releases](https://github
 3. Browse to your Slippi replay folder
 4. Import your replays and start getting coached
 
-AI coaching works immediately — no API key needed. To use a different LLM provider, go to **Settings** and configure your preferred model and API key.
+AI coaching works immediately — no API key needed. MAGI ships with GPT-4o Mini powered coaching out of the box. To use a different LLM provider, go to **Settings** and add your own API key for OpenRouter, Gemini, Anthropic, or a local model.
 
 ## Development
 
@@ -137,11 +137,11 @@ npm run format       # Prettier
 
 Platform-specific builds: `npm run build:linux`, `build:win`, `build:mac`
 
-> **Note:** A `key.env` file in the project root is required for both `npm run dev` (AI coaching) and `npm run build` (electron-builder will fail without it). Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) and create the file:
+> **Note:** AI coaching works out of the box via the MAGI proxy (GPT-4o Mini). For dev mode with other providers, create a `key.env` file in the project root:
 > ```
 > GEMINI_API_KEY=your-key-here
 > ```
-> You can also enter the key on the Settings page instead, but `key.env` must still exist for packaging (it can be empty if you only use the Settings page).
+> `key.env` is gitignored and is **not** bundled into release builds. API keys for the default model are managed server-side.
 
 ### CLI usage (optional)
 
@@ -163,7 +163,7 @@ npx tsx src/watcher.ts /path/to/replays --target YourTag
     |
     +--> [SQLite] --> persistent stats, trends, opponent history
     |
-    +--> [LLM Queue] --> streaming API calls (Gemini/OpenRouter/Claude/OpenAI/DeepSeek/local)
+    +--> [LLM Queue] --> streaming API calls (GPT-4o Mini via proxy / Gemini / OpenRouter / Claude / local)
               |
               v
           [Coaching Analysis] --> cached in DB, streamed as markdown
@@ -196,6 +196,8 @@ Key modules:
 - [x] Parallel import pipeline with queue management
 - [x] Dynamic model fetching from all LLM providers
 - [x] Best Moments / Worst Misplays timestamp highlights in coaching
+- [x] Server-side API proxy with HMAC signing — zero-setup coaching, no keys shipped in builds
+- [x] Security hardening — write-only key management, renderer key isolation, npm audit clean
 - [ ] Complete character card art (all 26 characters)
 - [ ] Dolphin HUD mode (wrap around the emulator window)
 - [ ] Practice plan tracking with progress indicators
@@ -203,7 +205,7 @@ Key modules:
 
 ## Cost
 
-Not charging anything at this point. If enough people use it to warrant it, I'll implement something to cover API costs. Local LLM models and BYOK will always be supported.
+Free. AI coaching is provided at no cost to users — the default GPT-4o Mini model is hosted via a rate-limited proxy. Bring-your-own-key and local LLM models will always be supported.
 
 ## License
 

@@ -30,8 +30,7 @@ const SCHEMA = `
     started_at TEXT NOT NULL,
     ended_at TEXT,
     games_played INTEGER NOT NULL DEFAULT 0,
-    games_won INTEGER NOT NULL DEFAULT 0,
-    ai_summary TEXT
+    games_won INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS games (
@@ -105,16 +104,6 @@ const SCHEMA = `
     model_used TEXT NOT NULL,
     analysis_text TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS practice_plans (
-    id INTEGER PRIMARY KEY,
-    coaching_analysis_id INTEGER REFERENCES coaching_analyses(id),
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    drill_1 TEXT,
-    drill_2 TEXT,
-    drill_3 TEXT,
-    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'abandoned'))
   );
 
   CREATE INDEX IF NOT EXISTS idx_games_replay_hash ON games(replay_hash);
@@ -739,6 +728,151 @@ export function getGameById(gameId: number): { id: number; replay_path: string; 
     SELECT id, replay_path, player_tag FROM games
     WHERE id = ?
   `).get(gameId) as { id: number; replay_path: string; player_tag: string } | undefined;
+}
+
+// ── Full game detail ──────────────────────────────────────────────
+
+export interface GameDetail {
+  id: number;
+  replayPath: string;
+  playedAt: string | null;
+  stage: string;
+  durationSeconds: number;
+  playerCharacter: string;
+  opponentCharacter: string;
+  playerTag: string;
+  playerConnectCode: string | null;
+  opponentTag: string;
+  opponentConnectCode: string | null;
+  result: string;
+  endMethod: string;
+  playerFinalStocks: number;
+  playerFinalPercent: number;
+  opponentFinalStocks: number;
+  opponentFinalPercent: number;
+  // game_stats
+  neutralWins: number;
+  neutralLosses: number;
+  neutralWinRate: number;
+  counterHits: number;
+  openingsPerKill: number;
+  totalOpenings: number;
+  totalConversions: number;
+  conversionRate: number;
+  avgDamagePerOpening: number;
+  killConversions: number;
+  lCancelRate: number;
+  wavedashCount: number;
+  dashDanceFrames: number;
+  avgStagePositionX: number;
+  timeOnPlatform: number;
+  timeInAir: number;
+  timeAtLedge: number;
+  totalDamageTaken: number;
+  totalDamageDealt: number;
+  avgDeathPercent: number;
+  recoveryAttempts: number;
+  recoverySuccessRate: number;
+  ledgeEntropy: number;
+  knockdownEntropy: number;
+  shieldPressureEntropy: number;
+  powerShieldCount: number;
+  edgeguardAttempts: number;
+  edgeguardSuccessRate: number;
+  shieldPressureSequences: number;
+  shieldPressureAvgDamage: number;
+  shieldBreaks: number;
+  shieldPokeRate: number;
+  diSurvivalScore: number;
+  diComboScore: number;
+  diAvgComboLengthReceived: number;
+  diAvgComboLengthDealt: number;
+  // signature stats
+  signatureJson: string | null;
+  // coaching
+  coachingAnalyses: GameCoachingEntry[];
+}
+
+export interface GameCoachingEntry {
+  id: number;
+  modelUsed: string;
+  analysisText: string;
+  createdAt: string;
+  scope: string;
+  title: string | null;
+}
+
+export function getGameDetail(gameId: number): GameDetail | undefined {
+  const row = getDb().prepare(`
+    SELECT
+      g.id, g.replay_path as replayPath,
+      g.played_at as playedAt, g.stage,
+      g.duration_seconds as durationSeconds,
+      g.player_character as playerCharacter,
+      g.opponent_character as opponentCharacter,
+      g.player_tag as playerTag,
+      g.player_connect_code as playerConnectCode,
+      g.opponent_tag as opponentTag,
+      g.opponent_connect_code as opponentConnectCode,
+      g.result, g.end_method as endMethod,
+      g.player_final_stocks as playerFinalStocks,
+      g.player_final_percent as playerFinalPercent,
+      g.opponent_final_stocks as opponentFinalStocks,
+      g.opponent_final_percent as opponentFinalPercent,
+      gs.neutral_wins as neutralWins,
+      gs.neutral_losses as neutralLosses,
+      gs.neutral_win_rate as neutralWinRate,
+      gs.counter_hits as counterHits,
+      gs.openings_per_kill as openingsPerKill,
+      gs.total_openings as totalOpenings,
+      gs.total_conversions as totalConversions,
+      gs.conversion_rate as conversionRate,
+      gs.avg_damage_per_opening as avgDamagePerOpening,
+      gs.kill_conversions as killConversions,
+      gs.l_cancel_rate as lCancelRate,
+      gs.wavedash_count as wavedashCount,
+      gs.dash_dance_frames as dashDanceFrames,
+      gs.avg_stage_position_x as avgStagePositionX,
+      gs.time_on_platform as timeOnPlatform,
+      gs.time_in_air as timeInAir,
+      gs.time_at_ledge as timeAtLedge,
+      gs.total_damage_taken as totalDamageTaken,
+      gs.total_damage_dealt as totalDamageDealt,
+      gs.avg_death_percent as avgDeathPercent,
+      gs.recovery_attempts as recoveryAttempts,
+      gs.recovery_success_rate as recoverySuccessRate,
+      gs.ledge_entropy as ledgeEntropy,
+      gs.knockdown_entropy as knockdownEntropy,
+      gs.shield_pressure_entropy as shieldPressureEntropy,
+      gs.power_shield_count as powerShieldCount,
+      gs.edgeguard_attempts as edgeguardAttempts,
+      gs.edgeguard_success_rate as edgeguardSuccessRate,
+      gs.shield_pressure_sequences as shieldPressureSequences,
+      gs.shield_pressure_avg_damage as shieldPressureAvgDamage,
+      gs.shield_breaks as shieldBreaks,
+      gs.shield_poke_rate as shieldPokeRate,
+      gs.di_survival_score as diSurvivalScore,
+      gs.di_combo_score as diComboScore,
+      gs.di_avg_combo_length_received as diAvgComboLengthReceived,
+      gs.di_avg_combo_length_dealt as diAvgComboLengthDealt,
+      css.signature_json as signatureJson
+    FROM games g
+    JOIN game_stats gs ON gs.game_id = g.id
+    LEFT JOIN character_signature_stats css ON css.game_id = g.id
+    WHERE g.id = ?
+  `).get(gameId) as (Omit<GameDetail, "coachingAnalyses"> & { signatureJson: string | null }) | undefined;
+
+  if (!row) return undefined;
+
+  const analyses = getDb().prepare(`
+    SELECT id, model_used as modelUsed, analysis_text as analysisText,
+           created_at as createdAt, scope, title
+    FROM coaching_analyses
+    WHERE game_id = ?
+    ORDER BY created_at DESC
+  `).all(gameId) as GameCoachingEntry[];
+
+  return { ...row, coachingAnalyses: analyses };
 }
 
 /** Row shape returned by the deep insights SQL query */
@@ -1539,7 +1673,6 @@ export function getOpponentDetail(opponentKey: string): OpponentDetail | null {
 export function clearAllGames(): void {
   const db = getDb();
   db.exec(`
-    DELETE FROM practice_plans;
     DELETE FROM coaching_analyses;
     DELETE FROM highlights;
     DELETE FROM character_signature_stats;

@@ -10,6 +10,7 @@ import {
   getAnalysisHistory,
   getGameHighlights,
   getRecentHighlights,
+  getGameDetail,
 } from "../../db.js";
 import type { SafeHandleFn } from "../ipc.js";
 
@@ -32,6 +33,7 @@ export function registerStatsHandlers(safeHandle: SafeHandleFn): void {
     getAnalysisHistory(limit, offset, scopeFilter));
   safeHandle("stats:gameHighlights", (_e, gameId: number) => getGameHighlights(gameId));
   safeHandle("stats:recentHighlights", (_e, limit: number) => getRecentHighlights(limit));
+  safeHandle("stats:gameDetail", (_e, gameId: number) => getGameDetail(gameId));
   safeHandle("data:clearAll", () => {
     clearAllGames();
     return true;

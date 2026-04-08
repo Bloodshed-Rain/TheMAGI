@@ -1,0 +1,6 @@
+name = "magi-llm-proxy"
+main = "worker.ts"
+compatibility_date = "2024-12-01"
+
+# The OPENAI_API_KEY is set via `wrangler secret put OPENAI_API_KEY`
+# It never appears in this file or in version control.

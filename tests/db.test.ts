@@ -23,7 +23,6 @@ describe("database schema", () => {
       "games",
       "game_stats",
       "coaching_analyses",
-      "practice_plans",
       "character_signature_stats",
     ];
     for (const table of tables) {
@@ -50,7 +49,6 @@ describe("database schema", () => {
   it("has foreign key references", () => {
     expect(schema).toContain("REFERENCES sessions(id)");
     expect(schema).toContain("REFERENCES games(id)");
-    expect(schema).toContain("REFERENCES coaching_analyses(id)");
   });
 
   it("games table has all required columns", () => {

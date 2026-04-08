@@ -29,7 +29,9 @@ async function hashFileAsync(filePath: string): Promise<string> {
   return hash.digest("hex");
 }
 
-/** Build LLMConfig from user config + env vars */
+/** Build LLMConfig from user config + env vars.
+ *  OpenAI key is never read from user config — it lives server-side
+ *  behind the MAGI proxy (or in key.env for dev/CLI). */
 export function resolveLLMConfig(): LLMConfig {
   const config = loadConfig();
   return {
@@ -37,7 +39,7 @@ export function resolveLLMConfig(): LLMConfig {
     openrouterApiKey: config.openrouterApiKey ?? null,
     geminiApiKey: config.geminiApiKey ?? null,
     anthropicApiKey: config.anthropicApiKey ?? null,
-    openaiApiKey: config.openaiApiKey ?? null,
+    openaiApiKey: null,
     localEndpoint: config.localEndpoint ?? null,
   };
 }

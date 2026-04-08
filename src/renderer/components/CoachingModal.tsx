@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import { Compass, Play } from "lucide-react";
 import { CoachingCards } from "./CoachingCards";
 import {
   makeTimestampComponents,
@@ -85,9 +86,7 @@ export function CoachingModal({ isOpen, onClose, scope, id, title, preloadedText
         <header className="coaching-header">
           <div className="coaching-title-row">
             <div className="coaching-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.1 12.1"/><path d="M12 12L19 19"/><path d="M12 12V22"/>
-              </svg>
+              <Compass size={20} />
             </div>
             <div>
               <h2 className="coaching-heading">MAGI Coaching</h2>
@@ -140,9 +139,7 @@ export function CoachingModal({ isOpen, onClose, scope, id, title, preloadedText
                   setDolphinLoading(false);
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
+                <Play size={14} />
                 {dolphinLoading ? "Launching..." : "Watch Replay"}
               </button>
             )}

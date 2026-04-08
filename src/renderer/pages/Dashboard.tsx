@@ -1,7 +1,9 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Markdown from "react-markdown";
 import { AnimatePresence } from "framer-motion";
+import { ChevronUp, ChevronDown, Trophy, AlertTriangle, Map, User, Compass, MessageSquare } from "lucide-react";
 import { Onboarding } from "../components/Onboarding";
 import { CoachingModal } from "../components/CoachingModal";
 import { Tooltip } from "../components/Tooltip";
@@ -46,15 +48,11 @@ function TrendArrow({ delta, invert }: { delta: number; invert?: boolean }) {
 
   return improving ? (
     <span className="trend-arrow trend-up" title={`+${(Math.abs(delta) * 100).toFixed(1)}%`}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="18 15 12 9 6 15" />
-      </svg>
+      <ChevronUp size={12} strokeWidth={3} />
     </span>
   ) : (
     <span className="trend-arrow trend-down" title={`-${(Math.abs(delta) * 100).toFixed(1)}%`}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
+      <ChevronDown size={12} strokeWidth={3} />
     </span>
   );
 }
@@ -200,9 +198,7 @@ function RecentInsight({ games }: { games: RecentGame[] }) {
       <div className="card dash-insight-card">
         <div className="dash-insight-header">
           <div className="dash-insight-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="rgba(var(--accent-rgb), 0.15)" stroke="currentColor"/>
-            </svg>
+            <Compass size={18} />
           </div>
           <div>
             <div className="dash-insight-title">Recent Trend Analysis</div>
@@ -271,40 +267,17 @@ function CompactGameRow({ game, index, onClick }: { game: RecentGame; index: num
   );
 }
 
-// ── SVG Icons ────────────────────────────────────────────────────────
+// ── Icons ────────────────────────────────────────────────────────
 
-const TrophyIcon = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-    <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/>
-    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/>
-    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
-  </svg>
-);
-
-const AlertIcon = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-  </svg>
-);
-
-const MapIcon = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
-    <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
-  </svg>
-);
-
-const UserIcon = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-  </svg>
-);
+const TrophyIcon = <Trophy size={18} />;
+const AlertIcon = <AlertTriangle size={18} />;
+const MapIcon = <Map size={18} />;
+const UserIcon = <User size={18} />;
 
 // ── Main Dashboard ───────────────────────────────────────────────────
 
 export function Dashboard({ refreshKey }: { refreshKey: number }) {
+  const navigate = useNavigate();
   const { data: games = [], isLoading: loading, refetch } = useRecentGames(100);
   const { data: record, refetch: refetchRecord } = useOverallRecord();
   const { data: highlights, refetch: refetchHighlights } = useDashboardHighlights();
@@ -349,11 +322,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
     return (
       <div className="empty-state">
         <div className="empty-state-icon">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            <line x1="9" y1="8" x2="17" y2="8" />
-            <line x1="9" y1="12" x2="14" y2="12" />
-          </svg>
+          <MessageSquare size={64} strokeWidth={1.2} stroke="var(--accent)" />
         </div>
         <h2>No replays found</h2>
         <p>Go to Settings to configure your replay folder and import your games.</p>
@@ -512,11 +481,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
               key={game.id}
               game={game}
               index={index}
-              onClick={() => setCoaching({
-                id: game.id,
-                title: `${game.playerCharacter} vs ${game.opponentCharacter} — ${game.stage}`,
-                replayPath: game.replayPath,
-              })}
+              onClick={() => navigate(`/game/${game.id}`)}
             />
           ))}
           {!showAll && games.length > INITIAL_COUNT && (

@@ -2,6 +2,22 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Markdown, { type Components } from "react-markdown";
 import {
+  Eye,
+  ChevronsUp,
+  AlertTriangle,
+  Layers,
+  Infinity,
+  Zap,
+  Shield,
+  BarChart3,
+  CheckSquare,
+  Lightbulb,
+  FileText,
+  BookOpen,
+  CheckCircle,
+  type LucideIcon,
+} from "lucide-react";
+import {
   parseCoachingSections,
   SECTION_META,
   type CoachingSection,
@@ -10,24 +26,29 @@ import {
 
 // ── Section Icon ──────────────────────────────────────────────────────
 
+const SECTION_ICONS: Record<SectionType, LucideIcon> = {
+  overview: Eye,
+  highlights: ChevronsUp,
+  lowlights: AlertTriangle,
+  improvement: Layers,
+  neutral: Infinity,
+  punish: Zap,
+  defense: Shield,
+  "shield-pressure": Layers,
+  "set-analysis": BarChart3,
+  "practice-plan": CheckSquare,
+  wisdom: Lightbulb,
+  "executive-summary": FileText,
+  statistical: BarChart3,
+  strategy: BookOpen,
+  recommendations: CheckCircle,
+  generic: FileText,
+};
+
 function SectionIcon({ type, size = 16 }: { type: SectionType; size?: number }) {
   const meta = SECTION_META[type];
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ color: meta.color, flexShrink: 0 }}
-    >
-      <path d={meta.iconPath} />
-      {meta.iconPath2 && <path d={meta.iconPath2} />}
-    </svg>
-  );
+  const Icon = SECTION_ICONS[type];
+  return <Icon size={size} style={{ color: meta.color, flexShrink: 0 }} />;
 }
 
 // ── Single Card ───────────────────────────────────────────────────────

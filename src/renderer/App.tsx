@@ -1,13 +1,15 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, lazy, Suspense } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Dashboard } from "./pages/Dashboard";
-import { Sessions } from "./pages/Sessions";
-import { History } from "./pages/History";
-import { Trends } from "./pages/Trends";
-import { Profile } from "./pages/Profile";
-import { Settings } from "./pages/Settings";
-import { Characters } from "./pages/Characters";
+
+const Dashboard = lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
+const Sessions = lazy(() => import("./pages/Sessions").then(m => ({ default: m.Sessions })));
+const History = lazy(() => import("./pages/History").then(m => ({ default: m.History })));
+const Trends = lazy(() => import("./pages/Trends").then(m => ({ default: m.Trends })));
+const Profile = lazy(() => import("./pages/Profile").then(m => ({ default: m.Profile })));
+const Settings = lazy(() => import("./pages/Settings").then(m => ({ default: m.Settings })));
+const Characters = lazy(() => import("./pages/Characters").then(m => ({ default: m.Characters })));
+const GameDetail = lazy(() => import("./pages/GameDetail").then(m => ({ default: m.GameDetail })));
 import { applyTheme, getResolvedTheme, type ColorMode } from "./themes";
 import magiController from "./assets/magi-controller.png";
 import magiSword from "./assets/magi-sword.png";
@@ -106,16 +108,19 @@ export function App() {
             transition={pageTransition}
             style={{ width: "100%", height: "100%" }}
           >
-            <Routes location={location} key={location.pathname}>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard refreshKey={refreshKey} />} />
-              <Route path="/sessions" element={<Sessions refreshKey={refreshKey} />} />
-              <Route path="/history" element={<History refreshKey={refreshKey} />} />
-              <Route path="/trends" element={<Trends refreshKey={refreshKey} />} />
-              <Route path="/profile" element={<Profile refreshKey={refreshKey} />} />
-              <Route path="/characters" element={<Characters refreshKey={refreshKey} />} />
-              <Route path="/settings" element={<Settings onImport={triggerRefresh} />} />
-            </Routes>
+            <Suspense fallback={<div className="page-loading"><div className="spinner" /></div>}>
+              <Routes location={location} key={location.pathname}>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard refreshKey={refreshKey} />} />
+                <Route path="/sessions" element={<Sessions refreshKey={refreshKey} />} />
+                <Route path="/history" element={<History refreshKey={refreshKey} />} />
+                <Route path="/trends" element={<Trends refreshKey={refreshKey} />} />
+                <Route path="/profile" element={<Profile refreshKey={refreshKey} />} />
+                <Route path="/characters" element={<Characters refreshKey={refreshKey} />} />
+                <Route path="/settings" element={<Settings onImport={triggerRefresh} />} />
+                <Route path="/game/:gameId" element={<GameDetail refreshKey={refreshKey} />} />
+              </Routes>
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>

@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { PieChart, Layers } from "lucide-react";
 import {
   useSets,
   useOpponents,
@@ -124,10 +126,12 @@ function OpponentDetailPanel({
   detail,
   onClose,
   onTriggerCoaching,
+  onViewGame,
 }: {
   detail: OpponentDetail;
   onClose: () => void;
   onTriggerCoaching: (scope: "game" | "session" | "character" | "stage" | "opponent", id: string | number, title: string, replayPath?: string) => void;
+  onViewGame: (gameId: number) => void;
 }) {
   const winPct = detail.winRate * 100;
   const recordColor = winPct >= 60 ? "var(--green)" : winPct >= 45 ? "var(--yellow)" : "var(--red)";
@@ -235,14 +239,14 @@ function OpponentDetailPanel({
                 <th><Tooltip text="Neutral win rate — how often you win the first hit in an exchange. Above 50% means you're winning neutral." position="bottom"><span>Neut.</span></Tooltip></th>
                 <th><Tooltip text="Openings per kill — how many neutral wins it takes you to get a stock. Lower is better (3-4 is strong)." position="bottom"><span>Op/K</span></Tooltip></th>
                 <th><Tooltip text="Edgeguard success rate — how often your offstage attempts result in a stock taken." position="bottom"><span>Edge.</span></Tooltip></th>
-                <th>Coaching</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {detail.games.map(g => {
                 const badge = g.result === "win" ? "W" as const : g.result === "loss" ? "L" as const : "T" as const;
                 return (
-                  <tr key={g.id}>
+                  <tr key={g.id} className="clickable-row" onClick={() => onViewGame(g.id)}>
                     <td className="mono-cell">
                       {formatGameDate(g.playedAt)}
                     </td>
@@ -275,14 +279,12 @@ function OpponentDetailPanel({
                       {(g.edgeguardSuccessRate * 100).toFixed(0)}%
                     </td>
                     <td>
-                      <button 
-                        className="btn btn-icon-small" 
+                      <button
+                        className="btn btn-icon-small"
                         title="Get AI Coaching for this game"
-                        onClick={() => onTriggerCoaching("game", g.id, `Game vs ${detail.opponentTag} on ${g.stage}`, g.replayPath)}
+                        onClick={(e) => { e.stopPropagation(); onTriggerCoaching("game", g.id, `Game vs ${detail.opponentTag} on ${g.stage}`, g.replayPath); }}
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.1 12.1"/><path d="M12 12L19 19"/><path d="M12 12V22"/>
-                        </svg>
+                        <PieChart size={12} />
                       </button>
                     </td>
                   </tr>
@@ -298,11 +300,7 @@ function OpponentDetailPanel({
             className="btn btn-primary"
             onClick={() => onTriggerCoaching("opponent", detail.opponentConnectCode || detail.opponentTag, `Head-to-Head: ${detail.opponentTag}`)}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}>
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
+            <Layers size={14} style={{ marginRight: 8 }} />
             Request Full Matchup Analysis
           </button>
         </div>
@@ -312,6 +310,7 @@ function OpponentDetailPanel({
 }
 
 export function Sessions({ refreshKey }: { refreshKey: number }) {
+  const navigate = useNavigate();
   const [view, setView] = useState<View>("sets");
   const [opponentSearch, setOpponentSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -512,9 +511,7 @@ export function Sessions({ refreshKey }: { refreshKey: number }) {
                               });
                             }}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.1 12.1"/><path d="M12 12L19 19"/><path d="M12 12V22"/>
-                            </svg>
+                            <PieChart size={12} />
                           </button>
                         </td>
                       </tr>
@@ -646,6 +643,7 @@ export function Sessions({ refreshKey }: { refreshKey: number }) {
                       detail={opponentDetail}
                       onClose={() => { setExpandedOpponent(null); }}
                       onTriggerCoaching={handleTriggerCoaching}
+                      onViewGame={(gameId) => navigate(`/game/${gameId}`)}
                     />
                   )}
                   {!detailLoading && !opponentDetail && (

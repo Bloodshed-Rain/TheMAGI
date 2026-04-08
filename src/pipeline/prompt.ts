@@ -144,7 +144,19 @@ CHARACTER-SPECIFIC SIGNATURE STATS:
 
 The data includes a "signatureStats" field on each player with character-specific
 metrics. Use these to evaluate how well the player is executing their character's
-core techniques. Key stats by character:
+core techniques.
+
+IMPORTANT CAVEAT: Signature stats are approximations derived from conversion move
+sequences in the replay data — NOT frame-perfect detections. For example, Marth
+"fsmashKills" counts all forward-smash kills as a proxy for tipper kills, since
+replay data cannot distinguish tipper from sourspot. Similarly, "waveshines" are
+inferred from shine→wavedash move sequences, not from frame-data analysis. When
+referencing these stats, present them as useful indicators rather than exact counts,
+and avoid over-indexing on small numbers. If a stat seems surprisingly high or low,
+consider that the heuristic may be imprecise rather than assuming the player
+definitively did or didn't perform the technique.
+
+Key stats by character:
 
 Fox: waveshines (multi-shine combos), waveshineToUpsmash, upthrowUpairs/Kills,
   drillShines, shineSpikeKills. High waveshines + upthrowUpairKills = strong Fox

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { THEMES, THEME_ORDER, applyTheme, getResolvedTheme, type ColorMode } from "../themes";
 import { useGlobalStore } from "../stores/useGlobalStore";
 
+/** Config as returned by the main process — API keys are redacted to booleans */
 interface Config {
   targetPlayer: string | null;
   connectCode: string | null;
@@ -9,13 +10,19 @@ interface Config {
   dolphinPath: string | null;
   meleeIsoPath: string | null;
   llmModelId: string | null;
-  openrouterApiKey: string | null;
-  geminiApiKey: string | null;
-  anthropicApiKey: string | null;
-  openaiApiKey: string | null;
+  openrouterApiKey: true | null;
+  geminiApiKey: true | null;
+  anthropicApiKey: true | null;
   localEndpoint: string | null;
   theme: string | null;
   colorMode: string | null;
+}
+
+/** Tracks new key values the user has typed (write-only — never populated from main) */
+interface KeyEdits {
+  openrouterApiKey: string;
+  geminiApiKey: string;
+  anthropicApiKey: string;
 }
 
 interface FetchedModel {
@@ -33,14 +40,14 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 const STATIC_MODELS: FetchedModel[] = [
+  { id: "gpt-4o-mini", label: "GPT-4o Mini (default)", provider: "openai" },
   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "gemini" },
   { id: "deepseek/deepseek-chat", label: "DeepSeek V3", provider: "openrouter" },
-  { id: "gpt-4o", label: "GPT-4o", provider: "openai" },
   { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4", provider: "anthropic" },
   { id: "local", label: "Local Model (Ollama / LM Studio)", provider: "local" },
 ];
 
-const DEFAULT_MODEL_ID = "gemini-2.5-flash";
+const DEFAULT_MODEL_ID = "gpt-4o-mini";
 
 // ── Component ────────────────────────────────────────────────────────
 
@@ -64,13 +71,17 @@ export function Settings({ onImport }: SettingsProps) {
     openrouterApiKey: null,
     geminiApiKey: null,
     anthropicApiKey: null,
-    openaiApiKey: null,
     localEndpoint: null,
     theme: null,
     colorMode: null,
   });
+  // Write-only key inputs — never populated from main process
+  const [keyEdits, setKeyEdits] = useState<KeyEdits>({
+    openrouterApiKey: "",
+    geminiApiKey: "",
+    anthropicApiKey: "",
+  });
   const [saved, setSaved] = useState(false);
-  const [showKeys, setShowKeys] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [importErrors, setImportErrors] = useState<{ filePath: string; error: string }[]>([]);
@@ -155,20 +166,29 @@ export function Settings({ onImport }: SettingsProps) {
     setColorMode(mode);
     setConfig((prev) => ({ ...prev, colorMode: mode }));
     applyTheme(getResolvedTheme(mode, mode));
-    window.clippi.loadConfig().then((c: any) => {
-      window.clippi.saveConfig({ ...c, colorMode: mode });
-    });
+    // Only save the colorMode field — don't re-send the full config (keys are redacted)
+    window.clippi.saveConfig({ colorMode: mode });
   }, [setColorMode]);
 
   const handleSave = useCallback(async () => {
     try {
-      await window.clippi.saveConfig(config);
+      // Build save payload: non-secret fields from config + only non-empty key edits
+      const payload: Record<string, unknown> = { ...config };
+      // Remove boolean key placeholders — never send true back to main
+      delete payload.openrouterApiKey;
+      delete payload.geminiApiKey;
+      delete payload.anthropicApiKey;
+      // Only include keys the user actually typed
+      if (keyEdits.openrouterApiKey) payload.openrouterApiKey = keyEdits.openrouterApiKey;
+      if (keyEdits.geminiApiKey) payload.geminiApiKey = keyEdits.geminiApiKey;
+      if (keyEdits.anthropicApiKey) payload.anthropicApiKey = keyEdits.anthropicApiKey;
+      await window.clippi.saveConfig(payload);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: unknown) {
       setImportStatus(`Error saving: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, [config]);
+  }, [config, keyEdits]);
 
   const handleBrowse = async () => {
     const folder = await window.clippi.openFolder();
@@ -471,50 +491,36 @@ export function Settings({ onImport }: SettingsProps) {
 
       {/* API Keys */}
       <div className="card">
-        <div className="card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          API Keys
-          <button
-            className="btn"
-            style={{ fontSize: 11, padding: "2px 8px" }}
-            onClick={() => setShowKeys((v) => !v)}
-          >
-            {showKeys ? "Hide" : "Show"}
-          </button>
-        </div>
+        <div className="card-title">API Keys</div>
+        <p style={{ color: "var(--text-dim)", fontSize: 11, margin: "0 0 8px", fontFamily: "var(--font-mono)" }}>
+          OpenAI (GPT-4o Mini) is provided by MAGI — no key needed.
+          Add keys below to use other providers.
+        </p>
         <div className="settings-field">
-          <label>OpenRouter API Key</label>
+          <label>OpenRouter API Key {config.openrouterApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}</label>
           <input
-            type={showKeys ? "text" : "password"}
-            value={config.openrouterApiKey ?? ""}
-            onChange={(e) => setConfig({ ...config, openrouterApiKey: e.target.value || null })}
-            placeholder="sk-or-..."
+            type="password"
+            value={keyEdits.openrouterApiKey}
+            onChange={(e) => setKeyEdits({ ...keyEdits, openrouterApiKey: e.target.value })}
+            placeholder={config.openrouterApiKey ? "Enter new key to replace" : "sk-or-..."}
           />
         </div>
         <div className="settings-field">
-          <label>Gemini API Key</label>
+          <label>Gemini API Key {config.geminiApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}</label>
           <input
-            type={showKeys ? "text" : "password"}
-            value={config.geminiApiKey ?? ""}
-            onChange={(e) => setConfig({ ...config, geminiApiKey: e.target.value || null })}
-            placeholder="AI..."
+            type="password"
+            value={keyEdits.geminiApiKey}
+            onChange={(e) => setKeyEdits({ ...keyEdits, geminiApiKey: e.target.value })}
+            placeholder={config.geminiApiKey ? "Enter new key to replace" : "AI..."}
           />
         </div>
         <div className="settings-field">
-          <label>Anthropic API Key</label>
+          <label>Anthropic API Key {config.anthropicApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}</label>
           <input
-            type={showKeys ? "text" : "password"}
-            value={config.anthropicApiKey ?? ""}
-            onChange={(e) => setConfig({ ...config, anthropicApiKey: e.target.value || null })}
-            placeholder="sk-ant-..."
-          />
-        </div>
-        <div className="settings-field">
-          <label>OpenAI API Key</label>
-          <input
-            type={showKeys ? "text" : "password"}
-            value={config.openaiApiKey ?? ""}
-            onChange={(e) => setConfig({ ...config, openaiApiKey: e.target.value || null })}
-            placeholder="sk-..."
+            type="password"
+            value={keyEdits.anthropicApiKey}
+            onChange={(e) => setKeyEdits({ ...keyEdits, anthropicApiKey: e.target.value })}
+            placeholder={config.anthropicApiKey ? "Enter new key to replace" : "sk-ant-..."}
           />
         </div>
         <div className="settings-field">

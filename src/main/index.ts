@@ -2,10 +2,9 @@ import { app, BrowserWindow } from "electron";
 import * as path from "path";
 import * as fs from "fs";
 
-// Load key.env from app resources (production) or project root (dev)
+// Load key.env from project root (dev only — production keys live on the proxy server)
 function loadEnvFile(): void {
   const candidates = [
-    path.join(process.resourcesPath ?? "", "key.env"),   // production
     path.join(__dirname, "../../key.env"),                 // dev
   ];
   for (const envPath of candidates) {

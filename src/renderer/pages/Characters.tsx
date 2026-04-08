@@ -12,28 +12,28 @@ import {
 import { Tooltip } from "../components/Tooltip";
 import { CoachingModal } from "../components/CoachingModal";
 
-// Character card art imports (MAGI-branded cards)
-import foxCard from "../assets/characters/fox.jpg";
-import falcoCard from "../assets/characters/falco.jpg";
-import marthCard from "../assets/characters/marth.jpg";
-import sheikCard from "../assets/characters/sheik.jpg";
-import falconCard from "../assets/characters/falcon.jpg";
-import peachCard from "../assets/characters/peach.jpg";
-import puffCard from "../assets/characters/puff.jpg";
-import samusCard from "../assets/characters/samus.jpg";
-import pikachuCard from "../assets/characters/pikachu.jpg";
+// ── Character card art (dynamic, falls back to emoji) ────────────────
 
-const CHARACTER_CARDS: Record<string, string> = {
-  Fox: foxCard,
-  Falco: falcoCard,
-  Marth: marthCard,
-  Sheik: sheikCard,
-  Falcon: falconCard,
-  Peach: peachCard,
-  Puff: puffCard,
-  Samus: samusCard,
-  Pikachu: pikachuCard,
+const CHARACTER_IMAGE_NAMES: Record<string, string> = {
+  Marth: "marth.png",
+  Peach: "peach.png",
 };
+
+function CharacterCardImage({ character }: { character: string }) {
+  const [error, setError] = useState(false);
+  const filename = CHARACTER_IMAGE_NAMES[character];
+  if (!filename || error) return null;
+  const src = new URL(`../assets/characters/${filename}`, import.meta.url).href;
+  return (
+    <img
+      src={src}
+      alt=""
+      className="char-card-bg-img"
+      onError={() => setError(true)}
+      draggable={false}
+    />
+  );
+}
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -372,7 +372,7 @@ export function Characters({ refreshKey }: { refreshKey: number }) {
           {characters.map((c, index) => {
             const cm = getMeta(c.character);
             const wr = (c.winRate * 100).toFixed(0);
-            const cardImg = CHARACTER_CARDS[c.character];
+            const hasArt = c.character in CHARACTER_IMAGE_NAMES;
 
             return (
               <motion.div
@@ -381,41 +381,31 @@ export function Characters({ refreshKey }: { refreshKey: number }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               >
-                {cardImg ? (
                   <button
-                    className="char-card char-card-art"
+                    className={`char-card${hasArt ? " char-card-has-art" : ""}`}
                     onClick={() => setSelected(c.character)}
                     style={{
                       "--char-color": cm.color,
                       "--char-glow": cm.glowColor,
                     } as React.CSSProperties}
                   >
-                    <img src={cardImg} alt={c.character} className="char-card-art-img" />
-                  </button>
-                ) : (
-                  <button
-                    className="char-card"
-                    onClick={() => setSelected(c.character)}
-                    style={{
-                      "--char-color": cm.color,
-                      "--char-glow": cm.glowColor,
-                    } as React.CSSProperties}
-                  >
-                    <div className="char-card-emoji">{cm.emoji}</div>
-                    <div className="char-card-name">{c.character}</div>
-                    <div className="char-card-record">
-                      <span className="record-win">{c.wins}W</span>
-                      {" - "}
-                      <span className="record-loss">{c.losses}L</span>
-                    </div>
-                    <div className="char-card-games">{c.gamesPlayed} games &middot; {wr}%</div>
-                    <div className="char-card-baseline">
-                      <Tooltip text="Neutral win rate" position="top"><span className="char-card-baseline-stat">{pct(c.avgNeutralWinRate)} NW</span></Tooltip>
-                      <Tooltip text="Conversion rate" position="top"><span className="char-card-baseline-stat">{pct(c.avgConversionRate)} CV</span></Tooltip>
-                      <Tooltip text="L-cancel rate" position="top"><span className="char-card-baseline-stat">{pct(c.avgLCancelRate)} LC</span></Tooltip>
+                    <CharacterCardImage character={c.character} />
+                    {!hasArt && <div className="char-card-emoji">{cm.emoji}</div>}
+                    <div className="char-card-content">
+                      <div className="char-card-name">{c.character}</div>
+                      <div className="char-card-record">
+                        <span className="record-win">{c.wins}W</span>
+                        {" - "}
+                        <span className="record-loss">{c.losses}L</span>
+                      </div>
+                      <div className="char-card-games">{c.gamesPlayed} games &middot; {wr}%</div>
+                      <div className="char-card-baseline">
+                        <Tooltip text="Neutral win rate" position="top"><span className="char-card-baseline-stat">{pct(c.avgNeutralWinRate)} NW</span></Tooltip>
+                        <Tooltip text="Conversion rate" position="top"><span className="char-card-baseline-stat">{pct(c.avgConversionRate)} CV</span></Tooltip>
+                        <Tooltip text="L-cancel rate" position="top"><span className="char-card-baseline-stat">{pct(c.avgLCancelRate)} LC</span></Tooltip>
+                      </div>
                     </div>
                   </button>
-                )}
               </motion.div>
             );
           })}

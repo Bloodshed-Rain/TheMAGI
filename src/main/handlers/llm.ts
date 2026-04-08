@@ -101,7 +101,6 @@ export function registerLlmHandlers(safeHandle: SafeHandleFn): void {
     const openrouterKey = config.openrouterApiKey || process.env.OPENROUTER_API_KEY;
     const geminiKey = config.geminiApiKey || process.env.GEMINI_API_KEY;
     const anthropicKey = config.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
-    const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
 
     const fetches: Promise<FetchedModel[]>[] = [];
     const providers: ProviderId[] = [];
@@ -118,16 +117,17 @@ export function registerLlmHandlers(safeHandle: SafeHandleFn): void {
       fetches.push(fetchAnthropicModels(anthropicKey));
       providers.push("anthropic");
     }
-    if (openaiKey) {
-      fetches.push(fetchOpenAIModels(openaiKey));
-      providers.push("openai");
-    }
 
     const results = await Promise.all(fetches);
     const byProvider: Record<string, FetchedModel[]> = {};
     for (let i = 0; i < providers.length; i++) {
       byProvider[providers[i]!] = results[i]!;
     }
+
+    // OpenAI models are always available via the MAGI proxy — no key needed
+    byProvider["openai"] = [
+      { id: "gpt-4o-mini", label: "GPT-4o Mini (default)", provider: "openai" },
+    ];
 
     // Always include local option
     byProvider["local"] = [{ id: "local", label: "Local Model (Ollama / LM Studio)", provider: "local" }];

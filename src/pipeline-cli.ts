@@ -168,7 +168,7 @@ async function main() {
     openrouterApiKey: userConfig.openrouterApiKey,
     geminiApiKey: userConfig.geminiApiKey,
     anthropicApiKey: userConfig.anthropicApiKey,
-    openaiApiKey: userConfig.openaiApiKey,
+    openaiApiKey: null,
     localEndpoint: userConfig.localEndpoint,
   };
 
