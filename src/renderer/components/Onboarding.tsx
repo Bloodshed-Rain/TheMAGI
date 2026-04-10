@@ -700,6 +700,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
               <motion.div key="step-3" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={stepTransition} style={styles.panelContent}>
                 <div style={styles.stepTag}>Step 4 of 5</div>
                 <h2 style={styles.heading}>{importDone ? "Import Complete" : "Importing..."}</h2>
+                {importing && <p style={{ fontSize: 13, color: "var(--text-dim)", margin: "0 0 8px" }}>Large replay folders may take a few minutes to process.</p>}
                 <div style={styles.importStatus}>
                   {importing && (
                     <>

@@ -148,7 +148,7 @@ export default {
     }
 
     // Restrict to allowed models
-    const ALLOWED_MODELS = ["gpt-4o-mini", "gpt-4o-mini-2024-07-18"];
+    const ALLOWED_MODELS = ["gpt-4o-mini", "gpt-4o-mini-2024-07-18", "gpt-4o", "gpt-4o-2024-08-06"];
     const model = String(body.model);
     if (!ALLOWED_MODELS.includes(model)) {
       return jsonResponse(

@@ -334,6 +334,9 @@ export function Settings({ onImport }: SettingsProps) {
             {watching ? "Stop Watching" : "Watch for New Games"}
           </button>
         </div>
+        {importing && (
+          <p style={{ fontSize: 12, color: "var(--text-dim)", margin: "6px 0 0" }}>Large replay folders may take a few minutes to process.</p>
+        )}
         {importProgress && importing && (
           <div style={{ marginTop: 8 }}>
             <div className="progress-track">

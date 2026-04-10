@@ -887,7 +887,7 @@ async function resolveOpenAIEndpoint(
   config: LLMConfig,
   body: string,
 ): Promise<{ url: string; headers: Record<string, string> }> {
-  if (MAGI_PROXY_URL) {
+  if (MAGI_PROXY_URL && HMAC_SECRET) {
     const { timestamp, signature } = await signRequest(body);
     return {
       url: MAGI_PROXY_URL,
