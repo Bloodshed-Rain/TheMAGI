@@ -22,7 +22,7 @@ Import your `.slp` files, get personalized coaching analysis from an LLM, track 
 
 **Scout your rivals.** The Opponent Rivalry Dossier gives you a deep dive into any opponent: head-to-head record, stage and character breakdowns, and AI-generated matchup analysis.
 
-**No setup required.** Download a release, open the app, import replays, get coached. AI coaching is powered by GPT-4o Mini and works immediately — no API key needed.
+**No setup required.** Download a release, open the app, import replays, get coached. AI coaching is powered by GPT-4o and works immediately — no API key needed.
 
 ## Features
 
@@ -36,7 +36,7 @@ Import your `.slp` files, get personalized coaching analysis from an LLM, track 
 - **Player history context** — coaching references your historical trends, improvement areas, and recurring habits
 - **Best Moments / Worst Misplays** — coaching highlights your cleanest plays and costliest mistakes with clickable timestamps
 - **Dynamic model selection** — Settings dropdown fetches live model lists from all configured providers (Gemini, OpenRouter, Anthropic, OpenAI) with custom model ID support
-- **Multi-LLM provider** — GPT-4o Mini (default, no key needed), OpenRouter (100+ models), Gemini, Anthropic, DeepSeek, or local via Ollama/LM Studio
+- **Multi-LLM provider** — GPT-4o (default, no key needed), OpenRouter (100+ models), Gemini, Anthropic, DeepSeek, or local via Ollama/LM Studio
 - **Analysis caching** — coaching results stored in the database; clicking the same game twice costs $0
 - **Queue management** — LLM calls processed sequentially with queue position feedback, 429 rate-limit handling, and exponential backoff
 - **MAGI trend commentary** — AI personality that reacts to your trajectory with blunt, witty feedback
@@ -113,7 +113,7 @@ Download the latest release for your platform from the [Releases](https://github
 3. Browse to your Slippi replay folder
 4. Import your replays and start getting coached
 
-AI coaching works immediately — no API key needed. MAGI ships with GPT-4o Mini powered coaching out of the box. To use a different LLM provider, go to **Settings** and add your own API key for OpenRouter, Gemini, Anthropic, or a local model.
+AI coaching works immediately — no API key needed. MAGI ships with GPT-4o powered coaching out of the box. To use a different LLM provider, go to **Settings** and add your own API key for OpenRouter, Gemini, Anthropic, or a local model.
 
 ## Development
 
@@ -137,7 +137,7 @@ npm run format       # Prettier
 
 Platform-specific builds: `npm run build:linux`, `build:win`, `build:mac`
 
-> **Note:** AI coaching works out of the box via the MAGI proxy (GPT-4o Mini). For dev mode with other providers, create a `key.env` file in the project root:
+> **Note:** AI coaching works out of the box via the MAGI proxy (GPT-4o). For dev mode with other providers, create a `key.env` file in the project root:
 > ```
 > GEMINI_API_KEY=your-key-here
 > ```
@@ -163,7 +163,7 @@ npx tsx src/watcher.ts /path/to/replays --target YourTag
     |
     +--> [SQLite] --> persistent stats, trends, opponent history
     |
-    +--> [LLM Queue] --> streaming API calls (GPT-4o Mini via proxy / Gemini / OpenRouter / Claude / local)
+    +--> [LLM Queue] --> streaming API calls (GPT-4o via proxy / Gemini / OpenRouter / Claude / local)
               |
               v
           [Coaching Analysis] --> cached in DB, streamed as markdown
@@ -205,7 +205,7 @@ Key modules:
 
 ## Cost
 
-Free. AI coaching is provided at no cost to users — the default GPT-4o Mini model is hosted via a rate-limited proxy. Bring-your-own-key and local LLM models will always be supported.
+Free. AI coaching is provided at no cost to users — the default GPT-4o model is hosted via a rate-limited proxy. Bring-your-own-key and local LLM models will always be supported.
 
 ## License
 

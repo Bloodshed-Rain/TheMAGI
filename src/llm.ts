@@ -107,7 +107,7 @@ export const MODELS: ModelOption[] = [
   },
 ];
 
-export const DEFAULT_MODEL_ID = "gpt-4o-mini";
+export const DEFAULT_MODEL_ID = "gpt-4o";
 
 /**
  * Proxy URL for bundled OpenAI access.
