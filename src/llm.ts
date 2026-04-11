@@ -887,7 +887,13 @@ async function resolveOpenAIEndpoint(
   config: LLMConfig,
   body: string,
 ): Promise<{ url: string; headers: Record<string, string> }> {
-  if (MAGI_PROXY_URL && HMAC_SECRET) {
+  if (MAGI_PROXY_URL) {
+    if (!HMAC_SECRET) {
+      throw new Error(
+        "MAGI proxy is configured but the signing key is missing (build.env not bundled). " +
+        "Please reinstall MAGI from an official release, or add your own API key in Settings.",
+      );
+    }
     const { timestamp, signature } = await signRequest(body);
     return {
       url: MAGI_PROXY_URL,
