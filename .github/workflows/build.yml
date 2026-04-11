@@ -39,6 +39,9 @@ jobs:
       - name: Create key.env
         run: echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > key.env
 
+      - name: Create build.env (HMAC secret for proxy signing)
+        run: echo "MAGI_HMAC_SECRET=${{ secrets.MAGI_HMAC_SECRET }}" > build.env
+
       - name: Compile main process
         run: npx tsc -p tsconfig.main.json
 
