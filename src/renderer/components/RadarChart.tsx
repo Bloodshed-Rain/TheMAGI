@@ -8,16 +8,79 @@ import { computeRadarForPeriod } from "../radarStats";
 
 // ── Axis labels ──────────────────────────────────────────────────────
 
-const AXES: { key: keyof RadarStats; label: string }[] = [
-  { key: "neutral", label: "Neutral" },
-  { key: "punish", label: "Punish" },
-  { key: "techSkill", label: "Tech Skill" },
-  { key: "mixups", label: "Mixups" },
-  { key: "edgeguard", label: "Edgeguard" },
-  { key: "diQuality", label: "DI Quality" },
-  { key: "defense", label: "Defense" },
-  { key: "consistency", label: "Consistency" },
+const AXES: { key: keyof RadarStats; label: string; description: string }[] = [
+  {
+    key: "neutral",
+    label: "Neutral",
+    description:
+      "Neutral — winning the first hit. To improve: stop throwing out moves at max range hoping to catch something. Watch your opponent's habits for 10 seconds before committing. Use dash-dance and empty short-hops to bait, then punish the option they show you. Losing neutral usually means you're approaching predictably or autopiloting the same aerial.",
+  },
+  {
+    key: "punish",
+    label: "Punish",
+    description:
+      "Punish — converting openings into stocks. To improve: finish your combos instead of resetting to neutral. After the first hit, react to their DI before picking the next move. Learn two kill confirms for your character at mid percent (e.g. uthrow→uair, grab→dthrow→knee) and drill them until they're automatic. High openings-per-kill = you're winning neutral but dropping punishes.",
+  },
+  {
+    key: "techSkill",
+    label: "Tech Skill",
+    description:
+      "Tech Skill — execution. To improve: L-cancel EVERY aerial in training mode for 10 minutes a day until it's muscle memory (target 90%+). Practice wavedash out of shield and ledgedash on a 20XX setup. Shield-drop through platforms instead of rolling off. Tech skill gates everything else — sloppy execution caps your punish game.",
+  },
+  {
+    key: "mixups",
+    label: "Mixups",
+    description:
+      "Mixups — being unpredictable. To improve: vary your approach — not just dash-attack every time. Mix empty land → grab, crossup aerial, and retreat fair. On ledge, alternate between tournament-winner (ledgedash), rolling, jumping, and getup attack. If your opponent reads you, change ONE option — they'll guess wrong for a while.",
+  },
+  {
+    key: "edgeguard",
+    label: "Edgeguard",
+    description:
+      "Edgeguard — killing them offstage. To improve: COMMIT. Most failed edgeguards are from staying onstage and throwing a lazy fair. Hop offstage with a bair/dair and actually take the risk. Learn your character's gimp tools (Marth's dtilt, Fox's bair, Falco's dair). Going offstage and dying is still better than letting them back for free — that's data for next time.",
+  },
+  {
+    key: "diQuality",
+    label: "DI Quality",
+    description:
+      "DI Quality — surviving hits. To improve: DI away and up on horizontal kill moves (fsmash, bair), DI into the stage on spikes. For combos, survival DI (full away) breaks follow-ups at higher percents. The biggest gain: stop holding the same direction every hit — watch the attacker's angle and DI perpendicular to the knockback vector.",
+  },
+  {
+    key: "defense",
+    label: "Defense",
+    description:
+      "Defense — not getting hit. To improve: stop rolling behind shield, opponents are reading it. Use wavedash out of shield, shield-grab, or up-B OoS instead. Power-shield projectiles on reaction (hold shield tap, don't mash). When getting pressured, spot-dodge out once then reset spacing — don't try to outlast infinite shield pressure.",
+  },
+  {
+    key: "consistency",
+    label: "Consistency",
+    description:
+      "Consistency — performing the same across games. To improve: warm up before ranked/tournament sets — 5 minutes of tech skill drills and a friendly. High variance usually means you tilt after losses or overadjust after one read. Reset between games: take a breath, identify ONE thing to change, then play your game. Don't try to fix everything at once.",
+  },
 ];
+
+// Custom axis tick renders an SVG <title> for a native browser tooltip on hover
+function RadarAxisTick(props: any) {
+  const { x, y, payload, textAnchor } = props;
+  const axis = AXES.find((a) => a.label === payload.value);
+  return (
+    <g transform={`translate(${x},${y})`} style={{ cursor: axis ? "help" : "default" }}>
+      {axis && <title>{`${axis.label}: ${axis.description}`}</title>}
+      <text
+        x={0}
+        y={0}
+        dy={4}
+        textAnchor={textAnchor}
+        fill="var(--text-dim)"
+        fontSize={10}
+        fontWeight={600}
+        fontFamily="var(--font-mono)"
+      >
+        {payload.value}
+      </text>
+    </g>
+  );
+}
 
 // ── Period definitions ───────────────────────────────────────────────
 
@@ -85,7 +148,7 @@ export function PlayerRadar({ stats, games, hideComparison }: RadarProps) {
     return computeRadarForPeriod(games, dates.previous, dates.current);
   }, [period, games]);
 
-  const data = AXES.map(({ key, label }) => ({
+  const data = AXES.map(({ key, label }: { key: keyof RadarStats; label: string }) => ({
     axis: label,
     current: stats[key],
     ...(comparison ? { previous: comparison[key] } : {}),
@@ -104,7 +167,7 @@ export function PlayerRadar({ stats, games, hideComparison }: RadarProps) {
           />
           <PolarAngleAxis
             dataKey="axis"
-            tick={{ fill: "var(--text-dim)", fontSize: 10, fontWeight: 600, fontFamily: "var(--font-mono)" } as any}
+            tick={RadarAxisTick as any}
           />
           <PolarRadiusAxis
             angle={90}

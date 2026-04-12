@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import magiLogo from "../assets/magi-controller.png";
-import { useGlobalStore } from "../stores/useGlobalStore";
-import { ColorMode, THEMES, applyTheme } from "../themes";
 
 /* ═══════════════════════════════════════════════════════════════════
    ONBOARDING — Setup wizard
@@ -15,14 +13,13 @@ interface OnboardingProps {
   onSkip: () => void;
 }
 
-type Step = 0 | 1 | 2 | 3 | 4;
+type Step = 0 | 1 | 2 | 3;
 
 const STEP_LABELS: string[] = [
   "Welcome",
   "Player",
   "Replays",
   "Import",
-  "Theme",
 ];
 
 const STEP_DESCRIPTIONS: string[] = [
@@ -30,36 +27,6 @@ const STEP_DESCRIPTIONS: string[] = [
   "Your identity",
   "Replay folder",
   "Import games",
-  "Personalize",
-];
-
-const CHARACTERS = [
-  { id: "char-drmario", name: "Dr. Mario" },
-  { id: "char-mario", name: "Mario" },
-  { id: "char-luigi", name: "Luigi" },
-  { id: "char-bowser", name: "Bowser" },
-  { id: "char-peach", name: "Peach" },
-  { id: "char-yoshi", name: "Yoshi" },
-  { id: "char-dk", name: "Donkey Kong" },
-  { id: "char-falcon", name: "Captain Falcon" },
-  { id: "char-ganon", name: "Ganondorf" },
-  { id: "char-falco", name: "Falco" },
-  { id: "char-fox", name: "Fox" },
-  { id: "char-ness", name: "Ness" },
-  { id: "char-ics", name: "Ice Climbers" },
-  { id: "char-kirby", name: "Kirby" },
-  { id: "char-samus", name: "Samus" },
-  { id: "char-zelda", name: "Zelda" },
-  { id: "char-sheik", name: "Sheik" },
-  { id: "char-link", name: "Link" },
-  { id: "char-ylink", name: "Young Link" },
-  { id: "char-pichu", name: "Pichu" },
-  { id: "char-pikachu", name: "Pikachu" },
-  { id: "char-puff", name: "Jigglypuff" },
-  { id: "char-mewtwo", name: "Mewtwo" },
-  { id: "char-gnw", name: "Mr. G&W" },
-  { id: "char-marth", name: "Marth" },
-  { id: "char-roy", name: "Roy" },
 ];
 
 // ── Shared animation config ──────────────────────────────────────
@@ -381,61 +348,6 @@ const styles = {
     color: "var(--accent)",
   },
 
-  // Theme selection
-  charGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
-    gap: 10,
-    maxWidth: "100%",
-    maxHeight: 280,
-    overflowY: "auto" as const,
-    padding: "4px",
-    marginBottom: 24,
-    paddingRight: 8,
-  },
-
-  charCard: (selected: boolean) => ({
-    position: "relative" as const,
-    aspectRatio: "1/1",
-    borderRadius: 8,
-    overflow: "hidden" as const,
-    cursor: "pointer",
-    border: `2px solid ${selected ? "var(--accent)" : "var(--border)"}`,
-    transition: "all 0.3s var(--ease-spring)",
-    background: "var(--bg-card)",
-  }),
-
-  charPlaceholder: {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 24,
-    fontWeight: 700,
-    color: "var(--text-dim)",
-    background: "var(--surface-2)",
-    fontFamily: "var(--font-display)",
-  },
-
-  charOverlay: (selected: boolean) => ({
-    position: "absolute" as const,
-    inset: 0,
-    background: selected 
-      ? "rgba(var(--accent-rgb), 0.2)" 
-      : "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)",
-    display: "flex",
-    alignItems: "flex-end",
-    padding: 8,
-    transition: "all 0.3s ease",
-  }),
-
-  charName: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: "#fff",
-    textShadow: "0 1px 2px rgba(0,0,0,0.5)",
-  },
 } as const;
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -446,10 +358,6 @@ function Check() {
       <polyline points="2 5 4.5 7.5 8 3" />
     </svg>
   );
-}
-
-function CharacterImage({ char }: { char: typeof CHARACTERS[0] }) {
-  return <div style={styles.charPlaceholder}>{char.name.charAt(0)}</div>;
 }
 
 // ── Component ────────────────────────────────────────────────────
@@ -464,9 +372,6 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const [importError, setImportError] = useState<string | null>(null);
   const [importDone, setImportDone] = useState(false);
   const [importProgress, setImportProgress] = useState<{ current: number; total: number; importedSoFar: number; skippedSoFar: number; errorsSoFar: number } | null>(null);
-  const [selectedChar, setSelectedChar] = useState<string | null>(null);
-
-  const { setColorMode } = useGlobalStore();
 
   useEffect(() => {
     async function load() {
@@ -483,7 +388,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   }, []);
 
   const advance = useCallback(() => {
-    setStep((s) => Math.min(s + 1, 4) as Step);
+    setStep((s) => Math.min(s + 1, 3) as Step);
   }, []);
 
   const goBack = useCallback(() => {
@@ -544,27 +449,6 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     setImporting(false);
   }, [folder, connectCode, tag]);
 
-  const handleCharSelect = useCallback((charId: string) => {
-    setSelectedChar(charId);
-    setColorMode(charId as ColorMode);
-    const theme = THEMES[charId];
-    if (theme) applyTheme(theme);
-  }, [setColorMode]);
-
-  const handleFinish = useCallback(async () => {
-    if (selectedChar) {
-      try {
-        const config = await window.clippi.loadConfig().catch(() => ({}));
-        await window.clippi.saveConfig({
-          ...config,
-          colorMode: selectedChar,
-        });
-      } catch {
-        // ignore
-      }
-    }
-    onComplete();
-  }, [selectedChar, onComplete]);
 
   useEffect(() => {
     if (step === 3 && folder && !importing && !importDone && !importError) {
@@ -637,7 +521,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           <AnimatePresence mode="wait">
             {step === 0 && (
               <motion.div key="step-0" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={stepTransition} style={styles.panelContent}>
-                <div style={styles.stepTag}>Step 1 of 5</div>
+                <div style={styles.stepTag}>Step 1 of 4</div>
                 <h2 style={styles.heading}>Welcome to MAGI</h2>
                 <p style={styles.description}>
                   MAGI is your AI-powered coaching system for Super Smash Bros. Melee.
@@ -657,7 +541,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
 
             {step === 1 && (
               <motion.div key="step-1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={stepTransition} style={styles.panelContent}>
-                <div style={styles.stepTag}>Step 2 of 5</div>
+                <div style={styles.stepTag}>Step 2 of 4</div>
                 <h2 style={styles.heading}>Player Info</h2>
                 <p style={styles.description}>
                   Enter your Slippi tag or connect code so MAGI can identify you in replays.
@@ -679,7 +563,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
 
             {step === 2 && (
               <motion.div key="step-2" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={stepTransition} style={styles.panelContent}>
-                <div style={styles.stepTag}>Step 3 of 5</div>
+                <div style={styles.stepTag}>Step 3 of 4</div>
                 <h2 style={styles.heading}>Replay Folder</h2>
                 <p style={styles.description}>Point MAGI to your Slippi replay folder.</p>
                 <div style={styles.fieldGroup}>
@@ -698,7 +582,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
 
             {step === 3 && (
               <motion.div key="step-3" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={stepTransition} style={styles.panelContent}>
-                <div style={styles.stepTag}>Step 4 of 5</div>
+                <div style={styles.stepTag}>Step 4 of 4</div>
                 <h2 style={styles.heading}>{importDone ? "Import Complete" : "Importing..."}</h2>
                 {importing && <p style={{ fontSize: 13, color: "var(--text-dim)", margin: "0 0 8px" }}>Large replay folders may take a few minutes to process.</p>}
                 <div style={styles.importStatus}>
@@ -724,35 +608,8 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                   {importError && <p style={styles.errorText}>Error: {importError}</p>}
                   <div style={styles.actions}>
                     {!importing && !importDone && <button className="btn" onClick={goBack} type="button">Back</button>}
-                    {importDone && <button className="btn btn-primary" onClick={advance} type="button">Next: Personalize</button>}
+                    {importDone && <button className="btn btn-primary" onClick={onComplete} type="button">Finish Setup</button>}
                   </div>
-                </div>
-              </motion.div>
-            )}
-
-            {step === 4 && (
-              <motion.div key="step-4" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={stepTransition} style={styles.panelContent}>
-                <div style={styles.stepTag}>Step 5 of 5</div>
-                <h2 style={styles.heading}>Pick Your Main</h2>
-                <p style={styles.description}>Select your character to apply a matching theme.</p>
-                <div style={styles.charGrid} className="custom-scrollbar">
-                  {CHARACTERS.map((char) => (
-                    <div key={char.id} style={styles.charCard(selectedChar === char.id)} onClick={() => handleCharSelect(char.id)}>
-                      <CharacterImage char={char} />
-                      <div style={styles.charOverlay(selectedChar === char.id)}>
-                        <div style={styles.charName}>{char.name}</div>
-                      </div>
-                      {selectedChar === char.id && (
-                        <div style={{ position: 'absolute', top: 8, right: 8, width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
-                          <Check />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div style={styles.actions}>
-                  <button className="btn" onClick={goBack} type="button">Back</button>
-                  <button className="btn btn-primary" onClick={handleFinish} type="button">Finish Setup</button>
                 </div>
               </motion.div>
             )}

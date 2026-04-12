@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Play } from "lucide-react";
+import { Zap, Play, ChevronDown } from "lucide-react";
 
 interface HighlightData {
   id: number;
@@ -67,13 +67,23 @@ function HighlightCard({
 }) {
   const meta = getMeta(highlight.type);
   const canPlay = highlight.replayPath && highlight.startFrame > 0;
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.div
-      className="highlight-card"
+      className={`highlight-card${expanded ? " highlight-card-expanded" : " highlight-card-collapsed"}`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{ borderLeftColor: meta.color }}
+      style={{ borderLeftColor: meta.color, cursor: "pointer" }}
+      onClick={() => setExpanded((v) => !v)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setExpanded((v) => !v);
+        }
+      }}
     >
       <div className="highlight-card-icon" style={{ color: meta.color }}>
         <svg
@@ -104,21 +114,25 @@ function HighlightCard({
             </span>
           )}
         </div>
-        <div className="highlight-card-description">
-          {highlight.description}
-        </div>
-        {highlight.moves.length > 0 && (
-          <div className="highlight-card-moves">
-            {highlight.moves.join(" → ")}
-          </div>
+        {expanded && (
+          <>
+            <div className="highlight-card-description">
+              {highlight.description}
+            </div>
+            {highlight.moves.length > 0 && (
+              <div className="highlight-card-moves">
+                {highlight.moves.join(" \u2192 ")}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      <div className="highlight-card-actions">
+      <div className="highlight-card-actions" onClick={(e) => e.stopPropagation()}>
         {highlight.timestamp !== "0:00" && (
           <span className="highlight-card-timestamp">{highlight.timestamp}</span>
         )}
-        {canPlay && onPlayClick && (
+        {expanded && canPlay && onPlayClick && (
           <button
             className="highlight-play-btn"
             title={`Open replay at ${highlight.timestamp}`}
@@ -127,6 +141,14 @@ function HighlightCard({
             <Play size={14} fill="currentColor" />
           </button>
         )}
+        <ChevronDown
+          size={14}
+          style={{
+            opacity: 0.5,
+            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s",
+          }}
+        />
       </div>
     </motion.div>
   );

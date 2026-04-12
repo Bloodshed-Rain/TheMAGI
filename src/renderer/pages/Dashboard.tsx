@@ -439,9 +439,6 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
         </div>
       )}
 
-      {/* Recent Trend AI Insight */}
-      <RecentInsight games={games} />
-
       {/* Recent Highlights */}
       {recentHighlights.length > 0 && (
         <motion.div
@@ -500,6 +497,9 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
           )}
         </div>
       </motion.div>
+
+      {/* Recent Trend AI Insight — moved to bottom */}
+      <RecentInsight games={games} />
 
       {/* Game Analysis Modal */}
       <AnimatePresence>

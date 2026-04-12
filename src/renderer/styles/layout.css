@@ -7,7 +7,7 @@
   position: relative;
 }
 
-/* ── Sidebar — fixed 64px icon rail ──────────────────────────── */
+/* ── Sidebar — fixed icon rail ─────────────────────────────────── */
 
 .sidebar {
   position: relative;
@@ -24,27 +24,7 @@
   overflow: visible;
 }
 
-/* ── Sidebar Sword (vertical background emblem) ──────────────── */
-
-.sidebar-sword {
-  position: absolute;
-  left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
-  width: 36px;
-  height: auto;
-  opacity: 0.08;
-  filter: grayscale(0.7);
-  pointer-events: none;
-  z-index: 0;
-  transition: opacity 0.4s ease, filter 0.4s ease;
-}
-.sidebar:hover .sidebar-sword {
-  opacity: 0.12;
-  filter: grayscale(0.4);
-}
-
-/* ── Navigation — icon-only, 44x44 squares ───────────────────── */
+/* ── Navigation — icon-only squares ────────────────────────────── */
 
 .sidebar-nav {
   display: flex;
@@ -72,7 +52,9 @@
   font-size: 13px;
   font-weight: 500;
   font-family: var(--font-sans);
-  transition: color 0.15s ease, background-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
   overflow: visible;
 }
 
@@ -89,7 +71,7 @@
 
 /* Active indicator — steady left bar */
 .nav-item.active::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 20%;
@@ -104,13 +86,13 @@
   outline-offset: -2px;
 }
 
-/* ── Nav Label — hidden, tooltip on hover ────────────────────── */
+/* ── Nav Label — hidden, tooltip on hover ──────────────────────── */
 
 .nav-label {
   position: absolute;
   left: calc(100% + 10px);
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) translateX(-4px);
   background: var(--surface-2);
   color: var(--text);
   font-size: 12px;
@@ -122,8 +104,9 @@
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  transform: translateY(-50%) translateX(-4px);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
   box-shadow: var(--shadow-md);
   z-index: 99999;
 }
@@ -133,7 +116,7 @@
   transform: translateY(-50%) translateX(0);
 }
 
-/* ── Nav Icon ────────────────────────────────────────────────── */
+/* ── Nav Icon ──────────────────────────────────────────────────── */
 
 .nav-icon {
   width: 24px;
@@ -146,10 +129,14 @@
   transition: opacity 0.15s ease;
 }
 
-.nav-item:hover .nav-icon { opacity: 0.85; }
-.nav-item.active .nav-icon { opacity: 1; }
+.nav-item:hover .nav-icon {
+  opacity: 0.85;
+}
+.nav-item.active .nav-icon {
+  opacity: 1;
+}
 
-/* ── Main Content ─────────────────────────────────────────────── */
+/* ── Main Content ──────────────────────────────────────────────── */
 
 .main-content {
   flex: 1;
@@ -163,7 +150,7 @@
 
 /* Subtle dot-grid background texture */
 .main-content::before {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   background-image: radial-gradient(circle, var(--border-subtle) 1px, transparent 1px);
@@ -177,69 +164,14 @@
   z-index: 1;
 }
 
-/* ── Background watermark logo ───────────────────────────────── */
-.main-watermark {
-  position: fixed;
-  top: 50%;
-  left: calc(50% + var(--rail-width, 80px) / 2);
-  transform: translate(-50%, -50%);
-  width: 70vmin;
-  height: auto;
-  opacity: 0.04;
-  pointer-events: none;
-  z-index: 0;
-  user-select: none;
-  filter: grayscale(1);
-}
+/* ── Scrollbar — neutral ───────────────────────────────────────── */
 
-/* CRT theme: scanlines instead of dots */
-[data-theme="crt"] .main-content::before {
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.15) 2px,
-    rgba(0, 0, 0, 0.15) 4px
-  );
-  background-size: auto;
-  opacity: 1;
+.main-content::-webkit-scrollbar {
+  width: 4px;
 }
-
-/* CRT theme: phosphor text glow */
-[data-theme="crt"] .stat-value {
-  text-shadow: 0 0 8px rgba(51, 255, 51, 0.4);
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
 }
-[data-theme="crt"] .card {
-  border-color: rgba(51, 255, 51, 0.12);
-}
-
-/* CRT theme: vignette */
-[data-theme="crt"] .main-content::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.4) 100%);
-  pointer-events: none;
-  z-index: 2;
-}
-
-/* Tournament theme: no dots, clean black */
-[data-theme="tournament"] .main-content::before {
-  opacity: 0;
-}
-
-/* Tournament theme: thicker accent bars */
-[data-theme="tournament"] .stat-box {
-  border-left-width: 3px;
-}
-[data-theme="tournament"] .card {
-  border-width: 2px;
-}
-
-/* ── Scrollbar — neutral ──────────────────────────────────────── */
-
-.main-content::-webkit-scrollbar { width: 4px; }
-.main-content::-webkit-scrollbar-track { background: transparent; }
 .main-content::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
   border-radius: 2px;
@@ -248,7 +180,7 @@
   background: var(--border-muted);
 }
 
-/* ── Kill all legacy decorations ──────────────────────────────── */
+/* ── Kill all legacy decorations ───────────────────────────────── */
 
 .neural-mesh,
 .hex-grid,
@@ -266,4 +198,6 @@
   display: none;
 }
 
-.system-status::before { display: none; }
+.system-status::before {
+  display: none;
+}

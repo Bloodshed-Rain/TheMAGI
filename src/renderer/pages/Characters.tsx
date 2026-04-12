@@ -316,6 +316,16 @@ export function Characters({ refreshKey }: { refreshKey: number }) {
 
   const detailLoading = muLoading || stLoading || sigLoading || gsLoading;
 
+  // Reset to character list when the Characters nav icon is clicked while already on this page
+  useEffect(() => {
+    const onReactivate = (e: Event) => {
+      const detail = (e as CustomEvent<{ page: string }>).detail;
+      if (detail?.page === "characters") setSelected(null);
+    };
+    window.addEventListener("nav:reactivate", onReactivate);
+    return () => window.removeEventListener("nav:reactivate", onReactivate);
+  }, []);
+
   useEffect(() => {
     refetchList();
     if (selected) {

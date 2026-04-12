@@ -5,9 +5,9 @@ import * as fs from "fs";
 // Load env files: build.env (HMAC secret, bundled in releases) + key.env (dev only)
 function loadEnvFile(): void {
   const candidates = [
-    path.join(process.resourcesPath ?? "", "build.env"),   // production (HMAC secret)
-    path.join(__dirname, "../../build.env"),                // dev fallback
-    path.join(__dirname, "../../key.env"),                  // dev (provider keys)
+    path.join(process.resourcesPath ?? "", "build.env"), // production (HMAC secret)
+    path.join(__dirname, "../../build.env"), // dev fallback
+    path.join(__dirname, "../../key.env"), // dev (provider keys)
   ];
   for (const envPath of candidates) {
     if (fs.existsSync(envPath)) {
@@ -52,6 +52,7 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     icon: iconPath,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: process.env["VITE_DEV_SERVER_URL"]
         ? path.resolve(__dirname, "../../dist/main/preload/index.js")
@@ -63,6 +64,13 @@ function createWindow(): void {
     ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" as const } : {}),
     title: "MAGI",
   });
+
+  // Fully remove the default Electron menu (File/Edit/View/…) on Win/Linux.
+  // macOS keeps its app menu — it's OS-level and shouldn't be stripped.
+  if (process.platform !== "darwin") {
+    mainWindow.setMenu(null);
+    mainWindow.setMenuBarVisibility(false);
+  }
 
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
@@ -158,7 +166,9 @@ app.whenReady().then(() => {
   if (!process.env["VITE_DEV_SERVER_URL"]) {
     try {
       const { autoUpdater } = require("electron-updater") as typeof import("electron-updater");
-      autoUpdater.on("error", () => { /* silently ignore update errors */ });
+      autoUpdater.on("error", () => {
+        /* silently ignore update errors */
+      });
       autoUpdater.checkForUpdatesAndNotify().catch(() => {});
       autoUpdater.on("update-downloaded", () => {
         mainWindow?.webContents.send("update:ready");

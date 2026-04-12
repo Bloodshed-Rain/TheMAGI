@@ -55,8 +55,7 @@ interface SettingsProps {
   onImport: () => void;
 }
 
-const BASE_THEMES = THEME_ORDER.filter((t) => !t.startsWith("char-"));
-const CHAR_THEMES = THEME_ORDER.filter((t) => t.startsWith("char-"));
+const ALL_THEMES = [...THEME_ORDER];
 
 export function Settings({ onImport }: SettingsProps) {
   const colorMode = useGlobalStore((state) => state.colorMode);
@@ -285,6 +284,110 @@ export function Settings({ onImport }: SettingsProps) {
     <div>
       <div className="page-header">
         <h1>Settings</h1>
+      </div>
+
+      {/* Appearance — prominent theme picker */}
+      <div
+        className="card"
+        style={{
+          borderColor: THEMES[colorMode]?.accent ?? "var(--accent)",
+          boxShadow: `0 0 0 1px ${THEMES[colorMode]?.accent ?? "var(--accent)"}33, 0 8px 24px ${THEMES[colorMode]?.accent ?? "var(--accent)"}1a`,
+        }}
+      >
+        <div
+          className="card-title"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            fontSize: 16,
+          }}
+        >
+          <span
+            style={{
+              display: "inline-block",
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, ${THEMES[colorMode]?.accent ?? "var(--accent)"}, ${THEMES[colorMode]?.accentHover ?? "var(--accent-hover)"})`,
+              boxShadow: `0 0 8px ${THEMES[colorMode]?.accent ?? "var(--accent)"}`,
+            }}
+          />
+          Appearance
+          <span style={{ color: "var(--text-dim)", fontWeight: 400, fontSize: 12, marginLeft: 4 }}>
+            {THEMES[colorMode]?.name ?? colorMode}
+          </span>
+        </div>
+
+        <div
+          style={{
+            marginTop: 14,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {ALL_THEMES.map((id) => {
+            const t = THEMES[id];
+            const active = colorMode === id;
+            return (
+              <button
+                key={id}
+                onClick={() => handleThemeChange(id)}
+                aria-pressed={active}
+                style={{
+                  position: "relative",
+                  padding: 0,
+                  border: `1px solid ${active ? (t?.accent ?? "var(--accent)") : "var(--border)"}`,
+                  borderRadius: 10,
+                  background: "var(--bg-card)",
+                  cursor: "pointer",
+                  overflow: "hidden",
+                  transition: "transform 0.15s, border-color 0.15s",
+                  transform: active ? "scale(1.03)" : "scale(1)",
+                  boxShadow: active ? `0 0 0 2px ${t?.accent ?? "var(--accent)"}66, 0 6px 18px ${t?.accent ?? "var(--accent)"}22` : "none",
+                }}
+              >
+                {/* Mini preview — gradient header + faux body line */}
+                <div
+                  style={{
+                    height: 36,
+                    background: `linear-gradient(90deg, ${t?.accent ?? "#888"}, ${t?.accentHover ?? "#666"})`,
+                  }}
+                />
+                <div
+                  style={{
+                    padding: "10px 12px 12px",
+                    textAlign: "left",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: active ? (t?.accent ?? "var(--accent)") : "var(--text)",
+                      fontFamily: "var(--font-display)",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t?.name ?? id}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: "var(--text-dim)",
+                      fontFamily: "var(--font-mono)",
+                      letterSpacing: 0.5,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {id}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="card">
@@ -535,37 +638,6 @@ export function Settings({ onImport }: SettingsProps) {
             placeholder="http://localhost:1234/v1"
           />
         </div>
-      </div>
-
-      {/* Theme */}
-      <div className="card">
-        <div className="card-title">Theme</div>
-        <div className="settings-field">
-          <label>Color Theme</label>
-          <select
-            value={colorMode}
-            onChange={(e) => handleThemeChange(e.target.value)}
-          >
-            <optgroup label="Base Themes">
-              {BASE_THEMES.map((id) => (
-                <option key={id} value={id}>{THEMES[id]?.name ?? id}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Character Themes">
-              {CHAR_THEMES.map((id) => (
-                <option key={id} value={id}>{THEMES[id]?.name ?? id}</option>
-              ))}
-            </optgroup>
-          </select>
-        </div>
-        <div
-          style={{
-            marginTop: 8,
-            height: 6,
-            borderRadius: 3,
-            background: `linear-gradient(90deg, ${THEMES[colorMode]?.accent ?? 'var(--accent)'}, ${THEMES[colorMode]?.accentHover ?? 'var(--accent-hover)'})`,
-          }}
-        />
       </div>
 
       <button className="btn btn-primary" onClick={handleSave}>
