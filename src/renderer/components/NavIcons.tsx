@@ -6,6 +6,7 @@ import {
   Hexagon,
   Gamepad2,
   SlidersHorizontal,
+  Library,
 } from "lucide-react";
 
 interface IconProps {
@@ -38,4 +39,14 @@ export function CharactersIcon({ size = 22 }: IconProps) {
 
 export function SettingsIcon({ size = 22 }: IconProps) {
   return <SlidersHorizontal size={size} strokeWidth={1.8} />;
+}
+
+export function LibraryIcon({ size = 22 }: IconProps) {
+  return <Library size={size} strokeWidth={1.8} />;
+}
+
+// Alias — Dashboard uses LayoutDashboard, same icon historically exported as
+// CoachingIcon. Kept as a named export so LiquidShell reads cleanly.
+export function DashboardIcon({ size = 22 }: IconProps) {
+  return <LayoutDashboard size={size} strokeWidth={1.8} />;
 }
