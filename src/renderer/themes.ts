@@ -29,6 +29,12 @@ export interface Theme {
   fontDisplay: string;
   easeSpring: string;
   easeOut: string;
+  // Liquid-only optional tokens — other themes leave undefined.
+  surfaceBlur?: string;
+  chromeGlint?: string;
+  radiusXs?: string;
+  radiusSm?: string;
+  radiusMd?: string;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
