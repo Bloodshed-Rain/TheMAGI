@@ -1,6 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { THEMES, THEME_ORDER, applyTheme, getResolvedTheme, type ColorMode } from "../themes";
-import { useGlobalStore } from "../stores/useGlobalStore";
 
 /** Config as returned by the main process — API keys are redacted to booleans */
 interface Config {
@@ -55,11 +53,7 @@ interface SettingsProps {
   onImport: () => void;
 }
 
-const ALL_THEMES = [...THEME_ORDER];
-
 export function Settings({ onImport }: SettingsProps) {
-  const colorMode = useGlobalStore((state) => state.colorMode);
-  const setColorMode = useGlobalStore((state) => state.setColorMode);
   const [config, setConfig] = useState<Config>({
     targetPlayer: null,
     connectCode: null,
@@ -126,7 +120,9 @@ export function Settings({ onImport }: SettingsProps) {
     }
   }, []);
 
-  useEffect(() => { fetchModels(); }, [fetchModels]);
+  useEffect(() => {
+    fetchModels();
+  }, [fetchModels]);
 
   // Import progress events
   useEffect(() => {
@@ -159,15 +155,6 @@ export function Settings({ onImport }: SettingsProps) {
   }, [watching, onImport]);
 
   const selectedModel = config.llmModelId || DEFAULT_MODEL_ID;
-
-  const handleThemeChange = useCallback((themeId: string) => {
-    const mode = themeId as ColorMode;
-    setColorMode(mode);
-    setConfig((prev) => ({ ...prev, colorMode: mode }));
-    applyTheme(getResolvedTheme(mode, mode));
-    // Only save the colorMode field — don't re-send the full config (keys are redacted)
-    window.clippi.saveConfig({ colorMode: mode });
-  }, [setColorMode]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -207,10 +194,10 @@ export function Settings({ onImport }: SettingsProps) {
     setShowErrorDetails(false);
     setImportStatus("Scanning for replays...");
     try {
-      const result = await window.clippi.importFolder(
+      const result = (await window.clippi.importFolder(
         config.replayFolder,
         config.connectCode || config.targetPlayer,
-      ) as {
+      )) as {
         imported: number;
         skipped: number;
         errors: number;
@@ -255,10 +242,7 @@ export function Settings({ onImport }: SettingsProps) {
           setImportStatus("Set replay folder and player tag first.");
           return;
         }
-        await window.clippi.startWatcher(
-          config.replayFolder,
-          config.connectCode ?? config.targetPlayer,
-        );
+        await window.clippi.startWatcher(config.replayFolder, config.connectCode ?? config.targetPlayer);
         setWatching(true);
         setImportStatus("Watching for new replays...");
       }
@@ -284,110 +268,6 @@ export function Settings({ onImport }: SettingsProps) {
     <div>
       <div className="page-header">
         <h1>Settings</h1>
-      </div>
-
-      {/* Appearance — prominent theme picker */}
-      <div
-        className="card"
-        style={{
-          borderColor: THEMES[colorMode]?.accent ?? "var(--accent)",
-          boxShadow: `0 0 0 1px ${THEMES[colorMode]?.accent ?? "var(--accent)"}33, 0 8px 24px ${THEMES[colorMode]?.accent ?? "var(--accent)"}1a`,
-        }}
-      >
-        <div
-          className="card-title"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            fontSize: 16,
-          }}
-        >
-          <span
-            style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: `linear-gradient(135deg, ${THEMES[colorMode]?.accent ?? "var(--accent)"}, ${THEMES[colorMode]?.accentHover ?? "var(--accent-hover)"})`,
-              boxShadow: `0 0 8px ${THEMES[colorMode]?.accent ?? "var(--accent)"}`,
-            }}
-          />
-          Appearance
-          <span style={{ color: "var(--text-dim)", fontWeight: 400, fontSize: 12, marginLeft: 4 }}>
-            {THEMES[colorMode]?.name ?? colorMode}
-          </span>
-        </div>
-
-        <div
-          style={{
-            marginTop: 14,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-            gap: 12,
-          }}
-        >
-          {ALL_THEMES.map((id) => {
-            const t = THEMES[id];
-            const active = colorMode === id;
-            return (
-              <button
-                key={id}
-                onClick={() => handleThemeChange(id)}
-                aria-pressed={active}
-                style={{
-                  position: "relative",
-                  padding: 0,
-                  border: `1px solid ${active ? (t?.accent ?? "var(--accent)") : "var(--border)"}`,
-                  borderRadius: 10,
-                  background: "var(--bg-card)",
-                  cursor: "pointer",
-                  overflow: "hidden",
-                  transition: "transform 0.15s, border-color 0.15s",
-                  transform: active ? "scale(1.03)" : "scale(1)",
-                  boxShadow: active ? `0 0 0 2px ${t?.accent ?? "var(--accent)"}66, 0 6px 18px ${t?.accent ?? "var(--accent)"}22` : "none",
-                }}
-              >
-                {/* Mini preview — gradient header + faux body line */}
-                <div
-                  style={{
-                    height: 36,
-                    background: `linear-gradient(90deg, ${t?.accent ?? "#888"}, ${t?.accentHover ?? "#666"})`,
-                  }}
-                />
-                <div
-                  style={{
-                    padding: "10px 12px 12px",
-                    textAlign: "left",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: active ? (t?.accent ?? "var(--accent)") : "var(--text)",
-                      fontFamily: "var(--font-display)",
-                      marginBottom: 4,
-                    }}
-                  >
-                    {t?.name ?? id}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 10,
-                      color: "var(--text-dim)",
-                      fontFamily: "var(--font-mono)",
-                      letterSpacing: 0.5,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {id}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       <div className="card">
@@ -419,26 +299,23 @@ export function Settings({ onImport }: SettingsProps) {
               onChange={(e) => setConfig({ ...config, replayFolder: e.target.value || null })}
               placeholder="/path/to/slippi/replays"
             />
-            <button className="btn" onClick={handleBrowse}>Browse</button>
+            <button className="btn" onClick={handleBrowse}>
+              Browse
+            </button>
           </div>
         </div>
         <div className="settings-row" style={{ gap: 8 }}>
-          <button
-            className="btn btn-primary"
-            onClick={handleImport}
-            disabled={importing}
-          >
+          <button className="btn btn-primary" onClick={handleImport} disabled={importing}>
             {importing ? "Importing..." : "Import All"}
           </button>
-          <button
-            className={`btn ${watching ? "btn-danger" : ""}`}
-            onClick={toggleWatcher}
-          >
+          <button className={`btn ${watching ? "btn-danger" : ""}`} onClick={toggleWatcher}>
             {watching ? "Stop Watching" : "Watch for New Games"}
           </button>
         </div>
         {importing && (
-          <p style={{ fontSize: 12, color: "var(--text-dim)", margin: "6px 0 0" }}>Large replay folders may take a few minutes to process.</p>
+          <p style={{ fontSize: 12, color: "var(--text-dim)", margin: "6px 0 0" }}>
+            Large replay folders may take a few minutes to process.
+          </p>
         )}
         {importProgress && importing && (
           <div style={{ marginTop: 8 }}>
@@ -450,16 +327,22 @@ export function Settings({ onImport }: SettingsProps) {
                 }}
               />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-dim)", marginTop: 4 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 11,
+                color: "var(--text-dim)",
+                marginTop: 4,
+              }}
+            >
               <span>{importProgress.lastFile}</span>
               <span>{Math.round((importProgress.current / importProgress.total) * 100)}%</span>
             </div>
           </div>
         )}
         {importStatus && (
-          <p className={`import-status${importErrors.length > 0 ? " import-status--warn" : ""}`}>
-            {importStatus}
-          </p>
+          <p className={`import-status${importErrors.length > 0 ? " import-status--warn" : ""}`}>{importStatus}</p>
         )}
         {importErrors.length > 0 && !importing && (
           <div style={{ marginTop: 4 }}>
@@ -468,23 +351,28 @@ export function Settings({ onImport }: SettingsProps) {
               style={{ fontSize: 11, padding: "2px 8px" }}
               onClick={() => setShowErrorDetails((v) => !v)}
             >
-              {showErrorDetails ? "Hide errors" : `Show ${importErrors.length} error${importErrors.length === 1 ? "" : "s"}`}
+              {showErrorDetails
+                ? "Hide errors"
+                : `Show ${importErrors.length} error${importErrors.length === 1 ? "" : "s"}`}
             </button>
             {showErrorDetails && (
-              <div style={{
-                marginTop: 6,
-                maxHeight: 200,
-                overflowY: "auto",
-                fontSize: 11,
-                fontFamily: "var(--font-mono, monospace)",
-                background: "var(--bg-inset, rgba(0,0,0,0.2))",
-                borderRadius: 4,
-                padding: 8,
-              }}>
+              <div
+                style={{
+                  marginTop: 6,
+                  maxHeight: 200,
+                  overflowY: "auto",
+                  fontSize: 11,
+                  fontFamily: "var(--font-mono, monospace)",
+                  background: "var(--bg-inset, rgba(0,0,0,0.2))",
+                  borderRadius: 4,
+                  padding: 8,
+                }}
+              >
                 {importErrors.map((e, i) => (
                   <div key={i} style={{ marginBottom: 4, color: "var(--text-dim)" }}>
                     <span style={{ color: "var(--red, #C60707)" }}>{e.filePath.split("/").pop()}</span>
-                    {" \u2014 "}{e.error}
+                    {" \u2014 "}
+                    {e.error}
                   </div>
                 ))}
               </div>
@@ -504,13 +392,17 @@ export function Settings({ onImport }: SettingsProps) {
               onChange={(e) => setConfig({ ...config, dolphinPath: e.target.value || null })}
               placeholder="Auto-detect"
             />
-            <button className="btn" onClick={async () => {
-              const filePath = await window.clippi.openFileDialog(
-                "Select Slippi Dolphin",
-                [{ name: "All Files", extensions: ["*"] }],
-              );
-              if (filePath) setConfig({ ...config, dolphinPath: filePath });
-            }}>Browse</button>
+            <button
+              className="btn"
+              onClick={async () => {
+                const filePath = await window.clippi.openFileDialog("Select Slippi Dolphin", [
+                  { name: "All Files", extensions: ["*"] },
+                ]);
+                if (filePath) setConfig({ ...config, dolphinPath: filePath });
+              }}
+            >
+              Browse
+            </button>
           </div>
         </div>
         <div className="settings-field">
@@ -521,13 +413,17 @@ export function Settings({ onImport }: SettingsProps) {
               onChange={(e) => setConfig({ ...config, meleeIsoPath: e.target.value || null })}
               placeholder="Falls back to Slippi Launcher ISO if blank"
             />
-            <button className="btn" onClick={async () => {
-              const filePath = await window.clippi.openFileDialog(
-                "Select Melee ISO",
-                [{ name: "ISO Files", extensions: ["iso", "gcm"] }],
-              );
-              if (filePath) setConfig({ ...config, meleeIsoPath: filePath });
-            }}>Browse</button>
+            <button
+              className="btn"
+              onClick={async () => {
+                const filePath = await window.clippi.openFileDialog("Select Melee ISO", [
+                  { name: "ISO Files", extensions: ["iso", "gcm"] },
+                ]);
+                if (filePath) setConfig({ ...config, meleeIsoPath: filePath });
+              }}
+            >
+              Browse
+            </button>
           </div>
         </div>
       </div>
@@ -555,7 +451,10 @@ export function Settings({ onImport }: SettingsProps) {
           </div>
         </div>
         <div className="settings-field">
-          <label>Model {modelsLoading && <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(loading models...)</span>}</label>
+          <label>
+            Model{" "}
+            {modelsLoading && <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(loading models...)</span>}
+          </label>
           {customModelInput ? (
             <input
               value={selectedModel}
@@ -568,25 +467,23 @@ export function Settings({ onImport }: SettingsProps) {
               value={selectedModel}
               onChange={(e) => setConfig({ ...config, llmModelId: e.target.value })}
             >
-              {dynamicModels ? (
-                Object.entries(dynamicModels)
-                  .filter(([, models]) => models.length > 0)
-                  .map(([provider, models]) => (
-                    <optgroup key={provider} label={PROVIDER_LABELS[provider] ?? provider}>
-                      {models.map((m) => (
-                        <option key={`${provider}-${m.id}`} value={m.id}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))
-              ) : (
-                STATIC_MODELS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))
-              )}
+              {dynamicModels
+                ? Object.entries(dynamicModels)
+                    .filter(([, models]) => models.length > 0)
+                    .map(([provider, models]) => (
+                      <optgroup key={provider} label={PROVIDER_LABELS[provider] ?? provider}>
+                        {models.map((m) => (
+                          <option key={`${provider}-${m.id}`} value={m.id}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))
+                : STATIC_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
             </select>
           )}
         </div>
@@ -599,11 +496,15 @@ export function Settings({ onImport }: SettingsProps) {
       <div className="card">
         <div className="card-title">API Keys</div>
         <p style={{ color: "var(--text-dim)", fontSize: 11, margin: "0 0 8px", fontFamily: "var(--font-mono)" }}>
-          OpenAI (GPT-4o Mini) is provided by MAGI — no key needed.
-          Add keys below to use other providers.
+          OpenAI (GPT-4o Mini) is provided by MAGI — no key needed. Add keys below to use other providers.
         </p>
         <div className="settings-field">
-          <label>OpenRouter API Key {config.openrouterApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}</label>
+          <label>
+            OpenRouter API Key{" "}
+            {config.openrouterApiKey && (
+              <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>
+            )}
+          </label>
           <input
             type="password"
             value={keyEdits.openrouterApiKey}
@@ -612,7 +513,10 @@ export function Settings({ onImport }: SettingsProps) {
           />
         </div>
         <div className="settings-field">
-          <label>Gemini API Key {config.geminiApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}</label>
+          <label>
+            Gemini API Key{" "}
+            {config.geminiApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}
+          </label>
           <input
             type="password"
             value={keyEdits.geminiApiKey}
@@ -621,7 +525,12 @@ export function Settings({ onImport }: SettingsProps) {
           />
         </div>
         <div className="settings-field">
-          <label>Anthropic API Key {config.anthropicApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}</label>
+          <label>
+            Anthropic API Key{" "}
+            {config.anthropicApiKey && (
+              <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>
+            )}
+          </label>
           <input
             type="password"
             value={keyEdits.anthropicApiKey}
@@ -647,8 +556,8 @@ export function Settings({ onImport }: SettingsProps) {
       <div className="card" style={{ marginTop: 32 }}>
         <div className="card-title">Danger Zone</div>
         <p style={{ color: "var(--text-dim)", fontSize: 13, marginBottom: 12 }}>
-          This will delete all imported games, stats, and coaching analyses from the local database.
-          Your replay files will not be touched.
+          This will delete all imported games, stats, and coaching analyses from the local database. Your replay files
+          will not be touched.
         </p>
         <button className="btn btn-danger" onClick={handleClearAll}>
           Clear All Games
