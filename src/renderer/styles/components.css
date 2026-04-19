@@ -1590,3 +1590,232 @@
   0% { left: -30%; }
   100% { left: 100%; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   New UI primitives (Tasks 10–13) — KPI, Pill, Badge, WinrateBar,
+   ResultDot, DataTable. Liquid theme overrides live inline.
+   ════════════════════════════════════════════════════════════════ */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.kpi {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.kpi-value {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.kpi-sub {
+  font-size: 11px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+}
+
+body[data-theme="liquid"] .kpi {
+  padding: 22px 24px;
+  backdrop-filter: blur(var(--surface-blur)) saturate(1.6);
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(1.6);
+  border: 1px solid var(--border-muted);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 40px rgba(0, 0, 0, 0.25);
+}
+body[data-theme="liquid"] .kpi::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--chrome-glint);
+  opacity: 0.5;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+body[data-theme="liquid"] .kpi-value {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  font-size: 36px;
+  letter-spacing: -0.04em;
+  font-feature-settings: "tnum";
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(200, 205, 215, 1) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+body[data-theme="liquid"] .kpi-sub {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.pill-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.pill:hover {
+  background: var(--surface-3);
+}
+.pill.active {
+  background: var(--accent-muted);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+body[data-theme="liquid"] .pill {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+body[data-theme="liquid"] .pill.active {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06));
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.badge-win {
+  background: rgba(var(--green-rgb), 0.14);
+  color: var(--win);
+}
+.badge-loss {
+  background: rgba(var(--red-rgb), 0.14);
+  color: var(--loss);
+}
+.badge-neutral {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.result-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.result-dot.win {
+  background: var(--win);
+  box-shadow: 0 0 8px rgba(var(--green-rgb), 0.5);
+}
+.result-dot.loss {
+  background: var(--loss);
+}
+
+body[data-theme="liquid"] .result-dot.win {
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255, 255, 255, 0.6),
+    rgba(126, 232, 197, 0.9) 40%,
+    rgba(80, 180, 150, 1)
+  );
+  box-shadow:
+    0 0 12px rgba(126, 232, 197, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+body[data-theme="liquid"] .result-dot.loss {
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255, 255, 255, 0.6),
+    rgba(255, 138, 158, 0.9) 40%,
+    rgba(180, 80, 100, 1)
+  );
+  box-shadow:
+    0 0 12px rgba(255, 138, 158, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.winrate-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+.winrate-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.4s var(--ease-spring);
+}
+body[data-theme="liquid"] .winrate-bar {
+  height: 6px;
+}
+body[data-theme="liquid"] .winrate-bar-fill {
+  background: linear-gradient(90deg, #c7ccd6, #ffffff, #c7ccd6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.data-table tr:hover td {
+  background: var(--surface-2);
+}
+body[data-theme="liquid"] .data-table th {
+  font-size: 11px;
+  padding: 14px 16px;
+}
+body[data-theme="liquid"] .data-table td {
+  padding: 16px;
+}
