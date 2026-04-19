@@ -67,17 +67,18 @@ export function App() {
     async function loadTheme() {
       try {
         const config = await window.clippi.loadConfig();
-        // Migrate legacy/removed theme IDs (e.g. "char-fox", "crt", "glass", "controller") to "dark"
-        const raw = config?.colorMode || "dark";
+        // Fresh installs default to "liquid". Legacy/removed theme IDs
+        // (e.g. "char-fox", "crt", "glass", "controller") migrate to "liquid".
+        const raw = config?.colorMode || "liquid";
         const isValid = raw in THEMES;
-        const savedMode: ColorMode = (isValid ? raw : "dark") as ColorMode;
+        const savedMode: ColorMode = (isValid ? raw : "liquid") as ColorMode;
         setColorMode(savedMode);
         applyTheme(getResolvedTheme(savedMode, savedMode));
         if (!isValid) {
-          window.clippi.saveConfig({ colorMode: "dark" }).catch(() => {});
+          window.clippi.saveConfig({ colorMode: "liquid" }).catch(() => {});
         }
       } catch {
-        applyTheme(getResolvedTheme("dark", "dark"));
+        applyTheme(getResolvedTheme("liquid", "liquid"));
       }
     }
     loadTheme();

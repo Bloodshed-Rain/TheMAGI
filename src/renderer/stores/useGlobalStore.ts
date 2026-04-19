@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { ColorMode } from '../themes';
+import { create } from "zustand";
+import { ColorMode } from "../themes";
 
 interface GlobalState {
   colorMode: ColorMode;
@@ -9,7 +9,7 @@ interface GlobalState {
 }
 
 export const useGlobalStore = create<GlobalState>((set) => ({
-  colorMode: 'dark',
+  colorMode: "liquid",
   setColorMode: (mode) => set({ colorMode: mode }),
   refreshKey: 0,
   triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
