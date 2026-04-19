@@ -6,6 +6,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap");
 
 @import "./tokens.css";
+@import "./theme-liquid.css";
 @import "./reset.css";
 @import "./layout.css";
 @import "./shells.css";
