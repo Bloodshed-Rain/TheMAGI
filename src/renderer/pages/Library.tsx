@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useRecentGames } from "../hooks/queries";
+import { useGlobalStore } from "../stores/useGlobalStore";
 import { Card } from "../components/ui/Card";
 import { DataTable } from "../components/ui/DataTable";
 import { Pill, PillRow } from "../components/ui/Pill";
@@ -10,7 +10,7 @@ import { filterGames, LibraryFilters, LibraryGame } from "./library/filter";
 const RESULTS: Array<LibraryFilters["result"]> = ["all", "win", "loss"];
 
 export function Library({ refreshKey: _ }: { refreshKey: number }) {
-  const navigate = useNavigate();
+  const openDrawer = useGlobalStore((s) => s.openDrawer);
   const { data: games = [], isLoading } = useRecentGames(500);
 
   const [search, setSearch] = useState("");
@@ -133,7 +133,7 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                   playedAt?: string;
                 };
                 return (
-                  <tr key={g.id} onClick={() => navigate(`/game/${g.id}`)} style={{ cursor: "pointer" }}>
+                  <tr key={g.id} onClick={() => openDrawer(g.id)} style={{ cursor: "pointer" }}>
                     <td>
                       <ResultDot result={g.result} />
                     </td>
