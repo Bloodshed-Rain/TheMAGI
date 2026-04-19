@@ -46,6 +46,10 @@ const FONT_SANS = "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-s
 const FONT_MONO = "'JetBrains Mono', 'Fira Code', monospace";
 const FONT_DISPLAY = "'Chakra Petch', 'DM Sans', -apple-system, sans-serif";
 const FONT_WIN98 = "'Tahoma', 'MS Sans Serif', 'Pixelated MS Sans Serif', Verdana, sans-serif";
+// Melee fonts: the real game uses ITC Galliard Std Ultra (for "Super Smash Bros.")
+// and Impact Wide (for "Melee") — both proprietary. We use EB Garamond 800 as the
+// closest free Galliard stand-in, and system Impact (scaled) for the Melee wordmark.
+const FONT_MELEE_SANS = "'Oswald', 'Arial Narrow', sans-serif";
 const EASE_SPRING = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_OUT = "cubic-bezier(0, 0, 0.2, 1)";
 
@@ -150,11 +154,47 @@ export const THEMES: Record<string, Theme> = {
     easeSpring: "linear", // Win98 didn't animate
     easeOut: "linear",
   },
+
+  /* ─── Melee — the game's own UI, borrowed directly ─────────────────── */
+  melee: {
+    id: "melee",
+    name: "Melee",
+    // Deep navy void with a hint of blue — the backdrop behind every Melee menu
+    bg: "#050818",
+    surface1: "#0c1230", // card / panel fill, slightly lifted
+    surface2: "#141a3d", // hovered / elevated surface
+    surface3: "#1e2550", // hover ceiling
+    border: "rgba(64, 208, 255, 0.28)", // cyan wireframe lines
+    borderSubtle: "rgba(64, 208, 255, 0.12)",
+    borderMuted: "rgba(64, 208, 255, 0.45)",
+    text: "#ffffff",
+    textSecondary: "#c8d4ff",
+    textMuted: "#6b7aad",
+    accent: "#ffc300", // the signature Melee amber/gold glow
+    accentHover: "#ffdb4d",
+    accentMuted: "rgba(255, 195, 0, 0.18)",
+    win: "#4ade80",
+    loss: "#ff5555",
+    caution: "#ffc300",
+    sidebarBg: "#050818",
+    sidebarHover: "#0c1230",
+    sidebarActiveBg: "rgba(255, 195, 0, 0.15)",
+    sidebarAccent: "#ffc300",
+    // Amber glow shadows — selected items literally glow in Melee
+    shadowSm: "0 0 8px rgba(255, 195, 0, 0.25)",
+    shadowMd: "0 0 16px rgba(255, 195, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.5)",
+    shadowLg: "0 0 32px rgba(255, 195, 0, 0.45), 0 12px 32px rgba(0, 0, 0, 0.6)",
+    fontMono: FONT_MONO,
+    fontSans: FONT_MELEE_SANS,
+    fontDisplay: "Impact, 'Arial Black', 'Oswald', sans-serif",
+    easeSpring: EASE_SPRING,
+    easeOut: EASE_OUT,
+  },
 };
 
-export const THEME_ORDER = ["dark", "light", "win98"] as const;
+export const THEME_ORDER = ["dark", "light", "win98", "melee"] as const;
 
-export type ColorMode = "dark" | "light" | "win98";
+export type ColorMode = "dark" | "light" | "win98" | "melee";
 
 /**
  * Resolve a saved theme ID to an actual Theme, falling back to dark for
