@@ -2207,3 +2207,50 @@ body[data-theme="liquid"] .drawer {
   letter-spacing: 0.08em;
   margin-bottom: 4px;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   LiquidShell overrides for pre-existing icon-rail styles in
+   layout.css. The old shell used a 48px icon rail with tooltip
+   labels; LiquidShell is a 240px sidebar with row-style items.
+   These selectors neutralize the icon-rail rules without touching
+   layout.css (so Win98Shell keeps working).
+   ════════════════════════════════════════════════════════════════ */
+
+.liquid-shell .sidebar {
+  width: 100%;
+  align-items: stretch;
+  -webkit-app-region: no-drag;
+}
+.liquid-shell .nav-item {
+  width: 100%;
+  height: auto;
+  justify-content: flex-start;
+}
+.liquid-shell .nav-item.active::before {
+  display: none; /* kill the icon-rail active indicator bar */
+}
+.liquid-shell .nav-label {
+  position: static;
+  transform: none;
+  background: none;
+  color: inherit;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  opacity: 1;
+  box-shadow: none;
+  z-index: auto;
+  font-size: 13px;
+  font-weight: inherit;
+  pointer-events: auto;
+  white-space: normal;
+}
+.liquid-shell .nav-item:hover .nav-label {
+  opacity: 1;
+  transform: none;
+}
+.liquid-shell .nav-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.8;
+}
