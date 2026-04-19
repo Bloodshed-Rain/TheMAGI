@@ -25,7 +25,10 @@ interface StageRecord {
 function CountUp({ target, duration = 1200 }: { target: number; duration?: number }) {
   const [value, setValue] = useState(0);
   useEffect(() => {
-    if (target === 0) { setValue(0); return; }
+    if (target === 0) {
+      setValue(0);
+      return;
+    }
     const start = performance.now();
     let raf: number;
     const tick = (now: number) => {
@@ -67,7 +70,9 @@ function EntropyBar({ label, value, description }: { label: string; value: numbe
         <Tooltip text={description} position="right">
           <span className="profile-entropy-label">{label}</span>
         </Tooltip>
-        <span className="profile-entropy-verdict" style={{ color }}>{verdict}</span>
+        <span className="profile-entropy-verdict" style={{ color }}>
+          {verdict}
+        </span>
       </div>
       <div className="winrate-bar" style={{ height: 6 }}>
         <div className="winrate-bar-fill" style={{ width: `${pct}%`, background: color }} />
@@ -95,12 +100,22 @@ function HabitPanel() {
   return (
     <div className="card">
       <div className="card-title">Mixup Analysis</div>
-      <p className="profile-entropy-intro">
-        Low entropy means your opponent can read you. Mix up your options.
-      </p>
-      <EntropyBar label="After Ledge Grab" value={habits.ledge} description="Neutral getup, roll, jump, drop, attack variety" />
-      <EntropyBar label="After Knockdown" value={habits.knockdown} description="Tech in place, tech roll, missed tech, getup attack variety" />
-      <EntropyBar label="Under Shield Pressure" value={habits.shield} description="OOS options: grab, nair, roll, wavedash, jump variety" />
+      <p className="profile-entropy-intro">Low entropy means your opponent can read you. Mix up your options.</p>
+      <EntropyBar
+        label="After Ledge Grab"
+        value={habits.ledge}
+        description="Neutral getup, roll, jump, drop, attack variety"
+      />
+      <EntropyBar
+        label="After Knockdown"
+        value={habits.knockdown}
+        description="Tech in place, tech roll, missed tech, getup attack variety"
+      />
+      <EntropyBar
+        label="Under Shield Pressure"
+        value={habits.shield}
+        description="OOS options: grab, nair, roll, wavedash, jump variety"
+      />
     </div>
   );
 }
@@ -147,58 +162,74 @@ export function Profile({ refreshKey }: { refreshKey: number }) {
   const archetype = radarStats ? getArchetype(radarStats) : null;
 
   // Aggregate stats for featured display
-  const avgPowershields = games && games.length > 0
-    ? (games.reduce((s: number, g: any) => s + (g.powerShieldCount ?? 0), 0) / games.length)
-    : 0;
-  const avgEdgeguard = games && games.length > 0
-    ? (games.reduce((s: number, g: any) => s + (g.edgeguardSuccessRate ?? 0), 0) / games.length)
-    : 0;
-  const avgLCancel = games && games.length > 0
-    ? (games.reduce((s: number, g: any) => s + (g.lCancelRate ?? 0), 0) / games.length)
-    : 0;
+  const avgPowershields =
+    games && games.length > 0
+      ? games.reduce((s: number, g: any) => s + (g.powerShieldCount ?? 0), 0) / games.length
+      : 0;
+  const avgEdgeguard =
+    games && games.length > 0
+      ? games.reduce((s: number, g: any) => s + (g.edgeguardSuccessRate ?? 0), 0) / games.length
+      : 0;
+  const avgLCancel =
+    games && games.length > 0 ? games.reduce((s: number, g: any) => s + (g.lCancelRate ?? 0), 0) / games.length : 0;
 
   return (
     <div>
-      <motion.div
-        initial={{ opacity: 0, x: -16 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
+        <div
+          className="page-header"
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}
+        >
           <div>
             <h1>Profile</h1>
             {archetype && (
               <p>
-                <Tooltip text="Your playstyle archetype, computed from your strongest stat dimension across all games" position="bottom">
+                <Tooltip
+                  text="Your playstyle archetype, computed from your strongest stat dimension across all games"
+                  position="bottom"
+                >
                   <span className="profile-archetype-name">{archetype.name}</span>
                 </Tooltip>
-                {" \u2014 "}{archetype.description}
+                {" \u2014 "}
+                {archetype.description}
               </p>
             )}
           </div>
 
-          <button 
+          <button
             className="btn btn-primary"
             onClick={() => setIsCoachingOpen(true)}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px',
-              padding: '10px 20px',
-              fontSize: '14px',
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 20px",
+              fontSize: "14px",
               fontWeight: 700,
-              boxShadow: '0 4px 12px rgba(var(--accent-rgb), 0.2)'
+              boxShadow: "0 4px 12px rgba(var(--accent-rgb), 0.2)",
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.1 12.1"/><path d="M12 12L19 19"/><path d="M12 12V22"/>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 2a10 10 0 1 0 10 10H12V2z" />
+              <path d="M12 12L2.1 12.1" />
+              <path d="M12 12L19 19" />
+              <path d="M12 12V22" />
             </svg>
             AI Career Analysis
           </button>
         </div>
       </motion.div>
 
-      <CoachingModal 
+      <CoachingModal
         isOpen={isCoachingOpen}
         onClose={() => setIsCoachingOpen(false)}
         scope="career"
@@ -213,11 +244,15 @@ export function Profile({ refreshKey }: { refreshKey: number }) {
         transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="profile-hero">
-          <div className="profile-record-card">
+          <div className="card profile-record-card">
             <div className="profile-record-big">
-              <span className="record-win"><CountUp target={record.wins} /></span>
+              <span className="record-win">
+                <CountUp target={record.wins} />
+              </span>
               <span className="profile-record-sep">-</span>
-              <span className="record-loss"><CountUp target={record.losses} /></span>
+              <span className="record-loss">
+                <CountUp target={record.losses} />
+              </span>
             </div>
             <div className="profile-record-sub">
               <span className="profile-record-games">{record.totalGames}</span> games
@@ -232,7 +267,7 @@ export function Profile({ refreshKey }: { refreshKey: number }) {
             </div>
           </div>
           {radarStats && (
-            <div className="profile-radar-card">
+            <div className="card profile-radar-card">
               <div className="card-title">Skill Profile</div>
               <PlayerRadar stats={radarStats} games={games ?? undefined} />
             </div>
@@ -245,12 +280,18 @@ export function Profile({ refreshKey }: { refreshKey: number }) {
             <div className="profile-featured-value" style={{ color: "var(--accent)" }}>
               {avgPowershields.toFixed(1)}
             </div>
-            <Tooltip text="Average power shields per game. Reflects defensive timing and read quality against approaches and projectiles." position="bottom">
+            <Tooltip
+              text="Average power shields per game. Reflects defensive timing and read quality against approaches and projectiles."
+              position="bottom"
+            >
               <span className="profile-featured-label">Power Shields / Game</span>
             </Tooltip>
           </div>
           <div className="profile-featured-stat">
-            <div className="profile-featured-value" style={{ color: avgEdgeguard > 0.5 ? "var(--green)" : "var(--red)" }}>
+            <div
+              className="profile-featured-value"
+              style={{ color: avgEdgeguard > 0.5 ? "var(--green)" : "var(--red)" }}
+            >
               {(avgEdgeguard * 100).toFixed(0)}%
             </div>
             <Tooltip text="How often your offstage attempts result in a stock taken" position="bottom">
@@ -258,7 +299,10 @@ export function Profile({ refreshKey }: { refreshKey: number }) {
             </Tooltip>
           </div>
           <div className="profile-featured-stat">
-            <div className="profile-featured-value" style={{ color: avgLCancel > 0.85 ? "var(--green)" : avgLCancel > 0.7 ? "var(--yellow)" : "var(--red)" }}>
+            <div
+              className="profile-featured-value"
+              style={{ color: avgLCancel > 0.85 ? "var(--green)" : avgLCancel > 0.7 ? "var(--yellow)" : "var(--red)" }}
+            >
               {(avgLCancel * 100).toFixed(1)}%
             </div>
             <Tooltip text="Average L-cancel rate across all games" position="bottom">
@@ -314,10 +358,13 @@ export function Profile({ refreshKey }: { refreshKey: number }) {
                         {" - "}
                         <span className="record-loss">{m.losses}</span>
                       </td>
-                      <td className="mono-cell" style={{
-                        fontWeight: 700,
-                        color: wr >= 60 ? "var(--green)" : wr >= 45 ? "var(--yellow)" : "var(--red)",
-                      }}>
+                      <td
+                        className="mono-cell"
+                        style={{
+                          fontWeight: 700,
+                          color: wr >= 60 ? "var(--green)" : wr >= 45 ? "var(--yellow)" : "var(--red)",
+                        }}
+                      >
                         {wr.toFixed(0)}%
                       </td>
                       <td>
@@ -369,10 +416,13 @@ export function Profile({ refreshKey }: { refreshKey: number }) {
                         {" - "}
                         <span className="record-loss">{s.losses}</span>
                       </td>
-                      <td className="mono-cell" style={{
-                        fontWeight: 700,
-                        color: wr >= 60 ? "var(--green)" : wr >= 45 ? "var(--yellow)" : "var(--red)",
-                      }}>
+                      <td
+                        className="mono-cell"
+                        style={{
+                          fontWeight: 700,
+                          color: wr >= 60 ? "var(--green)" : wr >= 45 ? "var(--yellow)" : "var(--red)",
+                        }}
+                      >
                         {wr.toFixed(0)}%
                       </td>
                       <td>
