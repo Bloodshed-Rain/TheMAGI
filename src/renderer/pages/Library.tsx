@@ -3,6 +3,7 @@ import { useRecentGames } from "../hooks/queries";
 import { useGlobalStore } from "../stores/useGlobalStore";
 import { Card } from "../components/ui/Card";
 import { DataTable } from "../components/ui/DataTable";
+import { KPI } from "../components/ui/KPI";
 import { Pill, PillRow } from "../components/ui/Pill";
 import { ResultDot } from "../components/ui/ResultDot";
 import { filterGames, LibraryFilters, LibraryGame } from "./library/filter";
@@ -42,6 +43,27 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
           </p>
         </div>
       </div>
+
+      {(() => {
+        const filteredWins = filtered.filter((g) => g.result === "win").length;
+        const filteredWR = filtered.length > 0 ? (filteredWins / filtered.length) * 100 : 0;
+        const uniqueOpponents = new Set(filtered.map((g) => g.opponentTag)).size;
+        const charactersPlayed = new Set(
+          filtered.map((g) => (g as unknown as { playerCharacter?: string }).playerCharacter ?? ""),
+        ).size;
+        return (
+          <div className="kpi-grid" style={{ marginBottom: 12 }}>
+            <KPI label="Filtered" value={filtered.length} sub={`of ${games.length}`} />
+            <KPI
+              label="Win Rate"
+              value={`${filteredWR.toFixed(0)}%`}
+              sub={`${filteredWins}W · ${filtered.length - filteredWins}L`}
+            />
+            <KPI label="Unique Opponents" value={uniqueOpponents} />
+            <KPI label="Characters Played" value={charactersPlayed} />
+          </div>
+        );
+      })()}
 
       <Card>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
@@ -122,7 +144,7 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                 <td colSpan={9}>No games match the filters.</td>
               </tr>
             ) : (
-              filtered.slice(0, 200).map((g) => {
+              filtered.slice(0, 500).map((g) => {
                 const game = g as unknown as {
                   playerCharacter?: string;
                   playerFinalStocks?: number;
