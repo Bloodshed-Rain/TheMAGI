@@ -2935,3 +2935,44 @@ body[data-theme="liquid"] .drawer {
 .stat-group-value-text {
   font-size: 13px;
 }
+
+.sessions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+.session-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.session-card-date {
+  font-weight: 700;
+  font-size: 15px;
+}
+.session-card-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.session-card-dots {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.session-card-opponents {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 10px 0 12px;
+}
+.session-card-report {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
