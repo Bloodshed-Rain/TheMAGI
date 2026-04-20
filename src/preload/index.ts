@@ -53,6 +53,8 @@ const api = {
     ipcRenderer.invoke("stats:analysisHistory", limit, offset, scopeFilter),
   getGameDetail: (gameId: number) => ipcRenderer.invoke("stats:gameDetail", gameId),
   getSessionsByDay: (daysBack?: number) => ipcRenderer.invoke("stats:sessionsByDay", daysBack),
+  getTrendSeries: (metric: string, range: string, filterChar: string | null) =>
+    ipcRenderer.invoke("stats:trendSeries", metric, range, filterChar),
 
   // Stock timeline
   getStockTimeline: (replayPath: string) => ipcRenderer.invoke("stats:stockTimeline", replayPath),

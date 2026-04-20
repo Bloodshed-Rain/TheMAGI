@@ -168,3 +168,21 @@ export const useSessionsByDay = (daysBack: number = 90) => {
     gcTime: GC_10MIN,
   });
 };
+
+export const useTrendSeries = (
+  metric:
+    | "neutralWinRate"
+    | "lCancelRate"
+    | "conversionRate"
+    | "avgDamagePerOpening"
+    | "openingsPerKill"
+    | "avgDeathPercent",
+  range: "7d" | "30d" | "all",
+  filterChar: string | null,
+) => {
+  return useQuery({
+    queryKey: ["trendSeries", metric, range, filterChar],
+    queryFn: () => window.clippi.getTrendSeries(metric, range, filterChar),
+    gcTime: GC_10MIN,
+  });
+};

@@ -2449,4 +2449,45 @@ export function getGamesOnDate(date: string): RecentGame[] {
     .all(date) as RecentGame[];
 }
 
+export type TrendMetric =
+  | "neutralWinRate"
+  | "lCancelRate"
+  | "conversionRate"
+  | "avgDamagePerOpening"
+  | "openingsPerKill"
+  | "avgDeathPercent";
+
+const METRIC_COLUMN: Record<TrendMetric, string> = {
+  neutralWinRate: "gs.neutral_win_rate",
+  lCancelRate: "gs.l_cancel_rate",
+  conversionRate: "gs.conversion_rate",
+  avgDamagePerOpening: "gs.avg_damage_per_opening",
+  openingsPerKill: "gs.openings_per_kill",
+  avgDeathPercent: "gs.avg_death_percent",
+};
+
+export function getTrendSeries(metric: TrendMetric, range: "7d" | "30d" | "all", filterChar: string | null): number[] {
+  const column = METRIC_COLUMN[metric];
+  const where: string[] = [];
+  const params: (string | number)[] = [];
+  if (range === "7d") where.push("g.played_at >= date('now', '-7 days')");
+  else if (range === "30d") where.push("g.played_at >= date('now', '-30 days')");
+  if (filterChar && filterChar !== "all") {
+    where.push("g.opponent_character = ?");
+    params.push(filterChar);
+  }
+  const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const sql = `
+    SELECT ${column} as v
+    FROM games g
+    JOIN game_stats gs ON gs.game_id = g.id
+    ${whereClause}
+    ORDER BY g.played_at ASC
+  `;
+  const rows = getDb()
+    .prepare(sql)
+    .all(...params) as Array<{ v: number }>;
+  return rows.map((r) => r.v);
+}
+
 export { DB_PATH, DATA_DIR };

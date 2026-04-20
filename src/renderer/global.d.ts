@@ -53,6 +53,17 @@ declare global {
         opponents: string[];
         gameIds: number[];
       }>>;
+      getTrendSeries: (
+        metric:
+          | "neutralWinRate"
+          | "lCancelRate"
+          | "conversionRate"
+          | "avgDamagePerOpening"
+          | "openingsPerKill"
+          | "avgDeathPercent",
+        range: "7d" | "30d" | "all",
+        filterChar: string | null,
+      ) => Promise<number[]>;
       openInDolphin: (replayPath: string) => Promise<boolean>;
       openInDolphinAtFrame: (replayPath: string, frame: number) => Promise<boolean>;
       getStockTimeline: (replayPath: string) => Promise<any>;

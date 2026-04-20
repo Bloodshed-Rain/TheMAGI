@@ -19,6 +19,8 @@ import {
   getRecentHighlights,
   getGameDetail,
   getSessionsByDay,
+  getTrendSeries,
+  type TrendMetric,
 } from "../../db.js";
 import type { SafeHandleFn } from "../ipc.js";
 
@@ -44,6 +46,9 @@ export function registerStatsHandlers(safeHandle: SafeHandleFn): void {
   safeHandle("stats:recentHighlights", (_e, limit: number) => getRecentHighlights(limit));
   safeHandle("stats:gameDetail", (_e, gameId: number) => getGameDetail(gameId));
   safeHandle("stats:sessionsByDay", (_e, daysBack?: number) => getSessionsByDay(daysBack));
+  safeHandle("stats:trendSeries", (_e, metric: TrendMetric, range: "7d" | "30d" | "all", filterChar: string | null) =>
+    getTrendSeries(metric, range, filterChar),
+  );
   safeHandle("data:clearAll", () => {
     clearAllGames();
     return true;
