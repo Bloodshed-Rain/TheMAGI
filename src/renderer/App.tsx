@@ -46,12 +46,9 @@ const ANALYZE_ITEMS: NavItem[] = [
 
 const SYSTEM_ITEMS: NavItem[] = [{ id: "settings", label: "Settings", path: "/settings", Icon: SettingsIcon }];
 
-const ALL_NAV_ITEMS: NavItem[] = [...ANALYZE_ITEMS, ...SYSTEM_ITEMS];
-
 export function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const colorMode = useGlobalStore((state) => state.colorMode);
   const setColorMode = useGlobalStore((state) => state.setColorMode);
   const density = useGlobalStore((state) => state.density);
   const setDensity = useGlobalStore((state) => state.setDensity);
