@@ -23,7 +23,6 @@ import {
   LibraryIcon,
 } from "./components/NavIcons";
 import { CommandPalette } from "./components/CommandPalette";
-import { Win98Shell } from "./components/Win98Shell";
 import { LiquidShell, type NavItem as LiquidNavItem } from "./components/LiquidShell";
 import { TweaksPanel } from "./components/TweaksPanel";
 import { GameDrawer } from "./components/GameDrawer";
@@ -63,15 +62,20 @@ export function App() {
     async function loadTheme() {
       try {
         const config = await window.clippi.loadConfig();
-        // Fresh installs default to "liquid". Legacy/removed theme IDs
-        // (e.g. "char-fox", "crt", "glass", "controller") migrate to "liquid".
-        const raw = config?.colorMode || "liquid";
-        const isValid = raw in THEMES;
-        const savedMode: ColorMode = (isValid ? raw : "liquid") as ColorMode;
-        setColorMode(savedMode);
-        applyTheme(getResolvedTheme(savedMode, savedMode));
-        if (!isValid) {
-          window.clippi.saveConfig({ colorMode: "liquid" }).catch(() => {});
+        const raw = config?.colorMode ?? "liquid";
+
+        // Legacy id remap.
+        const migrated: ColorMode = ((): ColorMode => {
+          if (raw === "dark") return "telemetry";
+          if (raw === "win98" || raw === "melee") return "liquid";
+          return (raw in THEMES ? raw : "liquid") as ColorMode;
+        })();
+
+        setColorMode(migrated);
+        applyTheme(getResolvedTheme(migrated, migrated));
+
+        if (migrated !== raw) {
+          window.clippi.saveConfig({ colorMode: migrated }).catch(() => {});
         }
         const savedDensity: Density = config?.density === "compact" ? "compact" : "comfortable";
         setDensity(savedDensity);
@@ -105,14 +109,6 @@ export function App() {
     [navigate],
   );
 
-  const handleWin98Import = useCallback(() => {
-    navigate("/settings");
-  }, [navigate]);
-
-  const handleWin98ClearAll = useCallback(() => {
-    navigate("/settings");
-  }, [navigate]);
-
   const routes = useMemo(
     () => (
       <Suspense
@@ -139,25 +135,6 @@ export function App() {
     ),
     [location, refreshKey, triggerRefresh],
   );
-
-  const isWin98 = colorMode === "win98";
-
-  if (isWin98) {
-    return (
-      <div className="app-layout">
-        <Win98Shell
-          navItems={ALL_NAV_ITEMS}
-          currentPath={location.pathname}
-          onNavigate={handleNavigate}
-          onImport={handleWin98Import}
-          onClearAll={handleWin98ClearAll}
-          onRefresh={triggerRefresh}
-        >
-          {routes}
-        </Win98Shell>
-      </div>
-    );
-  }
 
   return (
     <>
