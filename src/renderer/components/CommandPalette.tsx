@@ -4,7 +4,7 @@ import { ChevronRight, Zap, UserCircle } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type Page = "dashboard" | "sessions" | "library" | "coaching" | "trends" | "profile" | "characters" | "settings";
+type Page = "dashboard" | "sessions" | "library" | "trends" | "profile" | "characters" | "settings";
 
 interface CommandItem {
   id: string;
@@ -198,16 +198,6 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
         icon: <NavIcon />,
         action: () => {
           navigateTo("library");
-          close();
-        },
-      },
-      {
-        id: "nav-coaching",
-        label: "Coaching",
-        category: "navigate",
-        icon: <NavIcon />,
-        action: () => {
-          navigateTo("coaching");
           close();
         },
       },

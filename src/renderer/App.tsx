@@ -3,7 +3,6 @@ import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-
 
 const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
 const Sessions = lazy(() => import("./pages/Sessions").then((m) => ({ default: m.Sessions })));
-const Coaching = lazy(() => import("./pages/Coaching").then((m) => ({ default: m.Coaching })));
 const Library = lazy(() => import("./pages/Library").then((m) => ({ default: m.Library })));
 const Trends = lazy(() => import("./pages/Trends").then((m) => ({ default: m.Trends })));
 const Profile = lazy(() => import("./pages/Profile").then((m) => ({ default: m.Profile })));
@@ -17,7 +16,6 @@ import { applyTheme, getResolvedTheme, THEMES, type ColorMode } from "./themes";
 import {
   DashboardIcon,
   SessionsIcon,
-  HistoryIcon,
   TrendsIcon,
   ProfileIcon,
   CharactersIcon,
@@ -35,7 +33,6 @@ import { useGlobalStore, type Density } from "./stores/useGlobalStore";
 type Page =
   | "dashboard"
   | "sessions"
-  | "coaching"
   | "library"
   | "trends"
   | "profile"
@@ -52,7 +49,6 @@ const ANALYZE_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
   { id: "sessions", label: "Sessions", path: "/sessions", Icon: SessionsIcon },
   { id: "library", label: "Library", path: "/library", Icon: LibraryIcon },
-  { id: "coaching", label: "Coaching", path: "/coaching", Icon: HistoryIcon },
   { id: "trends", label: "Trends", path: "/trends", Icon: TrendsIcon },
   { id: "characters", label: "Characters", path: "/characters", Icon: CharactersIcon },
   { id: "practice", label: "Practice", path: "/practice", Icon: PracticeIcon },
@@ -138,8 +134,6 @@ export function App() {
           <Route path="/dashboard" element={<Dashboard refreshKey={refreshKey} />} />
           <Route path="/sessions" element={<Sessions refreshKey={refreshKey} />} />
           <Route path="/library" element={<Library refreshKey={refreshKey} />} />
-          <Route path="/history" element={<Navigate to="/coaching" replace />} />
-          <Route path="/coaching" element={<Coaching refreshKey={refreshKey} />} />
           <Route path="/trends" element={<Trends refreshKey={refreshKey} />} />
           <Route path="/profile" element={<Profile refreshKey={refreshKey} />} />
           <Route path="/characters" element={<Characters refreshKey={refreshKey} />} />
