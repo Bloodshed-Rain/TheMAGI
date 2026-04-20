@@ -2848,22 +2848,21 @@ body[data-theme="liquid"] .drawer {
   color: var(--text);
 }
 
-.drawer-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
+.drawer-coaching-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
 }
-.drawer-stat-cell {
-  padding: 12px;
+.drawer-coaching-body h1,
+.drawer-coaching-body h2,
+.drawer-coaching-body h3 {
+  color: var(--text);
+}
+.drawer-coaching-body code {
+  font-family: var(--font-mono);
   background: var(--surface-2);
-  border-radius: var(--radius-sm);
-}
-.drawer-stat-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
 }
 
 /* ══════════════════════════════════════════════════════════════════

@@ -1,8 +1,10 @@
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import Markdown from "react-markdown";
 import { useGlobalStore } from "../stores/useGlobalStore";
 import { useRecentGames } from "../hooks/queries";
 import { Card } from "./ui/Card";
 import { Badge } from "./ui/Badge";
+import { StatGroupCard } from "./ui/StatGroupCard";
 
 interface DrawerGame {
   id: number;
@@ -24,6 +26,8 @@ interface DrawerGame {
   powerShieldCount?: number;
   edgeguardSuccessRate?: number;
   totalDamageDealt?: number;
+  killMove?: string | null;
+  replayPath?: string;
 }
 
 interface StatItem {
@@ -90,18 +94,26 @@ function buildStats(g: DrawerGame): StatGroup[] {
           good: g.edgeguardSuccessRate !== undefined ? g.edgeguardSuccessRate >= 0.5 : false,
         },
         { label: "Dmg Dealt", value: fmt(g.totalDamageDealt, 0) },
+        {
+          label: "Kill Move",
+          value: g.killMove ?? "—",
+          isText: true,
+        },
       ],
     },
   ];
 }
 
 export function GameDrawer() {
-  const navigate = useNavigate();
   const drawerGameId = useGlobalStore((s) => s.drawerGameId);
   const closeDrawer = useGlobalStore((s) => s.closeDrawer);
   const { data: games = [] } = useRecentGames(500);
   const game =
     drawerGameId != null ? ((games as unknown as DrawerGame[]).find((g) => g.id === drawerGameId) ?? null) : null;
+
+  const [coaching, setCoaching] = useState<string | null>(null);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
 
   if (!game) return null;
 
@@ -113,9 +125,24 @@ export function GameDrawer() {
     .padStart(2, "0");
   const stocks = 4;
 
-  const onOpenFull = () => {
-    closeDrawer();
-    navigate(`/game/${game.id}`);
+  const onGetCoaching = async () => {
+    if (!game) return;
+    setCoachLoading(true);
+    setCoachError(null);
+    try {
+      const result = await window.clippi.analyzeScoped("game", game.id);
+      const text = typeof result === "string" ? result : ((result as { content?: string })?.content ?? String(result));
+      setCoaching(text);
+    } catch (err) {
+      setCoachError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCoachLoading(false);
+    }
+  };
+
+  const onWatchReplay = () => {
+    if (!game?.replayPath) return;
+    window.clippi.openInDolphin(game.replayPath);
   };
 
   return (
@@ -141,11 +168,11 @@ export function GameDrawer() {
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-          <button className="btn btn-primary" onClick={onOpenFull}>
-            Get Coaching
+          <button className="btn btn-primary" onClick={onGetCoaching} disabled={coachLoading}>
+            {coachLoading ? "Analyzing…" : "Get Coaching"}
           </button>
-          <button className="btn" onClick={onOpenFull}>
-            Open full analysis →
+          <button className="btn" onClick={onWatchReplay} disabled={!game.replayPath}>
+            Watch Replay
           </button>
         </div>
 
@@ -164,26 +191,21 @@ export function GameDrawer() {
         </Card>
 
         {stats.map((s) => (
-          <Card key={s.group} title={s.group}>
-            <div className="drawer-stat-grid">
-              {s.items.map((it) => (
-                <div key={it.label} className="drawer-stat-cell">
-                  <div className="drawer-stat-label">{it.label}</div>
-                  <div
-                    className={it.isText ? "" : "mono"}
-                    style={{
-                      fontWeight: 700,
-                      fontSize: it.isText ? 13 : 18,
-                      color: it.good === true ? "var(--win)" : it.good === false ? "var(--loss)" : "var(--text)",
-                    }}
-                  >
-                    {String(it.value)}
-                  </div>
-                </div>
-              ))}
+          <StatGroupCard key={s.group} title={s.group} items={s.items} />
+        ))}
+
+        {coachError && (
+          <Card title="Coaching">
+            <p style={{ color: "var(--loss)" }}>{coachError}</p>
+          </Card>
+        )}
+        {coaching && (
+          <Card title="Coaching">
+            <div className="drawer-coaching-body">
+              <Markdown>{coaching}</Markdown>
             </div>
           </Card>
-        ))}
+        )}
       </div>
     </>
   );
