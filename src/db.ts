@@ -1295,6 +1295,8 @@ export interface DashboardHighlights {
     lCancelRate: number;
     edgeguardSuccessRate: number;
     openingsPerKill: number;
+    avgDamagePerOpening: number;
+    conversionRate: number;
   };
   /** Current streak: positive = win streak, negative = loss streak */
   streak: number;
@@ -1374,7 +1376,9 @@ export function getDashboardHighlights(trendWindow: number = 10): DashboardHighl
     SELECT gs.neutral_win_rate as neutralWinRate,
            gs.l_cancel_rate as lCancelRate,
            gs.edgeguard_success_rate as edgeguardSuccessRate,
-           gs.openings_per_kill as openingsPerKill
+           gs.openings_per_kill as openingsPerKill,
+           gs.avg_damage_per_opening as avgDamagePerOpening,
+           gs.conversion_rate as conversionRate
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
     ORDER BY g.played_at DESC
@@ -1386,6 +1390,8 @@ export function getDashboardHighlights(trendWindow: number = 10): DashboardHighl
     lCancelRate: number;
     edgeguardSuccessRate: number;
     openingsPerKill: number;
+    avgDamagePerOpening: number;
+    conversionRate: number;
   }>;
 
   const recent = trendRows.slice(0, trendWindow);
@@ -1403,8 +1409,17 @@ export function getDashboardHighlights(trendWindow: number = 10): DashboardHighl
           lCancelRate: avg(recent, "lCancelRate") - avg(previous, "lCancelRate"),
           edgeguardSuccessRate: avg(recent, "edgeguardSuccessRate") - avg(previous, "edgeguardSuccessRate"),
           openingsPerKill: avg(recent, "openingsPerKill") - avg(previous, "openingsPerKill"),
+          avgDamagePerOpening: avg(recent, "avgDamagePerOpening") - avg(previous, "avgDamagePerOpening"),
+          conversionRate: avg(recent, "conversionRate") - avg(previous, "conversionRate"),
         }
-      : { neutralWinRate: 0, lCancelRate: 0, edgeguardSuccessRate: 0, openingsPerKill: 0 };
+      : {
+          neutralWinRate: 0,
+          lCancelRate: 0,
+          edgeguardSuccessRate: 0,
+          openingsPerKill: 0,
+          avgDamagePerOpening: 0,
+          conversionRate: 0,
+        };
 
   // Current streak
   const streakRows = db
