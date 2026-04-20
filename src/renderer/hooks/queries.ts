@@ -61,7 +61,7 @@ export const useSets = () => {
 export const useOpponentDetail = (opponentKey: string | null) => {
   return useQuery({
     queryKey: ["opponentDetail", opponentKey],
-    queryFn: () => opponentKey ? window.clippi.getOpponentDetail(opponentKey) : null,
+    queryFn: () => (opponentKey ? window.clippi.getOpponentDetail(opponentKey) : null),
     enabled: !!opponentKey,
     gcTime: GC_10MIN,
   });
@@ -78,7 +78,7 @@ export const useCharacterList = () => {
 export const useCharacterMatchups = (character: string | null) => {
   return useQuery({
     queryKey: ["characterMatchups", character],
-    queryFn: () => character ? window.clippi.getCharacterMatchups(character) : null,
+    queryFn: () => (character ? window.clippi.getCharacterMatchups(character) : null),
     enabled: !!character,
     gcTime: GC_10MIN,
   });
@@ -87,7 +87,7 @@ export const useCharacterMatchups = (character: string | null) => {
 export const useCharacterStageStats = (character: string | null) => {
   return useQuery({
     queryKey: ["characterStageStats", character],
-    queryFn: () => character ? window.clippi.getCharacterStageStats(character) : null,
+    queryFn: () => (character ? window.clippi.getCharacterStageStats(character) : null),
     enabled: !!character,
     gcTime: GC_10MIN,
   });
@@ -96,7 +96,7 @@ export const useCharacterStageStats = (character: string | null) => {
 export const useCharacterSignatureStats = (character: string | null) => {
   return useQuery({
     queryKey: ["characterSignatureStats", character],
-    queryFn: () => character ? window.clippi.getCharacterSignatureStats(character) : null,
+    queryFn: () => (character ? window.clippi.getCharacterSignatureStats(character) : null),
     enabled: !!character,
     gcTime: GC_10MIN,
   });
@@ -105,7 +105,7 @@ export const useCharacterSignatureStats = (character: string | null) => {
 export const useCharacterGameStats = (character: string | null) => {
   return useQuery({
     queryKey: ["characterGameStats", character],
-    queryFn: () => character ? window.clippi.getCharacterGameStats(character) : null,
+    queryFn: () => (character ? window.clippi.getCharacterGameStats(character) : null),
     enabled: !!character,
     gcTime: GC_10MIN,
   });
@@ -157,6 +157,14 @@ export const useAnalysisHistory = (limit: number, offset: number, scopeFilter?: 
   return useQuery({
     queryKey: ["analysisHistory", limit, offset, scopeFilter],
     queryFn: () => window.clippi.getAnalysisHistory(limit, offset, scopeFilter),
+    gcTime: GC_10MIN,
+  });
+};
+
+export const useSessionsByDay = (daysBack: number = 90) => {
+  return useQuery({
+    queryKey: ["sessionsByDay", daysBack],
+    queryFn: () => window.clippi.getSessionsByDay(daysBack),
     gcTime: GC_10MIN,
   });
 };

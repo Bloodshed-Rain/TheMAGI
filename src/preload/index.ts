@@ -19,12 +19,11 @@ const api = {
     ipcRenderer.invoke("analyze:run", replayPaths, targetPlayer, streamId),
   analyzeRecent: (count: number, targetPlayer: string, streamId?: string) =>
     ipcRenderer.invoke("analyze:recent", count, targetPlayer, streamId),
-  analyzeTrends: (trendSummary: string) =>
-    ipcRenderer.invoke("analyze:trends", trendSummary),
+  analyzeTrends: (trendSummary: string) => ipcRenderer.invoke("analyze:trends", trendSummary),
   analyzeScoped: (scope: string, id: string | number, targetPlayer?: string, streamId?: string) =>
     ipcRenderer.invoke("analyze:scoped", scope, id, targetPlayer, streamId),
-  analyzeDiscovery: (streamId?: string) =>
-    ipcRenderer.invoke("analyze:discovery", streamId),
+  analyzeDiscovery: (streamId?: string) => ipcRenderer.invoke("analyze:discovery", streamId),
+  analyzeSession: (date: string) => ipcRenderer.invoke("llm:analyzeSession", date),
 
   // LLM
   getLLMModels: () => ipcRenderer.invoke("llm:models"),
@@ -53,14 +52,13 @@ const api = {
   getAnalysisHistory: (limit: number, offset: number, scopeFilter?: string) =>
     ipcRenderer.invoke("stats:analysisHistory", limit, offset, scopeFilter),
   getGameDetail: (gameId: number) => ipcRenderer.invoke("stats:gameDetail", gameId),
+  getSessionsByDay: (daysBack?: number) => ipcRenderer.invoke("stats:sessionsByDay", daysBack),
 
   // Stock timeline
-  getStockTimeline: (replayPath: string) =>
-    ipcRenderer.invoke("stats:stockTimeline", replayPath),
+  getStockTimeline: (replayPath: string) => ipcRenderer.invoke("stats:stockTimeline", replayPath),
 
   // Dolphin playback
-  openInDolphin: (replayPath: string) =>
-    ipcRenderer.invoke("replay:openInDolphin", replayPath),
+  openInDolphin: (replayPath: string) => ipcRenderer.invoke("replay:openInDolphin", replayPath),
   openInDolphinAtFrame: (replayPath: string, frame: number) =>
     ipcRenderer.invoke("replay:openInDolphinAtFrame", replayPath, frame),
   openFileDialog: (title: string, filters: { name: string; extensions: string[] }[]) =>
@@ -90,17 +88,8 @@ const api = {
     ipcRenderer.on("update:ready", listener);
     return () => ipcRenderer.removeListener("update:ready", listener);
   },
-  onImportProgress: (callback: (progress: {
-    current: number;
-    total: number;
-    lastFile: string;
-    importedSoFar: number;
-    skippedSoFar: number;
-    errorsSoFar: number;
-    lastError?: string;
-    lastFileStatus: "imported" | "skipped" | "error";
-  }) => void) => {
-    const listener = (_event: unknown, progress: {
+  onImportProgress: (
+    callback: (progress: {
       current: number;
       total: number;
       lastFile: string;
@@ -109,7 +98,21 @@ const api = {
       errorsSoFar: number;
       lastError?: string;
       lastFileStatus: "imported" | "skipped" | "error";
-    }) => callback(progress);
+    }) => void,
+  ) => {
+    const listener = (
+      _event: unknown,
+      progress: {
+        current: number;
+        total: number;
+        lastFile: string;
+        importedSoFar: number;
+        skippedSoFar: number;
+        errorsSoFar: number;
+        lastError?: string;
+        lastFileStatus: "imported" | "skipped" | "error";
+      },
+    ) => callback(progress);
     ipcRenderer.on("import:progress", listener);
     return () => ipcRenderer.removeListener("import:progress", listener);
   },

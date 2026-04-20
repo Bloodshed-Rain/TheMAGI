@@ -1,9 +1,16 @@
 import {
-  getOverallRecord, getMatchupRecords, getStageRecords,
-  getLatestAnalysis, getRecentGames, getOpponentHistory,
-  detectSets, clearAllGames,
-  getCharacterList, getCharacterMatchups,
-  getCharacterStageStats, getCharacterSignatureAggregates,
+  getOverallRecord,
+  getMatchupRecords,
+  getStageRecords,
+  getLatestAnalysis,
+  getRecentGames,
+  getOpponentHistory,
+  detectSets,
+  clearAllGames,
+  getCharacterList,
+  getCharacterMatchups,
+  getCharacterStageStats,
+  getCharacterSignatureAggregates,
   getCharacterGameStats,
   getOpponentDetail,
   getDashboardHighlights,
@@ -11,6 +18,7 @@ import {
   getGameHighlights,
   getRecentHighlights,
   getGameDetail,
+  getSessionsByDay,
 } from "../../db.js";
 import type { SafeHandleFn } from "../ipc.js";
 
@@ -30,10 +38,12 @@ export function registerStatsHandlers(safeHandle: SafeHandleFn): void {
   safeHandle("stats:opponentDetail", (_e, opponentKey: string) => getOpponentDetail(opponentKey));
   safeHandle("stats:dashboardHighlights", () => getDashboardHighlights());
   safeHandle("stats:analysisHistory", (_e, limit: number, offset: number, scopeFilter?: string) =>
-    getAnalysisHistory(limit, offset, scopeFilter));
+    getAnalysisHistory(limit, offset, scopeFilter),
+  );
   safeHandle("stats:gameHighlights", (_e, gameId: number) => getGameHighlights(gameId));
   safeHandle("stats:recentHighlights", (_e, limit: number) => getRecentHighlights(limit));
   safeHandle("stats:gameDetail", (_e, gameId: number) => getGameDetail(gameId));
+  safeHandle("stats:sessionsByDay", (_e, daysBack?: number) => getSessionsByDay(daysBack));
   safeHandle("data:clearAll", () => {
     clearAllGames();
     return true;

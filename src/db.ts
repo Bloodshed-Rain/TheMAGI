@@ -235,6 +235,43 @@ const migrations: Migration[] = [
       }
     },
   },
+  {
+    version: 6,
+    description: "Add session_reports, oracle_messages, practice_plans, practice_drills tables",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS session_reports (
+          id INTEGER PRIMARY KEY,
+          date TEXT NOT NULL UNIQUE,
+          content TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS oracle_messages (
+          id INTEGER PRIMARY KEY,
+          role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+          content TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS practice_plans (
+          id INTEGER PRIMARY KEY,
+          player_profile_id INTEGER,
+          name TEXT NOT NULL,
+          weakness_summary TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS practice_drills (
+          id INTEGER PRIMARY KEY,
+          plan_id INTEGER NOT NULL REFERENCES practice_plans(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          target TEXT NOT NULL,
+          completed INTEGER NOT NULL DEFAULT 0,
+          sort_order INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_drills_plan ON practice_drills(plan_id);
+        CREATE INDEX IF NOT EXISTS idx_oracle_created ON oracle_messages(created_at);
+      `);
+    },
+  },
 ];
 
 /**
@@ -2313,6 +2350,103 @@ export function getPlayerHistory(targetPlayer: string, recentLimit: number = 10)
     overallStats: overallStats && overallStats.gamesCount > 0 ? overallStats : null,
     currentStreak,
   };
+}
+
+export interface DaySession {
+  date: string;
+  games: number;
+  wins: number;
+  losses: number;
+  opponents: string[];
+  gameIds: number[];
+}
+
+export function getSessionsByDay(daysBack: number = 90): DaySession[] {
+  const rows = getDb()
+    .prepare(
+      `
+    SELECT
+      substr(played_at, 1, 10) as date,
+      id,
+      result,
+      opponent_tag as opponentTag
+    FROM games
+    WHERE played_at >= date('now', '-' || ? || ' days')
+    ORDER BY played_at DESC
+  `,
+    )
+    .all(daysBack) as Array<{ date: string; id: number; result: string; opponentTag: string }>;
+
+  const map = new Map<string, DaySession>();
+  for (const r of rows) {
+    const existing = map.get(r.date) ?? {
+      date: r.date,
+      games: 0,
+      wins: 0,
+      losses: 0,
+      opponents: [] as string[],
+      gameIds: [] as number[],
+    };
+    existing.games += 1;
+    if (r.result === "win") existing.wins += 1;
+    else if (r.result === "loss") existing.losses += 1;
+    existing.gameIds.push(r.id);
+    if (!existing.opponents.includes(r.opponentTag)) existing.opponents.push(r.opponentTag);
+    map.set(r.date, existing);
+  }
+  return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function getSessionReport(date: string): string | null {
+  const row = getDb().prepare("SELECT content FROM session_reports WHERE date = ?").get(date) as
+    | { content: string }
+    | undefined;
+  return row?.content ?? null;
+}
+
+export function setSessionReport(date: string, content: string): void {
+  getDb().prepare("INSERT OR REPLACE INTO session_reports (date, content) VALUES (?, ?)").run(date, content);
+}
+
+export function getGamesOnDate(date: string): RecentGame[] {
+  return getDb()
+    .prepare(
+      `
+    SELECT
+      g.id, g.replay_path as replayPath,
+      g.played_at as playedAt, g.stage,
+      g.player_character as playerCharacter,
+      g.opponent_character as opponentCharacter,
+      g.opponent_tag as opponentTag,
+      g.opponent_connect_code as opponentConnectCode,
+      g.result,
+      g.player_final_stocks as playerFinalStocks,
+      g.player_final_percent as playerFinalPercent,
+      g.opponent_final_stocks as opponentFinalStocks,
+      g.opponent_final_percent as opponentFinalPercent,
+      g.duration_seconds as durationSeconds,
+      gs.neutral_win_rate as neutralWinRate,
+      gs.l_cancel_rate as lCancelRate,
+      gs.openings_per_kill as openingsPerKill,
+      gs.avg_damage_per_opening as avgDamagePerOpening,
+      gs.conversion_rate as conversionRate,
+      gs.avg_death_percent as avgDeathPercent,
+      gs.power_shield_count as powerShieldCount,
+      gs.edgeguard_attempts as edgeguardAttempts,
+      gs.edgeguard_success_rate as edgeguardSuccessRate,
+      gs.recovery_success_rate as recoverySuccessRate,
+      gs.total_damage_dealt as totalDamageDealt,
+      gs.total_damage_taken as totalDamageTaken,
+      gs.wavedash_count as wavedashCount,
+      gs.dash_dance_frames as dashDanceFrames,
+      NULL as killMove
+    FROM games g
+    JOIN game_stats gs ON gs.game_id = g.id
+    WHERE substr(g.played_at, 1, 10) = ?
+    ORDER BY g.played_at ASC
+  `,
+    )
+    .all(date) as RecentGame[];
 }
 
 export { DB_PATH, DATA_DIR };

@@ -20,6 +20,7 @@ declare global {
       analyzeTrends: (trendSummary: string) => Promise<string>;
       analyzeScoped: (scope: string, id: string | number, targetPlayer?: string, streamId?: string) => Promise<string>;
       analyzeDiscovery: (streamId?: string) => Promise<string>;
+      analyzeSession: (date: string) => Promise<string>;
       getLLMModels: () => Promise<any[]>;
       getCurrentModel: () => Promise<{ modelId: string; label: string }>;
       fetchOpenRouterModels: () => Promise<any[]>;
@@ -44,6 +45,14 @@ declare global {
       getRecentHighlights: (limit: number) => Promise<any[]>;
       getAnalysisHistory: (limit: number, offset: number, scopeFilter?: string) => Promise<any[]>;
       getGameDetail: (gameId: number) => Promise<any>;
+      getSessionsByDay: (daysBack?: number) => Promise<Array<{
+        date: string;
+        games: number;
+        wins: number;
+        losses: number;
+        opponents: string[];
+        gameIds: number[];
+      }>>;
       openInDolphin: (replayPath: string) => Promise<boolean>;
       openInDolphinAtFrame: (replayPath: string, frame: number) => Promise<boolean>;
       getStockTimeline: (replayPath: string) => Promise<any>;
