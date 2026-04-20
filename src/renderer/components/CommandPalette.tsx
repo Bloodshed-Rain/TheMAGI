@@ -4,7 +4,7 @@ import { ChevronRight, Zap, UserCircle } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type Page = "dashboard" | "sessions" | "library" | "trends" | "profile" | "characters" | "settings";
+type Page = "dashboard" | "sessions" | "library" | "trends" | "characters" | "settings";
 
 interface CommandItem {
   id: string;
@@ -120,12 +120,12 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
         return;
       }
 
-      // Cmd/Ctrl+1-6 for page navigation (only when palette is NOT open,
+      // Cmd/Ctrl+1-5 for page navigation (only when palette is NOT open,
       // to avoid conflict with typing)
       if (mod && !isOpen) {
-        const pages: Page[] = ["dashboard", "sessions", "trends", "profile", "characters", "settings"];
+        const pages: Page[] = ["dashboard", "sessions", "trends", "characters", "settings"];
         const num = parseInt(e.key, 10);
-        if (num >= 1 && num <= 6) {
+        if (num >= 1 && num <= pages.length) {
           e.preventDefault();
           navigateTo(pages[num - 1]!);
           return;
@@ -224,21 +224,10 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
         },
       },
       {
-        id: "nav-profile",
-        label: "Profile",
-        category: "navigate",
-        shortcut: isMac() ? "\u2318 4" : "Ctrl+4",
-        icon: <NavIcon />,
-        action: () => {
-          navigateTo("profile");
-          close();
-        },
-      },
-      {
         id: "nav-characters",
         label: "Characters",
         category: "navigate",
-        shortcut: isMac() ? "\u2318 5" : "Ctrl+5",
+        shortcut: isMac() ? "\u2318 4" : "Ctrl+4",
         icon: <NavIcon />,
         action: () => {
           navigateTo("characters");
@@ -249,7 +238,7 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
         id: "nav-settings",
         label: "Settings",
         category: "navigate",
-        shortcut: isMac() ? "\u2318 6" : "Ctrl+6",
+        shortcut: isMac() ? "\u2318 5" : "Ctrl+5",
         icon: <NavIcon />,
         action: () => {
           navigateTo("settings");

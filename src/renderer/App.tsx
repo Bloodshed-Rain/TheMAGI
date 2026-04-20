@@ -5,7 +5,6 @@ const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default:
 const Sessions = lazy(() => import("./pages/Sessions").then((m) => ({ default: m.Sessions })));
 const Library = lazy(() => import("./pages/Library").then((m) => ({ default: m.Library })));
 const Trends = lazy(() => import("./pages/Trends").then((m) => ({ default: m.Trends })));
-const Profile = lazy(() => import("./pages/Profile").then((m) => ({ default: m.Profile })));
 const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
 const Characters = lazy(() => import("./pages/Characters").then((m) => ({ default: m.Characters })));
 const Practice = lazy(() => import("./pages/Practice").then((m) => ({ default: m.Practice })));
@@ -16,7 +15,6 @@ import {
   DashboardIcon,
   SessionsIcon,
   TrendsIcon,
-  ProfileIcon,
   CharactersIcon,
   SettingsIcon,
   LibraryIcon,
@@ -29,16 +27,7 @@ import { TweaksPanel } from "./components/TweaksPanel";
 import { GameDrawer } from "./components/GameDrawer";
 import { useGlobalStore, type Density } from "./stores/useGlobalStore";
 
-type Page =
-  | "dashboard"
-  | "sessions"
-  | "library"
-  | "trends"
-  | "profile"
-  | "characters"
-  | "practice"
-  | "oracle"
-  | "settings";
+type Page = "dashboard" | "sessions" | "library" | "trends" | "characters" | "practice" | "oracle" | "settings";
 
 interface NavItem extends LiquidNavItem {
   id: Page;
@@ -51,7 +40,6 @@ const ANALYZE_ITEMS: NavItem[] = [
   { id: "trends", label: "Trends", path: "/trends", Icon: TrendsIcon },
   { id: "characters", label: "Characters", path: "/characters", Icon: CharactersIcon },
   { id: "practice", label: "Practice", path: "/practice", Icon: PracticeIcon },
-  { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
 ];
 
 const SYSTEM_ITEMS: NavItem[] = [
@@ -134,7 +122,6 @@ export function App() {
           <Route path="/sessions" element={<Sessions refreshKey={refreshKey} />} />
           <Route path="/library" element={<Library refreshKey={refreshKey} />} />
           <Route path="/trends" element={<Trends refreshKey={refreshKey} />} />
-          <Route path="/profile" element={<Profile refreshKey={refreshKey} />} />
           <Route path="/characters" element={<Characters refreshKey={refreshKey} />} />
           <Route path="/practice" element={<Practice refreshKey={refreshKey} />} />
           <Route path="/oracle" element={<Oracle refreshKey={refreshKey} />} />
