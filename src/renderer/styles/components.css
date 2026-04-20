@@ -3047,3 +3047,26 @@ body[data-theme="liquid"] .drawer {
   gap: 16px;
   margin-top: 16px;
 }
+
+.practice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+.practice-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.practice-drills {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.practice-drill-row {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  cursor: pointer;
+}

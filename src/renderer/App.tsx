@@ -9,6 +9,7 @@ const Trends = lazy(() => import("./pages/Trends").then((m) => ({ default: m.Tre
 const Profile = lazy(() => import("./pages/Profile").then((m) => ({ default: m.Profile })));
 const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
 const Characters = lazy(() => import("./pages/Characters").then((m) => ({ default: m.Characters })));
+const Practice = lazy(() => import("./pages/Practice").then((m) => ({ default: m.Practice })));
 const GameDetail = lazy(() => import("./pages/GameDetail").then((m) => ({ default: m.GameDetail })));
 
 import { applyTheme, getResolvedTheme, THEMES, type ColorMode } from "./themes";
@@ -21,6 +22,7 @@ import {
   CharactersIcon,
   SettingsIcon,
   LibraryIcon,
+  PracticeIcon,
 } from "./components/NavIcons";
 import { CommandPalette } from "./components/CommandPalette";
 import { LiquidShell, type NavItem as LiquidNavItem } from "./components/LiquidShell";
@@ -28,7 +30,16 @@ import { TweaksPanel } from "./components/TweaksPanel";
 import { GameDrawer } from "./components/GameDrawer";
 import { useGlobalStore, type Density } from "./stores/useGlobalStore";
 
-type Page = "dashboard" | "sessions" | "coaching" | "library" | "trends" | "profile" | "characters" | "settings";
+type Page =
+  | "dashboard"
+  | "sessions"
+  | "coaching"
+  | "library"
+  | "trends"
+  | "profile"
+  | "characters"
+  | "practice"
+  | "settings";
 
 interface NavItem extends LiquidNavItem {
   id: Page;
@@ -41,6 +52,7 @@ const ANALYZE_ITEMS: NavItem[] = [
   { id: "coaching", label: "Coaching", path: "/coaching", Icon: HistoryIcon },
   { id: "trends", label: "Trends", path: "/trends", Icon: TrendsIcon },
   { id: "characters", label: "Characters", path: "/characters", Icon: CharactersIcon },
+  { id: "practice", label: "Practice", path: "/practice", Icon: PracticeIcon },
   { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
 ];
 
@@ -125,6 +137,7 @@ export function App() {
           <Route path="/trends" element={<Trends refreshKey={refreshKey} />} />
           <Route path="/profile" element={<Profile refreshKey={refreshKey} />} />
           <Route path="/characters" element={<Characters refreshKey={refreshKey} />} />
+          <Route path="/practice" element={<Practice refreshKey={refreshKey} />} />
           <Route path="/settings" element={<Settings onImport={triggerRefresh} />} />
           <Route path="/game/:gameId" element={<GameDetail refreshKey={refreshKey} />} />
         </Routes>
