@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { Card } from "../components/ui/Card";
 
 /** Config as returned by the main process — API keys are redacted to booleans */
 interface Config {
@@ -270,8 +271,7 @@ export function Settings({ onImport }: SettingsProps) {
         <h1>Settings</h1>
       </div>
 
-      <div className="card">
-        <div className="card-title">Player</div>
+      <Card title="Player">
         <div className="settings-field">
           <label>Display Name / Tag</label>
           <input
@@ -288,10 +288,9 @@ export function Settings({ onImport }: SettingsProps) {
             placeholder="TAG#123"
           />
         </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <div className="card-title">Replay Folder</div>
+      <Card title="Replay Folder">
         <div className="settings-field">
           <div className="settings-row">
             <input
@@ -379,11 +378,10 @@ export function Settings({ onImport }: SettingsProps) {
             )}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Dolphin Path */}
-      <div className="card">
-        <div className="card-title">Slippi Dolphin</div>
+      <Card title="Slippi Dolphin">
         <div className="settings-field">
           <label>Dolphin Executable Path (optional \u2014 auto-detected if left blank)</label>
           <div className="settings-row">
@@ -426,10 +424,10 @@ export function Settings({ onImport }: SettingsProps) {
             </button>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* AI Model */}
-      <div className="card">
+      {/* AI Model — custom header (title + inline controls), so render header manually */}
+      <Card>
         <div className="card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>AI Model</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -490,11 +488,10 @@ export function Settings({ onImport }: SettingsProps) {
         <p style={{ color: "var(--text-muted)", fontSize: 11, margin: "4px 0 0", fontFamily: "var(--font-mono)" }}>
           Current: {selectedModel}
         </p>
-      </div>
+      </Card>
 
       {/* API Keys */}
-      <div className="card">
-        <div className="card-title">API Keys</div>
+      <Card title="API Keys">
         <p style={{ color: "var(--text-dim)", fontSize: 11, margin: "0 0 8px", fontFamily: "var(--font-mono)" }}>
           OpenAI (GPT-4o Mini) is provided by MAGI — no key needed. Add keys below to use other providers.
         </p>
@@ -547,14 +544,13 @@ export function Settings({ onImport }: SettingsProps) {
             placeholder="http://localhost:1234/v1"
           />
         </div>
-      </div>
+      </Card>
 
       <button className="btn btn-primary" onClick={handleSave}>
         {saved ? "Saved!" : "Save Settings"}
       </button>
 
-      <div className="card" style={{ marginTop: 32 }}>
-        <div className="card-title">Danger Zone</div>
+      <Card title="Danger Zone" style={{ marginTop: 32 }}>
         <p style={{ color: "var(--text-dim)", fontSize: 13, marginBottom: 12 }}>
           This will delete all imported games, stats, and coaching analyses from the local database. Your replay files
           will not be touched.
@@ -562,7 +558,7 @@ export function Settings({ onImport }: SettingsProps) {
         <button className="btn btn-danger" onClick={handleClearAll}>
           Clear All Games
         </button>
-      </div>
+      </Card>
     </div>
   );
 }
