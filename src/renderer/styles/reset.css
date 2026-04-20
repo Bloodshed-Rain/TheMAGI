@@ -1,13 +1,15 @@
 /* ── Minimal Reset ─────────────────────────────────────────────── */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
 body {
-  background: var(--bg);
+  background: var(--bg) url("../assets/app-bg.png") center center / cover no-repeat fixed;
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -16,7 +18,10 @@ body {
   height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
+  transition:
+    background-color 0.5s ease,
+    color 0.5s ease,
+    border-color 0.5s ease;
 }
 
 #root {

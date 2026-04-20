@@ -2389,11 +2389,25 @@ body[data-theme="liquid"] .liquid-shell .main-content {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px 20px;
+  padding: 0;
+  min-height: 120px;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 16px;
   letter-spacing: 0.08em;
+}
+
+.magi-brand-logo {
+  position: absolute;
+  top: 12px;
+  left: 10px;
+  width: 180px;
+  height: auto;
+  z-index: 20;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
 }
 .liquid-shell .brand-mark {
   width: 28px;

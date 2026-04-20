@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
+import magiLogo from "../assets/magi-controller.png";
 
 export interface NavItem {
   id: string;
@@ -50,11 +51,9 @@ export function LiquidShell({
 
   return (
     <div className="app-layout liquid-shell">
+      <img className="magi-brand-logo" src={magiLogo} alt="MAGI" draggable={false} />
       <nav className="sidebar" aria-label="Main navigation">
-        <div className="brand">
-          <div className="brand-mark">M</div>
-          <div className="brand-name">MAGI</div>
-        </div>
+        <div className="brand" aria-hidden="true" />
 
         <div className="nav-section-label">Analyze</div>
         {analyzeItems.map(renderItem)}

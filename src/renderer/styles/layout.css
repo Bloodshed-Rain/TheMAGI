@@ -144,7 +144,7 @@
   padding: 28px 40px;
   z-index: 1;
   position: relative;
-  background: var(--bg);
+  background: transparent;
   transition: background-color 0.15s ease;
 }
 
