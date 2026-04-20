@@ -1,275 +1,42 @@
-/* ── Dashboard ────────────────────────────────────────────────── */
-/* Stat pulse, highlight cards, recent insight, compact game list   */
+.dash-split {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+[data-density="compact"] .dash-split {
+  gap: 10px;
+  margin-bottom: 10px;
+}
 
-/* ── Trend Arrows ─────────────────────────────────────── */
-
-.stat-value-row {
+.dash-dot-strip {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
-
-.trend-arrow {
-  display: inline-flex;
-  align-items: center;
-}
-.trend-up { color: var(--green); }
-.trend-down { color: var(--red); }
-.trend-flat {
-  color: var(--text-dim);
-  font-size: 14px;
-  line-height: 1;
-}
-
-/* ── Highlight Cards Grid ─────────────────────────────── */
-
-.dash-highlights-grid {
+.dash-spark-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
 }
-
-.dash-highlight-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 6px);
-}
-
-.dash-highlight-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  opacity: 0.8;
-}
-
-.dash-highlight-body {
-  min-width: 0;
-}
-
-.dash-highlight-title {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-  margin-bottom: 2px;
-}
-
-.dash-highlight-value {
-  font-size: 16px;
-  font-weight: 700;
-  font-family: var(--font-display);
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dash-highlight-sub {
+.dash-spark-label {
   font-size: 11px;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  margin-top: 2px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
 }
-
-/* ── Recent Insight Card ──────────────────────────────── */
-
-.dash-insight-card {
-  margin-bottom: 16px;
-  overflow: hidden;
-}
-
-.dash-insight-header {
+.dash-section-head {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.dash-insight-icon {
-  width: 32px;
-  height: 32px;
-  background: rgba(var(--accent-rgb), 0.1);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent);
-  flex-shrink: 0;
-}
-
-.dash-insight-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.dash-insight-sub {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.dash-insight-refresh {
-  margin-left: auto;
-  font-size: 12px;
-}
-
-.dash-insight-body {
-  margin-top: 12px;
-}
-
-/* ── Recent Games Compact List ────────────────────────── */
-
-.dash-recent-header {
-  display: flex;
-  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.dash-section-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0;
-}
-
-.dash-game-list {
-  padding: 0;
-  overflow: hidden;
-}
-
-/* Grid layout for aligned columns */
-.dash-game-row,
-.dash-game-header {
-  display: grid;
-  grid-template-columns: 28px 34px 1fr 110px 120px 42px 36px 42px 110px;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
+  margin-bottom: 12px;
+}
+.dash-oracle-body {
   font-size: 13px;
-}
-
-.dash-game-header {
-  border-bottom: 1px solid var(--border);
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-.dash-game-header span {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-dim);
-}
-/* Right-align stat headers */
-.dash-game-header .dash-col-right {
-  text-align: right;
-}
-
-.dash-game-row {
-  border-bottom: 1px solid var(--border-subtle);
-  cursor: pointer;
-}
-.dash-game-row:last-child {
-  border-bottom: none;
-}
-.dash-game-row:hover {
-  background: var(--bg-hover);
-}
-
-.dash-game-stocks {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.dash-game-matchup {
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dash-game-vs {
-  font-weight: 400;
-  color: var(--text-dim);
-  font-size: 11px;
-}
-
-.dash-game-opponent {
-  color: var(--text-secondary);
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dash-game-stage {
-  color: var(--text-dim);
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dash-game-stat {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  text-align: right;
-}
-
-.dash-game-date {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  white-space: nowrap;
-  text-align: right;
-}
-
-/* Show more button */
-.dash-show-more {
-  display: flex;
-  justify-content: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--border-subtle);
-}
-.dash-show-more button {
-  font-size: 12px;
+  line-height: 1.6;
   color: var(--text-secondary);
 }
-.dash-show-more button:hover {
-  color: var(--accent);
-}
-
-/* ── Responsive ──────────────────────────────────────── */
-
-@media (max-width: 768px) {
-  .dash-highlights-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .dash-game-row,
-  .dash-game-header {
-    grid-template-columns: 28px 34px 1fr 42px 36px 42px 90px;
-  }
-  .dash-game-stage,
-  .dash-game-opponent {
-    display: none;
-  }
-}
-
-@media (max-width: 480px) {
-  .dash-highlights-grid {
-    grid-template-columns: 1fr;
-  }
+.dash-oracle-body p:first-child {
+  margin-top: 0;
 }

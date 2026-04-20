@@ -4,7 +4,7 @@ import { ChevronRight, Zap, UserCircle } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type Page = "dashboard" | "sessions" | "trends" | "profile" | "characters" | "settings";
+type Page = "dashboard" | "sessions" | "library" | "trends" | "characters" | "settings";
 
 interface CommandItem {
   id: string;
@@ -120,12 +120,12 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
         return;
       }
 
-      // Cmd/Ctrl+1-6 for page navigation (only when palette is NOT open,
+      // Cmd/Ctrl+1-5 for page navigation (only when palette is NOT open,
       // to avoid conflict with typing)
       if (mod && !isOpen) {
-        const pages: Page[] = ["dashboard", "sessions", "trends", "profile", "characters", "settings"];
+        const pages: Page[] = ["dashboard", "sessions", "trends", "characters", "settings"];
         const num = parseInt(e.key, 10);
-        if (num >= 1 && num <= 6) {
+        if (num >= 1 && num <= pages.length) {
           e.preventDefault();
           navigateTo(pages[num - 1]!);
           return;
@@ -178,34 +178,130 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
 
   // ── Build command list ───────────────────────────────────────────
 
-  const navCommands: CommandItem[] = useMemo(() => [
-    { id: "nav-coaching", label: "Coaching", category: "navigate", shortcut: isMac() ? "\u2318 1" : "Ctrl+1", icon: <NavIcon />, action: () => { navigateTo("dashboard"); close(); } },
-    { id: "nav-sessions", label: "Sessions", category: "navigate", shortcut: isMac() ? "\u2318 2" : "Ctrl+2", icon: <NavIcon />, action: () => { navigateTo("sessions"); close(); } },
-    { id: "nav-trends", label: "Trends", category: "navigate", shortcut: isMac() ? "\u2318 3" : "Ctrl+3", icon: <NavIcon />, action: () => { navigateTo("trends"); close(); } },
-    { id: "nav-profile", label: "Profile", category: "navigate", shortcut: isMac() ? "\u2318 4" : "Ctrl+4", icon: <NavIcon />, action: () => { navigateTo("profile"); close(); } },
-    { id: "nav-characters", label: "Characters", category: "navigate", shortcut: isMac() ? "\u2318 5" : "Ctrl+5", icon: <NavIcon />, action: () => { navigateTo("characters"); close(); } },
-    { id: "nav-settings", label: "Settings", category: "navigate", shortcut: isMac() ? "\u2318 6" : "Ctrl+6", icon: <NavIcon />, action: () => { navigateTo("settings"); close(); } },
-  ], [navigateTo, close]);
-
-  const actionCommands: CommandItem[] = useMemo(() => [
-    { id: "action-import", label: "Import Replays", category: "action", icon: <ActionIcon />, action: () => { onImport(); close(); } },
-    { id: "action-clear", label: "Clear All Data", category: "action", icon: <ActionIcon />, action: () => { if (confirm("This will delete all imported game data. Are you sure?")) { window.clippi.clearAllGames(); } close(); } },
-    { id: "action-settings", label: "Open Settings", category: "action", icon: <ActionIcon />, action: () => { navigateTo("settings"); close(); } },
-  ], [navigateTo, onImport, close]);
-
-  const opponentCommands: CommandItem[] = useMemo(() =>
-    opponents.map((opp) => ({
-      id: `opp-${opp.tag}-${opp.code}`,
-      label: `${opp.tag}${opp.code ? ` (${opp.code})` : ""} — ${opp.games} game${opp.games === 1 ? "" : "s"}`,
-      category: "opponent" as const,
-      icon: <UserIcon />,
-      action: () => {
-        // Navigate to sessions to find this opponent
-        navigateTo("sessions");
-        close();
+  const navCommands: CommandItem[] = useMemo(
+    () => [
+      {
+        id: "nav-dashboard",
+        label: "Dashboard",
+        category: "navigate",
+        shortcut: isMac() ? "\u2318 1" : "Ctrl+1",
+        icon: <NavIcon />,
+        action: () => {
+          navigateTo("dashboard");
+          close();
+        },
       },
-    })),
-  [opponents, navigateTo, close]);
+      {
+        id: "nav-library",
+        label: "Library",
+        category: "navigate",
+        icon: <NavIcon />,
+        action: () => {
+          navigateTo("library");
+          close();
+        },
+      },
+      {
+        id: "nav-sessions",
+        label: "Sessions",
+        category: "navigate",
+        shortcut: isMac() ? "\u2318 2" : "Ctrl+2",
+        icon: <NavIcon />,
+        action: () => {
+          navigateTo("sessions");
+          close();
+        },
+      },
+      {
+        id: "nav-trends",
+        label: "Trends",
+        category: "navigate",
+        shortcut: isMac() ? "\u2318 3" : "Ctrl+3",
+        icon: <NavIcon />,
+        action: () => {
+          navigateTo("trends");
+          close();
+        },
+      },
+      {
+        id: "nav-characters",
+        label: "Characters",
+        category: "navigate",
+        shortcut: isMac() ? "\u2318 4" : "Ctrl+4",
+        icon: <NavIcon />,
+        action: () => {
+          navigateTo("characters");
+          close();
+        },
+      },
+      {
+        id: "nav-settings",
+        label: "Settings",
+        category: "navigate",
+        shortcut: isMac() ? "\u2318 5" : "Ctrl+5",
+        icon: <NavIcon />,
+        action: () => {
+          navigateTo("settings");
+          close();
+        },
+      },
+    ],
+    [navigateTo, close],
+  );
+
+  const actionCommands: CommandItem[] = useMemo(
+    () => [
+      {
+        id: "action-import",
+        label: "Import Replays",
+        category: "action",
+        icon: <ActionIcon />,
+        action: () => {
+          onImport();
+          close();
+        },
+      },
+      {
+        id: "action-clear",
+        label: "Clear All Data",
+        category: "action",
+        icon: <ActionIcon />,
+        action: () => {
+          if (confirm("This will delete all imported game data. Are you sure?")) {
+            window.clippi.clearAllGames();
+          }
+          close();
+        },
+      },
+      {
+        id: "action-settings",
+        label: "Open Settings",
+        category: "action",
+        icon: <ActionIcon />,
+        action: () => {
+          navigateTo("settings");
+          close();
+        },
+      },
+    ],
+    [navigateTo, onImport, close],
+  );
+
+  const opponentCommands: CommandItem[] = useMemo(
+    () =>
+      opponents.map((opp) => ({
+        id: `opp-${opp.tag}-${opp.code}`,
+        label: `${opp.tag}${opp.code ? ` (${opp.code})` : ""} — ${opp.games} game${opp.games === 1 ? "" : "s"}`,
+        category: "opponent" as const,
+        icon: <UserIcon />,
+        action: () => {
+          // Navigate to sessions to find this opponent
+          navigateTo("sessions");
+          close();
+        },
+      })),
+    [opponents, navigateTo, close],
+  );
 
   // ── Filter and sort by fuzzy score ───────────────────────────────
 
@@ -255,32 +351,35 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
 
   // ── Keyboard navigation ──────────────────────────────────────────
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      close();
-      return;
-    }
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        return;
+      }
 
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((i) => (i + 1) % Math.max(filteredItems.length, 1));
-      return;
-    }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((i) => (i + 1) % Math.max(filteredItems.length, 1));
+        return;
+      }
 
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((i) => (i - 1 + filteredItems.length) % Math.max(filteredItems.length, 1));
-      return;
-    }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((i) => (i - 1 + filteredItems.length) % Math.max(filteredItems.length, 1));
+        return;
+      }
 
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const item = filteredItems[selectedIndex];
-      if (item) item.action();
-      return;
-    }
-  }, [filteredItems, selectedIndex, close]);
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const item = filteredItems[selectedIndex];
+        if (item) item.action();
+        return;
+      }
+    },
+    [filteredItems, selectedIndex, close],
+  );
 
   // ── Scroll selected item into view ───────────────────────────────
 
@@ -322,7 +421,15 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
             {/* ── Search input ─────────────────────────────── */}
             <div className="cmd-input-wrap">
               <div className="cmd-input-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
                   <circle cx="11" cy="11" r="7" />
                   <line x1="16.5" y1="16.5" x2="21" y2="21" />
                 </svg>
@@ -359,9 +466,7 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
 
               {groupedItems.map((group) => (
                 <div key={group.category} className="cmd-group">
-                  <div className="cmd-group-label">
-                    {CATEGORY_LABELS[group.category] ?? group.category}
-                  </div>
+                  <div className="cmd-group-label">{CATEGORY_LABELS[group.category] ?? group.category}</div>
                   {group.items.map((item) => {
                     const thisIndex = flatIndex++;
                     const isSelected = thisIndex === selectedIndex;
@@ -379,9 +484,7 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
                       >
                         <span className="cmd-item-icon">{item.icon}</span>
                         <span className="cmd-item-label">{item.label}</span>
-                        {item.shortcut && (
-                          <kbd className="cmd-item-shortcut">{item.shortcut}</kbd>
-                        )}
+                        {item.shortcut && <kbd className="cmd-item-shortcut">{item.shortcut}</kbd>}
                         {isSelected && (
                           <motion.div
                             className="cmd-item-highlight"
@@ -398,9 +501,16 @@ export function CommandPalette({ navigateTo, onImport }: CommandPaletteProps) {
 
             {/* ── Footer hint ─────────────────────────────── */}
             <div className="cmd-footer">
-              <span><kbd className="cmd-kbd-sm">&uarr;</kbd><kbd className="cmd-kbd-sm">&darr;</kbd> navigate</span>
-              <span><kbd className="cmd-kbd-sm">&crarr;</kbd> select</span>
-              <span><kbd className="cmd-kbd-sm">esc</kbd> close</span>
+              <span>
+                <kbd className="cmd-kbd-sm">&uarr;</kbd>
+                <kbd className="cmd-kbd-sm">&darr;</kbd> navigate
+              </span>
+              <span>
+                <kbd className="cmd-kbd-sm">&crarr;</kbd> select
+              </span>
+              <span>
+                <kbd className="cmd-kbd-sm">esc</kbd> close
+              </span>
             </div>
           </motion.div>
         </motion.div>

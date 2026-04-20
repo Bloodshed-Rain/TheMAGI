@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { THEMES, THEME_ORDER, applyTheme, getResolvedTheme, type ColorMode } from "../themes";
-import { useGlobalStore } from "../stores/useGlobalStore";
+import { Card } from "../components/ui/Card";
 
 /** Config as returned by the main process — API keys are redacted to booleans */
 interface Config {
@@ -55,12 +54,7 @@ interface SettingsProps {
   onImport: () => void;
 }
 
-const BASE_THEMES = THEME_ORDER.filter((t) => !t.startsWith("char-"));
-const CHAR_THEMES = THEME_ORDER.filter((t) => t.startsWith("char-"));
-
 export function Settings({ onImport }: SettingsProps) {
-  const colorMode = useGlobalStore((state) => state.colorMode);
-  const setColorMode = useGlobalStore((state) => state.setColorMode);
   const [config, setConfig] = useState<Config>({
     targetPlayer: null,
     connectCode: null,
@@ -127,7 +121,9 @@ export function Settings({ onImport }: SettingsProps) {
     }
   }, []);
 
-  useEffect(() => { fetchModels(); }, [fetchModels]);
+  useEffect(() => {
+    fetchModels();
+  }, [fetchModels]);
 
   // Import progress events
   useEffect(() => {
@@ -160,15 +156,6 @@ export function Settings({ onImport }: SettingsProps) {
   }, [watching, onImport]);
 
   const selectedModel = config.llmModelId || DEFAULT_MODEL_ID;
-
-  const handleThemeChange = useCallback((themeId: string) => {
-    const mode = themeId as ColorMode;
-    setColorMode(mode);
-    setConfig((prev) => ({ ...prev, colorMode: mode }));
-    applyTheme(getResolvedTheme(mode, mode));
-    // Only save the colorMode field — don't re-send the full config (keys are redacted)
-    window.clippi.saveConfig({ colorMode: mode });
-  }, [setColorMode]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -208,10 +195,10 @@ export function Settings({ onImport }: SettingsProps) {
     setShowErrorDetails(false);
     setImportStatus("Scanning for replays...");
     try {
-      const result = await window.clippi.importFolder(
+      const result = (await window.clippi.importFolder(
         config.replayFolder,
         config.connectCode || config.targetPlayer,
-      ) as {
+      )) as {
         imported: number;
         skipped: number;
         errors: number;
@@ -256,10 +243,7 @@ export function Settings({ onImport }: SettingsProps) {
           setImportStatus("Set replay folder and player tag first.");
           return;
         }
-        await window.clippi.startWatcher(
-          config.replayFolder,
-          config.connectCode ?? config.targetPlayer,
-        );
+        await window.clippi.startWatcher(config.replayFolder, config.connectCode ?? config.targetPlayer);
         setWatching(true);
         setImportStatus("Watching for new replays...");
       }
@@ -287,8 +271,7 @@ export function Settings({ onImport }: SettingsProps) {
         <h1>Settings</h1>
       </div>
 
-      <div className="card">
-        <div className="card-title">Player</div>
+      <Card title="Player">
         <div className="settings-field">
           <label>Display Name / Tag</label>
           <input
@@ -305,10 +288,9 @@ export function Settings({ onImport }: SettingsProps) {
             placeholder="TAG#123"
           />
         </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <div className="card-title">Replay Folder</div>
+      <Card title="Replay Folder">
         <div className="settings-field">
           <div className="settings-row">
             <input
@@ -316,26 +298,23 @@ export function Settings({ onImport }: SettingsProps) {
               onChange={(e) => setConfig({ ...config, replayFolder: e.target.value || null })}
               placeholder="/path/to/slippi/replays"
             />
-            <button className="btn" onClick={handleBrowse}>Browse</button>
+            <button className="btn" onClick={handleBrowse}>
+              Browse
+            </button>
           </div>
         </div>
         <div className="settings-row" style={{ gap: 8 }}>
-          <button
-            className="btn btn-primary"
-            onClick={handleImport}
-            disabled={importing}
-          >
+          <button className="btn btn-primary" onClick={handleImport} disabled={importing}>
             {importing ? "Importing..." : "Import All"}
           </button>
-          <button
-            className={`btn ${watching ? "btn-danger" : ""}`}
-            onClick={toggleWatcher}
-          >
+          <button className={`btn ${watching ? "btn-danger" : ""}`} onClick={toggleWatcher}>
             {watching ? "Stop Watching" : "Watch for New Games"}
           </button>
         </div>
         {importing && (
-          <p style={{ fontSize: 12, color: "var(--text-dim)", margin: "6px 0 0" }}>Large replay folders may take a few minutes to process.</p>
+          <p style={{ fontSize: 12, color: "var(--text-dim)", margin: "6px 0 0" }}>
+            Large replay folders may take a few minutes to process.
+          </p>
         )}
         {importProgress && importing && (
           <div style={{ marginTop: 8 }}>
@@ -347,16 +326,22 @@ export function Settings({ onImport }: SettingsProps) {
                 }}
               />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-dim)", marginTop: 4 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 11,
+                color: "var(--text-dim)",
+                marginTop: 4,
+              }}
+            >
               <span>{importProgress.lastFile}</span>
               <span>{Math.round((importProgress.current / importProgress.total) * 100)}%</span>
             </div>
           </div>
         )}
         {importStatus && (
-          <p className={`import-status${importErrors.length > 0 ? " import-status--warn" : ""}`}>
-            {importStatus}
-          </p>
+          <p className={`import-status${importErrors.length > 0 ? " import-status--warn" : ""}`}>{importStatus}</p>
         )}
         {importErrors.length > 0 && !importing && (
           <div style={{ marginTop: 4 }}>
@@ -365,34 +350,38 @@ export function Settings({ onImport }: SettingsProps) {
               style={{ fontSize: 11, padding: "2px 8px" }}
               onClick={() => setShowErrorDetails((v) => !v)}
             >
-              {showErrorDetails ? "Hide errors" : `Show ${importErrors.length} error${importErrors.length === 1 ? "" : "s"}`}
+              {showErrorDetails
+                ? "Hide errors"
+                : `Show ${importErrors.length} error${importErrors.length === 1 ? "" : "s"}`}
             </button>
             {showErrorDetails && (
-              <div style={{
-                marginTop: 6,
-                maxHeight: 200,
-                overflowY: "auto",
-                fontSize: 11,
-                fontFamily: "var(--font-mono, monospace)",
-                background: "var(--bg-inset, rgba(0,0,0,0.2))",
-                borderRadius: 4,
-                padding: 8,
-              }}>
+              <div
+                style={{
+                  marginTop: 6,
+                  maxHeight: 200,
+                  overflowY: "auto",
+                  fontSize: 11,
+                  fontFamily: "var(--font-mono, monospace)",
+                  background: "var(--bg-inset, rgba(0,0,0,0.2))",
+                  borderRadius: 4,
+                  padding: 8,
+                }}
+              >
                 {importErrors.map((e, i) => (
                   <div key={i} style={{ marginBottom: 4, color: "var(--text-dim)" }}>
                     <span style={{ color: "var(--red, #C60707)" }}>{e.filePath.split("/").pop()}</span>
-                    {" \u2014 "}{e.error}
+                    {" \u2014 "}
+                    {e.error}
                   </div>
                 ))}
               </div>
             )}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Dolphin Path */}
-      <div className="card">
-        <div className="card-title">Slippi Dolphin</div>
+      <Card title="Slippi Dolphin">
         <div className="settings-field">
           <label>Dolphin Executable Path (optional \u2014 auto-detected if left blank)</label>
           <div className="settings-row">
@@ -401,13 +390,17 @@ export function Settings({ onImport }: SettingsProps) {
               onChange={(e) => setConfig({ ...config, dolphinPath: e.target.value || null })}
               placeholder="Auto-detect"
             />
-            <button className="btn" onClick={async () => {
-              const filePath = await window.clippi.openFileDialog(
-                "Select Slippi Dolphin",
-                [{ name: "All Files", extensions: ["*"] }],
-              );
-              if (filePath) setConfig({ ...config, dolphinPath: filePath });
-            }}>Browse</button>
+            <button
+              className="btn"
+              onClick={async () => {
+                const filePath = await window.clippi.openFileDialog("Select Slippi Dolphin", [
+                  { name: "All Files", extensions: ["*"] },
+                ]);
+                if (filePath) setConfig({ ...config, dolphinPath: filePath });
+              }}
+            >
+              Browse
+            </button>
           </div>
         </div>
         <div className="settings-field">
@@ -418,19 +411,23 @@ export function Settings({ onImport }: SettingsProps) {
               onChange={(e) => setConfig({ ...config, meleeIsoPath: e.target.value || null })}
               placeholder="Falls back to Slippi Launcher ISO if blank"
             />
-            <button className="btn" onClick={async () => {
-              const filePath = await window.clippi.openFileDialog(
-                "Select Melee ISO",
-                [{ name: "ISO Files", extensions: ["iso", "gcm"] }],
-              );
-              if (filePath) setConfig({ ...config, meleeIsoPath: filePath });
-            }}>Browse</button>
+            <button
+              className="btn"
+              onClick={async () => {
+                const filePath = await window.clippi.openFileDialog("Select Melee ISO", [
+                  { name: "ISO Files", extensions: ["iso", "gcm"] },
+                ]);
+                if (filePath) setConfig({ ...config, meleeIsoPath: filePath });
+              }}
+            >
+              Browse
+            </button>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* AI Model */}
-      <div className="card">
+      {/* AI Model — custom header (title + inline controls), so render header manually */}
+      <Card>
         <div className="card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>AI Model</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -452,7 +449,10 @@ export function Settings({ onImport }: SettingsProps) {
           </div>
         </div>
         <div className="settings-field">
-          <label>Model {modelsLoading && <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(loading models...)</span>}</label>
+          <label>
+            Model{" "}
+            {modelsLoading && <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(loading models...)</span>}
+          </label>
           {customModelInput ? (
             <input
               value={selectedModel}
@@ -465,42 +465,43 @@ export function Settings({ onImport }: SettingsProps) {
               value={selectedModel}
               onChange={(e) => setConfig({ ...config, llmModelId: e.target.value })}
             >
-              {dynamicModels ? (
-                Object.entries(dynamicModels)
-                  .filter(([, models]) => models.length > 0)
-                  .map(([provider, models]) => (
-                    <optgroup key={provider} label={PROVIDER_LABELS[provider] ?? provider}>
-                      {models.map((m) => (
-                        <option key={`${provider}-${m.id}`} value={m.id}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))
-              ) : (
-                STATIC_MODELS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))
-              )}
+              {dynamicModels
+                ? Object.entries(dynamicModels)
+                    .filter(([, models]) => models.length > 0)
+                    .map(([provider, models]) => (
+                      <optgroup key={provider} label={PROVIDER_LABELS[provider] ?? provider}>
+                        {models.map((m) => (
+                          <option key={`${provider}-${m.id}`} value={m.id}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))
+                : STATIC_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
             </select>
           )}
         </div>
         <p style={{ color: "var(--text-muted)", fontSize: 11, margin: "4px 0 0", fontFamily: "var(--font-mono)" }}>
           Current: {selectedModel}
         </p>
-      </div>
+      </Card>
 
       {/* API Keys */}
-      <div className="card">
-        <div className="card-title">API Keys</div>
+      <Card title="API Keys">
         <p style={{ color: "var(--text-dim)", fontSize: 11, margin: "0 0 8px", fontFamily: "var(--font-mono)" }}>
-          OpenAI (GPT-4o Mini) is provided by MAGI — no key needed.
-          Add keys below to use other providers.
+          OpenAI (GPT-4o Mini) is provided by MAGI — no key needed. Add keys below to use other providers.
         </p>
         <div className="settings-field">
-          <label>OpenRouter API Key {config.openrouterApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}</label>
+          <label>
+            OpenRouter API Key{" "}
+            {config.openrouterApiKey && (
+              <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>
+            )}
+          </label>
           <input
             type="password"
             value={keyEdits.openrouterApiKey}
@@ -509,7 +510,10 @@ export function Settings({ onImport }: SettingsProps) {
           />
         </div>
         <div className="settings-field">
-          <label>Gemini API Key {config.geminiApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}</label>
+          <label>
+            Gemini API Key{" "}
+            {config.geminiApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}
+          </label>
           <input
             type="password"
             value={keyEdits.geminiApiKey}
@@ -518,7 +522,12 @@ export function Settings({ onImport }: SettingsProps) {
           />
         </div>
         <div className="settings-field">
-          <label>Anthropic API Key {config.anthropicApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}</label>
+          <label>
+            Anthropic API Key{" "}
+            {config.anthropicApiKey && (
+              <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>
+            )}
+          </label>
           <input
             type="password"
             value={keyEdits.anthropicApiKey}
@@ -535,53 +544,21 @@ export function Settings({ onImport }: SettingsProps) {
             placeholder="http://localhost:1234/v1"
           />
         </div>
-      </div>
-
-      {/* Theme */}
-      <div className="card">
-        <div className="card-title">Theme</div>
-        <div className="settings-field">
-          <label>Color Theme</label>
-          <select
-            value={colorMode}
-            onChange={(e) => handleThemeChange(e.target.value)}
-          >
-            <optgroup label="Base Themes">
-              {BASE_THEMES.map((id) => (
-                <option key={id} value={id}>{THEMES[id]?.name ?? id}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Character Themes">
-              {CHAR_THEMES.map((id) => (
-                <option key={id} value={id}>{THEMES[id]?.name ?? id}</option>
-              ))}
-            </optgroup>
-          </select>
-        </div>
-        <div
-          style={{
-            marginTop: 8,
-            height: 6,
-            borderRadius: 3,
-            background: `linear-gradient(90deg, ${THEMES[colorMode]?.accent ?? 'var(--accent)'}, ${THEMES[colorMode]?.accentHover ?? 'var(--accent-hover)'})`,
-          }}
-        />
-      </div>
+      </Card>
 
       <button className="btn btn-primary" onClick={handleSave}>
         {saved ? "Saved!" : "Save Settings"}
       </button>
 
-      <div className="card" style={{ marginTop: 32 }}>
-        <div className="card-title">Danger Zone</div>
+      <Card title="Danger Zone" style={{ marginTop: 32 }}>
         <p style={{ color: "var(--text-dim)", fontSize: 13, marginBottom: 12 }}>
-          This will delete all imported games, stats, and coaching analyses from the local database.
-          Your replay files will not be touched.
+          This will delete all imported games, stats, and coaching analyses from the local database. Your replay files
+          will not be touched.
         </p>
         <button className="btn btn-danger" onClick={handleClearAll}>
           Clear All Games
         </button>
-      </div>
+      </Card>
     </div>
   );
 }

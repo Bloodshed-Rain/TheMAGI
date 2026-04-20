@@ -3,15 +3,13 @@
 /* Import order matters: tokens first, then reset, then layers.   */
 
 @import "./tokens.css";
+@import "./theme-liquid.css";
 @import "./reset.css";
 @import "./layout.css";
 @import "./typography.css";
 @import "./components.css";
 @import "./coaching-cards.css";
-@import "./highlights.css";
 @import "./dashboard.css";
-@import "./history.css";
-@import "./game-detail.css";
 @import "./charts.css";
 @import "./animations.css";
 @import "./utilities.css";

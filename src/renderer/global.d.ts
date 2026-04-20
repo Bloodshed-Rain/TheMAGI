@@ -20,6 +20,29 @@ declare global {
       analyzeTrends: (trendSummary: string) => Promise<string>;
       analyzeScoped: (scope: string, id: string | number, targetPlayer?: string, streamId?: string) => Promise<string>;
       analyzeDiscovery: (streamId?: string) => Promise<string>;
+      analyzeSession: (date: string) => Promise<string>;
+      generatePracticePlan: (weaknessSummary: string) => Promise<{
+        id: number;
+        name: string;
+        weaknessSummary: string | null;
+        createdAt: string;
+        drills: Array<{ id: number; name: string; target: string; completed: boolean; sortOrder: number }>;
+      }>;
+      listPracticePlans: () => Promise<Array<{
+        id: number;
+        name: string;
+        weaknessSummary: string | null;
+        createdAt: string;
+        drills: Array<{ id: number; name: string; target: string; completed: boolean; sortOrder: number }>;
+      }>>;
+      setDrillCompletion: (drillId: number, completed: boolean) => Promise<boolean>;
+      deletePracticePlan: (planId: number) => Promise<boolean>;
+      oracleListMessages: () => Promise<Array<{ id: number; role: "user" | "assistant"; content: string; createdAt: string }>>;
+      oracleAsk: (text: string) => Promise<{
+        user: { id: number; role: "user"; content: string; createdAt: string };
+        assistant: { id: number; role: "assistant"; content: string; createdAt: string };
+      }>;
+      oracleClear: () => Promise<boolean>;
       getLLMModels: () => Promise<any[]>;
       getCurrentModel: () => Promise<{ modelId: string; label: string }>;
       fetchOpenRouterModels: () => Promise<any[]>;
@@ -44,6 +67,25 @@ declare global {
       getRecentHighlights: (limit: number) => Promise<any[]>;
       getAnalysisHistory: (limit: number, offset: number, scopeFilter?: string) => Promise<any[]>;
       getGameDetail: (gameId: number) => Promise<any>;
+      getSessionsByDay: (daysBack?: number) => Promise<Array<{
+        date: string;
+        games: number;
+        wins: number;
+        losses: number;
+        opponents: string[];
+        gameIds: number[];
+      }>>;
+      getTrendSeries: (
+        metric:
+          | "neutralWinRate"
+          | "lCancelRate"
+          | "conversionRate"
+          | "avgDamagePerOpening"
+          | "openingsPerKill"
+          | "avgDeathPercent",
+        range: "7d" | "30d" | "all",
+        filterChar: string | null,
+      ) => Promise<number[]>;
       openInDolphin: (replayPath: string) => Promise<boolean>;
       openInDolphinAtFrame: (replayPath: string, frame: number) => Promise<boolean>;
       getStockTimeline: (replayPath: string) => Promise<any>;

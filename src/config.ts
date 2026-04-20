@@ -21,6 +21,7 @@ export interface Config {
   // UI
   theme: string | null;
   colorMode: string | null;
+  density: "comfortable" | "compact" | null;
 }
 
 const DEFAULTS: Config = {
@@ -37,6 +38,7 @@ const DEFAULTS: Config = {
   meleeIsoPath: null,
   theme: null,
   colorMode: null,
+  density: null,
 };
 
 export function loadConfig(): Config {
@@ -61,9 +63,7 @@ export function saveConfig(config: Partial<Config>): Config {
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2) + "\n");
     return merged;
   } catch (err) {
-    throw new Error(
-      `Failed to save config: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    throw new Error(`Failed to save config: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
