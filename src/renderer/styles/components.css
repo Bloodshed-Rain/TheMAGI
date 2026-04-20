@@ -2870,8 +2870,7 @@ body[data-theme="liquid"] .drawer {
    LiquidShell overrides for pre-existing icon-rail styles in
    layout.css. The old shell used a 48px icon rail with tooltip
    labels; LiquidShell is a 240px sidebar with row-style items.
-   These selectors neutralize the icon-rail rules without touching
-   layout.css (so Win98Shell keeps working).
+   These selectors neutralize the icon-rail rules.
    ════════════════════════════════════════════════════════════════ */
 
 .liquid-shell .sidebar {

@@ -2,14 +2,10 @@
 /* Clean, premium sports analytics aesthetic.                      */
 /* Import order matters: tokens first, then reset, then layers.   */
 
-/* Google Fonts — Oswald for Melee body. */
-@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap");
-
 @import "./tokens.css";
 @import "./theme-liquid.css";
 @import "./reset.css";
 @import "./layout.css";
-@import "./shells.css";
 @import "./typography.css";
 @import "./components.css";
 @import "./coaching-cards.css";
