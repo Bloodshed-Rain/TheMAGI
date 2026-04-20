@@ -1,468 +1,964 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="color-scheme" content="dark">
-<title>MAGI — Melee Analysis through Generative Intelligence</title>
-<meta name="description" content="Open-source AI coaching for Super Smash Bros. Melee. Drop your replays. Get smarter.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAGI — Melee Analysis through Generative Intelligence</title>
+  <meta name="description" content="Open-source AI coaching for Super Smash Bros. Melee. Drop your .slp replays. Get coached by an AI that actually knows your data." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+/* ── Reset ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
 
-:root{
---g:#21BA45;
---g2:#2EE85A;
---g-dim:rgba(33,186,69,0.45);
---g-lo:rgba(33,186,69,0.12);
---g-glow:rgba(33,186,69,0.08);
---amber:#E8A030;
---red:#D83828;
---bg:#070A08;
---bg2:#0B0F0C;
---chalk:#E0E6E2;
---chalk-mid:rgba(224,230,226,0.7);
---chalk-dim:rgba(224,230,226,0.45);
---border:rgba(224,230,226,0.08);
---ui:'Outfit',sans-serif;
---serif:'Instrument Serif',serif;
-}
-
-html{
-background:var(--bg)!important;
-scroll-behavior:smooth;
-scrollbar-width:thin;
-scrollbar-color:var(--g-dim) var(--bg);
-}
-body{
-background:var(--bg)!important;
-font-family:var(--ui);
-color:var(--chalk);
--webkit-font-smoothing:antialiased;
-overflow-x:hidden;
-}
-::selection{background:var(--g);color:var(--bg)}
-
-a{color:inherit;text-decoration:none}
-a:focus-visible{outline:2px solid var(--g);outline-offset:3px}
-
-/* ============ NAV ============ */
-nav{
-position:fixed;top:0;left:0;right:0;z-index:100;
-padding:0 2rem;height:56px;
-display:flex;align-items:center;justify-content:space-between;
-background:rgba(7,10,8,0.8);
-backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-border-bottom:1px solid var(--border);
-}
-.nav-brand{
-font-size:0.7rem;font-weight:800;
-letter-spacing:0.3em;text-transform:uppercase;
-color:var(--g);
-}
-.nav-links{display:flex;align-items:center;gap:1.8rem}
-.nav-link{
-font-size:0.68rem;font-weight:500;
-color:var(--chalk-mid);
-letter-spacing:0.04em;
-transition:color 0.2s;
-}
-.nav-link:hover{color:var(--chalk)}
-.nav-cta{
-font-size:0.62rem;font-weight:700;
-letter-spacing:0.08em;text-transform:uppercase;
-color:var(--bg);background:var(--g);
-padding:0.5rem 1.2rem;border-radius:5px;
-transition:transform 0.1s,box-shadow 0.2s;
-}
-.nav-cta:hover{
-transform:translateY(-1px);
-box-shadow:0 4px 16px rgba(33,186,69,0.25);
+/* ── Liquid Metal Tokens ─────────────────────────────────────────── */
+:root {
+  --bg:           #0a0d14;
+  --s1:           rgba(255,255,255,0.04);
+  --s2:           rgba(255,255,255,0.08);
+  --s3:           rgba(255,255,255,0.12);
+  --border:       rgba(255,255,255,0.10);
+  --border-sub:   rgba(255,255,255,0.05);
+  --border-hi:    rgba(255,255,255,0.18);
+  --text:         #f5f7fa;
+  --text-2:       #cfd4dc;
+  --text-m:       #6a707b;
+  --accent:       #c7ccd6;
+  --accent-m:     rgba(199,204,214,0.14);
+  --win:          #7ee8c5;
+  --loss:         #ff8a9e;
+  --caution:      #ffd47a;
+  --indigo:       #a0a8ff;
+  --pink:         #ff8a9e;
+  --teal:         #7ee8c5;
+  --lavender:     #e8a3d4;
+  --sans:         'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:         'JetBrains Mono', 'Fira Code', monospace;
+  --shadow-md:    0 20px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12);
+  --shadow-lg:    0 40px 120px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.14);
+  --glint:        linear-gradient(145deg,rgba(255,255,255,0.18) 0%,rgba(255,255,255,0.04) 20%,rgba(255,255,255,0) 45%,rgba(255,255,255,0.08) 70%,rgba(255,255,255,0.02) 100%);
+  --ease-spring:  cubic-bezier(0.22,1,0.36,1);
+  --ease-out:     cubic-bezier(0,0,0.2,1);
+  --r-sm:         14px;
+  --r-md:         20px;
 }
 
-/* ============ LAYOUT ============ */
-.container{max-width:900px;margin:0 auto;padding:0 2rem}
-
-/* ============ HERO ============ */
-.hero{
-padding:10rem 0 6rem;
-position:relative;
-}
-/* Subtle radial glow behind hero */
-.hero::before{
-content:'';position:absolute;
-top:20%;left:50%;
-width:600px;height:400px;
-transform:translateX(-50%);
-background:radial-gradient(ellipse,rgba(33,186,69,0.06) 0%,transparent 70%);
-pointer-events:none;
-}
-.hero-eyebrow{
-font-size:0.55rem;font-weight:600;
-letter-spacing:0.35em;text-transform:uppercase;
-color:var(--g-dim);
-margin-bottom:1.5rem;
-}
-.hero h1{
-font-size:clamp(3.5rem,10vw,7rem);
-font-weight:900;
-letter-spacing:-0.04em;
-line-height:0.9;
-color:var(--chalk);
-}
-.hero h1 span{
-display:block;
-font-family:var(--serif);
-font-weight:400;font-style:italic;
-font-size:clamp(1.3rem,3vw,2rem);
-letter-spacing:0.01em;
-color:var(--chalk-mid);
-margin-top:0.6rem;
-line-height:1.4;
-}
-.hero-desc{
-font-size:0.92rem;line-height:1.85;
-font-weight:300;color:var(--chalk-mid);
-max-width:50ch;margin-top:2rem;
-}
-.hero-actions{
-display:flex;gap:0.8rem;margin-top:2.5rem;
-flex-wrap:wrap;
-}
-.btn{
-display:inline-flex;align-items:center;gap:0.5rem;
-font-family:var(--ui);font-size:0.72rem;font-weight:700;
-letter-spacing:0.06em;
-padding:0.85rem 2rem;border-radius:6px;
-cursor:pointer;border:none;
-transition:transform 0.1s,box-shadow 0.2s;
-}
-.btn-primary{
-background:var(--g);color:var(--bg);
-box-shadow:0 2px 10px rgba(33,186,69,0.2);
-}
-.btn-primary:hover{
-transform:translateY(-1px);
-box-shadow:0 4px 20px rgba(33,186,69,0.3);
-}
-.btn-secondary{
-background:transparent;color:var(--chalk-mid);
-border:1px solid var(--border);
-}
-.btn-secondary:hover{
-border-color:rgba(224,230,226,0.2);
-color:var(--chalk);
+/* ── Base ────────────────────────────────────────────────────────── */
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
 }
 
-/* ============ SECTIONS ============ */
-section{padding:6rem 0}
-section + section{border-top:1px solid var(--border)}
-.section-label{
-font-size:0.45rem;font-weight:700;
-letter-spacing:0.35em;text-transform:uppercase;
-color:var(--g-dim);margin-bottom:1.5rem;
+/* ── Atmosphere glows ────────────────────────────────────────────── */
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(800px 600px at 12% 18%, rgba(160,168,255,0.22), transparent 60%),
+    radial-gradient(900px 700px at 92% 82%, rgba(255,138,158,0.15), transparent 60%),
+    radial-gradient(700px 500px at 60% 40%, rgba(126,232,197,0.12), transparent 60%),
+    radial-gradient(600px 400px at 35% 88%, rgba(232,163,212,0.14), transparent 60%);
+  filter: blur(20px);
+  animation: float 24s ease-in-out infinite alternate;
 }
-section h2{
-font-family:var(--serif);
-font-size:clamp(1.8rem,4vw,2.6rem);
-font-weight:400;
-line-height:1.2;
-color:var(--chalk);
-max-width:20ch;
+body::after {
+  content: "";
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: repeating-linear-gradient(135deg,transparent 0 2px,rgba(255,255,255,0.008) 2px 4px);
 }
-section p{
-font-size:0.88rem;line-height:1.9;
-font-weight:300;color:var(--chalk-mid);
-max-width:55ch;margin-top:1rem;
-}
-
-/* Stats row */
-.stats-row{
-display:flex;gap:2.5rem;margin-top:2.5rem;
-flex-wrap:wrap;
-}
-.stat{min-width:80px}
-.stat-val{
-font-size:2rem;font-weight:800;
-color:var(--g);line-height:1;
-}
-.stat-lbl{
-font-size:0.45rem;font-weight:600;
-letter-spacing:0.2em;text-transform:uppercase;
-color:var(--chalk-dim);margin-top:0.4rem;
+@keyframes float {
+  0%   { transform: translate(0,0) scale(1); }
+  50%  { transform: translate(-20px,30px) scale(1.05); }
+  100% { transform: translate(30px,-20px) scale(0.98); }
 }
 
-/* Analysis block */
-.analysis-block{
-background:var(--bg2);
-border:1px solid var(--border);
-border-left:3px solid var(--g-dim);
-border-radius:0 8px 8px 0;
-padding:1.5rem 2rem;
-margin-top:2rem;
-font-size:0.74rem;line-height:2;
-color:var(--g);
-max-width:560px;
-overflow-x:auto;
-}
-.ab-dim{color:var(--g-dim)}
-.ab-amber{color:var(--amber)}
-.ab-red{color:var(--red);font-weight:600}
+/* ── Page wrapper ────────────────────────────────────────────────── */
+.page { position: relative; z-index: 1; }
 
-/* Tech tags */
-.tech-tags{
-display:flex;gap:0.5rem;margin-top:2rem;flex-wrap:wrap;
-}
-.tech-tag{
-font-size:0.6rem;font-weight:500;
-letter-spacing:0.08em;
-color:var(--chalk-dim);
-padding:0.45rem 0.9rem;
-border:1px solid var(--border);
-border-radius:4px;
-transition:border-color 0.2s,color 0.2s;
-}
-.tech-tag:hover{border-color:rgba(224,230,226,0.18);color:var(--chalk-mid)}
+/* ── Container ───────────────────────────────────────────────────── */
+.wrap { max-width: 1100px; margin: 0 auto; padding: 0 40px; }
 
-/* ============ INSTALL SECTION ============ */
-.install-section{
-padding:6rem 0 4rem;
-border-top:1px solid var(--border);
+/* ── Glass card ──────────────────────────────────────────────────── */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--r-md);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  box-shadow: var(--shadow-md);
+  position: relative; overflow: hidden;
 }
-.install-block{
-background:var(--bg2);
-border:1px solid var(--border);
-border-radius:8px;
-padding:1.5rem 2rem;
-margin-top:2rem;
-display:flex;align-items:center;
-justify-content:space-between;
-gap:1.5rem;flex-wrap:wrap;
-}
-.install-cmd{
-font-size:0.8rem;color:var(--g);
-cursor:pointer;display:flex;align-items:center;gap:0.5rem;
-transition:text-shadow 0.2s;
-}
-.install-cmd:hover{text-shadow:0 0 12px var(--g-glow)}
-.install-cmd .prompt{color:var(--g-dim)}
-.install-note{
-font-size:0.6rem;color:var(--chalk-dim);
-margin-top:0.5rem;font-weight:400;
-}
-.install-actions{
-display:flex;gap:0.8rem;flex-wrap:wrap;
+.card::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: var(--glint); opacity: 0.7; mix-blend-mode: overlay;
 }
 
-/* ============ FOOTER ============ */
-footer{
-padding:3rem 0;
-border-top:1px solid var(--border);
-display:flex;justify-content:space-between;
-align-items:flex-end;flex-wrap:wrap;gap:1rem;
+/* ── Section label ───────────────────────────────────────────────── */
+.eyebrow {
+  font-size: 10px; font-family: var(--mono);
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--text-m); font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
 }
-.footer-text{
-font-size:0.55rem;font-weight:400;
-color:var(--chalk-dim);line-height:2;
-letter-spacing:0.05em;
-}
-.footer-links{display:flex;gap:1.5rem}
-.footer-links a{
-font-size:0.6rem;font-weight:600;
-letter-spacing:0.1em;
-color:var(--chalk-dim);
-transition:color 0.2s;
-}
-.footer-links a:hover{color:var(--g)}
+.eyebrow::before { content:""; display:block; width:20px; height:1px; background:var(--text-m); opacity:0.5; }
 
-/* ============ SCROLL REVEALS ============ */
-.reveal{
-opacity:0;transform:translateY(20px);
-transition:opacity 0.7s ease,transform 0.7s ease;
+/* ── Page heading bar ────────────────────────────────────────────── */
+.ph {
+  border-left: 3px solid var(--accent);
+  padding-left: 14px; margin-bottom: 0;
 }
-.reveal.visible{opacity:1;transform:translateY(0)}
-
-/* Stagger children */
-.reveal-stagger > *{
-opacity:0;transform:translateY(12px);
-transition:opacity 0.5s ease,transform 0.5s ease;
+.ph h2 {
+  font-size: 18px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--text);
 }
-.reveal-stagger.visible > *:nth-child(1){opacity:1;transform:translateY(0);transition-delay:0s}
-.reveal-stagger.visible > *:nth-child(2){opacity:1;transform:translateY(0);transition-delay:0.08s}
-.reveal-stagger.visible > *:nth-child(3){opacity:1;transform:translateY(0);transition-delay:0.16s}
-.reveal-stagger.visible > *:nth-child(4){opacity:1;transform:translateY(0);transition-delay:0.24s}
-.reveal-stagger.visible > *:nth-child(5){opacity:1;transform:translateY(0);transition-delay:0.32s}
-.reveal-stagger.visible > *:nth-child(6){opacity:1;transform:translateY(0);transition-delay:0.4s}
-.reveal-stagger.visible > *:nth-child(7){opacity:1;transform:translateY(0);transition-delay:0.48s}
-
-/* ============ HERO ENTRANCE ============ */
-.hero-eyebrow{opacity:0;animation:fadeUp 0.6s 0.1s forwards}
-.hero h1{opacity:0;animation:fadeUp 0.7s 0.2s forwards}
-.hero-desc{opacity:0;animation:fadeUp 0.6s 0.5s forwards}
-.hero-actions{opacity:0;animation:fadeUp 0.6s 0.7s forwards}
-@keyframes fadeUp{
-from{opacity:0;transform:translateY(15px)}
-to{opacity:1;transform:translateY(0)}
+.ph p {
+  font-size: 10px; font-family: var(--mono);
+  color: var(--text-m); letter-spacing: 0.5px; margin-top: 4px;
+  text-transform: uppercase;
 }
 
-/* ============ RESPONSIVE ============ */
-@media(max-width:640px){
-nav{padding:0 1.2rem;height:50px}
-.nav-links{gap:1rem}
-.nav-link.hide-mobile{display:none}
-.container{padding:0 1.2rem}
-.hero{padding:8rem 0 4rem}
-section{padding:4rem 0}
-.stats-row{gap:1.5rem}
-.install-block{flex-direction:column;align-items:flex-start}
-.install-actions{width:100%}
-.install-actions .btn{width:100%;justify-content:center}
-.hero-actions{flex-direction:column}
-.hero-actions .btn{width:100%;justify-content:center}
-footer{flex-direction:column;align-items:flex-start}
+/* ── KPI ─────────────────────────────────────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.kpi {
+  padding: 22px 24px; position: relative; overflow: hidden;
+  background: var(--s1); border: 1px solid var(--border-hi);
+  border-radius: var(--r-md);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 40px rgba(0,0,0,0.25);
 }
-</style>
+.kpi::before {
+  content:""; position:absolute; inset:0;
+  background:var(--glint); opacity:0.5; pointer-events:none; mix-blend-mode:overlay;
+}
+.kpi-lbl {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--text-m); font-weight: 600; margin-bottom: 6px;
+  font-family: var(--mono);
+}
+.kpi-val {
+  font-family: var(--sans); font-weight: 300; font-size: 36px;
+  letter-spacing: -0.04em; font-feature-settings: "tnum";
+  background: linear-gradient(180deg,rgba(255,255,255,1) 0%,rgba(200,205,215,1) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+}
+.kpi-sub { font-size: 12px; color: var(--text-2); font-weight: 500; margin-top: 4px; }
+.kpi-sub.good { color: var(--win); }
+.kpi-sub.bad  { color: var(--loss); }
+
+/* ── Win rate bar ────────────────────────────────────────────────── */
+.wr-bar {
+  height: 6px; background: var(--s3); border-radius: 999px; overflow: hidden;
+}
+.wr-fill {
+  height: 100%;
+  background: linear-gradient(90deg,#c7ccd6,#ffffff,#c7ccd6);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+  border-radius: 999px;
+  transition: width 1s var(--ease-spring);
+}
+
+/* ── Result dot ──────────────────────────────────────────────────── */
+.dot { display:inline-block; width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.dot.w {
+  background: radial-gradient(circle at 30% 30%,rgba(255,255,255,0.6),rgba(126,232,197,0.9) 40%,rgba(80,180,150,1));
+  box-shadow: 0 0 12px rgba(126,232,197,0.5), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.dot.l {
+  background: radial-gradient(circle at 30% 30%,rgba(255,255,255,0.6),rgba(255,138,158,0.9) 40%,rgba(180,80,100,1));
+  box-shadow: 0 0 12px rgba(255,138,158,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.btn {
+  padding: 10px 20px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: linear-gradient(145deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04));
+  color: var(--text); font-size: 13px; font-weight: 600;
+  font-family: var(--sans); cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+  transition: background 0.15s, border-color 0.15s;
+  backdrop-filter: blur(12px);
+}
+.btn:hover {
+  background: linear-gradient(145deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08));
+  border-color: rgba(255,255,255,0.25);
+}
+.btn-p {
+  background: linear-gradient(145deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08));
+  border-color: rgba(255,255,255,0.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 24px rgba(0,0,0,0.3);
+}
+.btn-p:hover {
+  background: linear-gradient(145deg,rgba(255,255,255,0.30),rgba(255,255,255,0.12));
+}
+
+/* ── Scroll reveal ───────────────────────────────────────────────── */
+.reveal { opacity:0; transform:translateY(16px); transition:opacity 0.5s var(--ease-out),transform 0.5s var(--ease-spring); }
+.reveal.vis { opacity:1; transform:translateY(0); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════════════════════════════ */
+nav {
+  position: fixed; top:0; left:0; right:0; z-index:100;
+  display: flex; align-items:center; justify-content:space-between;
+  padding: 0 40px; height: 60px;
+  background: rgba(10,13,20,0.65);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border-bottom: 1px solid var(--border);
+}
+.nav-brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text); }
+.nav-mark {
+  width:52px; height:36px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.nav-mark img {
+  width:52px; height:auto;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
+  display:block;
+}
+.nav-name { font-size:14px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.nav-links { display:flex; align-items:center; gap:6px; }
+.nav-link {
+  padding:7px 14px; border-radius:10px; text-decoration:none;
+  color:var(--text-m); font-size:13px; font-weight:500;
+  transition:color 0.15s, background 0.15s;
+}
+.nav-link:hover { color:var(--text); background:var(--s2); }
+.nav-cta {
+  padding:8px 18px; border-radius:12px;
+  background: linear-gradient(145deg,rgba(255,255,255,0.16),rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
+  color:var(--text); font-size:13px; font-weight:600; text-decoration:none;
+  transition:background 0.15s; backdrop-filter:blur(12px);
+}
+.nav-cta:hover { background:linear-gradient(145deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08)); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════════════════════════════ */
+.hero {
+  min-height: 100vh; display:flex; flex-direction:column; justify-content:center;
+  padding: 120px 40px 80px; max-width:1100px; margin:0 auto;
+}
+.hero-eye {
+  font-size:10px; font-family:var(--mono); text-transform:uppercase;
+  letter-spacing:0.14em; color:var(--text-m); font-weight:600;
+  margin-bottom:24px; display:flex; align-items:center; gap:10px;
+}
+.hero-eye::before { content:""; display:block; width:24px; height:1px; background:var(--text-m); }
+.hero-h1 {
+  font-size: clamp(48px,7vw,88px); font-weight:300; letter-spacing:-0.03em;
+  line-height:1.0; color:var(--text); margin-bottom:28px;
+}
+.hero-h1 strong {
+  font-weight:700;
+  background: linear-gradient(135deg,#ffffff 0%,#c7ccd6 50%,#a0a8ff 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.hero-sub {
+  font-size:17px; color:var(--text-2); max-width:520px;
+  line-height:1.7; margin-bottom:40px; font-weight:400;
+}
+.hero-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:80px; }
+.hero-meta { display:flex; gap:32px; flex-wrap:wrap; }
+.hero-meta-item { display:flex; flex-direction:column; gap:2px; }
+.hero-meta-val {
+  font-size:22px; font-weight:300; letter-spacing:-0.03em;
+  background: linear-gradient(180deg,#fff 0%,#c8cdd7 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  font-feature-settings:"tnum";
+}
+.hero-meta-lbl {
+  font-size:10px; font-family:var(--mono); text-transform:uppercase;
+  letter-spacing:0.12em; color:var(--text-m); font-weight:600;
+}
+.hero-div { width:1px; height:32px; background:var(--border-hi); align-self:center; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   APP SHELL PREVIEW
+═══════════════════════════════════════════════════════════════════ */
+.shell-section { padding:80px 0; }
+.shell-wrap {
+  display:grid; grid-template-columns:240px 1fr;
+  border-radius:var(--r-md); overflow:hidden;
+  border:1px solid var(--border-hi); box-shadow:var(--shadow-lg);
+  background:var(--bg); min-height:520px;
+}
+/* Sidebar */
+.sb {
+  background: rgba(10,13,20,0.65);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border-right:1px solid var(--border);
+  padding:24px 14px; display:flex; flex-direction:column; gap:2px;
+}
+.sb-brand { display:flex; align-items:center; gap:8px; padding:4px 12px 20px; }
+.sb-mark {
+  width:44px; height:30px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.sb-mark img {
+  width:44px; height:auto;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
+  display:block;
+}
+.sb-name { font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.sb-section-lbl {
+  font-size:10px; text-transform:uppercase; letter-spacing:0.12em;
+  color:var(--text-m); padding:12px 12px 6px; font-weight:600;
+}
+.sb-item {
+  display:flex; align-items:center; gap:10px;
+  padding:11px 14px; border-radius:12px;
+  color:var(--text-2); font-size:13px; font-weight:500;
+  cursor:default; transition:background 0.15s;
+}
+.sb-item:hover { background:var(--s2); color:var(--text); }
+.sb-item.on {
+  background: linear-gradient(145deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04));
+  border:1px solid rgba(255,255,255,0.15);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.18);
+  color:var(--text); font-weight:600;
+}
+.sb-ico { width:18px; height:18px; opacity:0.7; display:grid; place-items:center; flex-shrink:0; }
+.sb-item.on .sb-ico { opacity:1; }
+.sb-foot {
+  margin-top:auto; padding:16px 12px;
+  font-size:10px; color:var(--text-m);
+  letter-spacing:0.1em; text-transform:uppercase;
+}
+.sb-foot-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.status-dot { width:6px; height:6px; border-radius:999px; background:var(--win); display:inline-block; }
+/* Main content */
+.sh-main {
+  padding:36px 40px; overflow:hidden; background:transparent; position:relative;
+}
+.sh-main::before {
+  content:""; position:absolute; inset:0;
+  background-image:radial-gradient(circle,rgba(255,255,255,0.03) 1px,transparent 1px);
+  background-size:24px 24px; pointer-events:none; opacity:0.4;
+}
+.sh-main > * { position:relative; z-index:1; }
+.sh-ph {
+  border-left:3px solid var(--accent); padding-left:14px;
+  margin-bottom:28px; display:flex; align-items:flex-start; justify-content:space-between;
+}
+.sh-ph h3 { font-size:18px; font-weight:700; text-transform:uppercase; letter-spacing:2px; }
+.sh-ph p { font-size:10px; font-family:var(--mono); color:var(--text-m); letter-spacing:0.5px; margin-top:4px; text-transform:uppercase; }
+.sh-btn {
+  padding:8px 14px; border-radius:10px;
+  border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06);
+  color:var(--text-2); font-size:11px; font-weight:600;
+  font-family:var(--mono); text-transform:uppercase; letter-spacing:0.5px; cursor:default; white-space:nowrap;
+}
+/* Game list */
+.game-list {
+  display:flex; flex-direction:column;
+  border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-top:20px;
+}
+.game-row {
+  display:flex; align-items:center; gap:14px;
+  padding:12px 16px; border-bottom:1px solid var(--border-sub);
+  border-left:3px solid transparent; background:var(--s1); font-size:12px;
+}
+.game-row:last-child { border-bottom:none; }
+.game-row.w { border-left-color:var(--win); }
+.game-row.l { border-left-color:var(--loss); }
+.gr-match { flex:1; }
+.gr-name { font-weight:600; color:var(--text); }
+.gr-opp { font-size:11px; color:var(--text-m); font-family:var(--mono); }
+.gr-stage { font-family:var(--mono); color:var(--text-2); font-size:11px; }
+.gr-stats { display:flex; gap:20px; }
+.gr-stat { display:flex; flex-direction:column; align-items:flex-end; }
+.gr-val { font-family:var(--mono); font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; }
+.gr-lbl { font-family:var(--mono); font-size:9px; color:var(--text-m); text-transform:uppercase; letter-spacing:1px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   TRENDS
+═══════════════════════════════════════════════════════════════════ */
+.trends-section { padding:80px 0; }
+.trends-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:40px; }
+.trend-card { padding:24px 28px; }
+.trend-hdr { display:flex; align-items:baseline; gap:12px; margin-bottom:16px; }
+.trend-metric { font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.12em; color:var(--text-m); font-weight:600; }
+.trend-val {
+  font-size:28px; font-weight:300; letter-spacing:-0.03em; font-feature-settings:"tnum";
+  background:linear-gradient(180deg,#fff 0%,#c8cdd7 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.trend-delta { font-size:12px; font-family:var(--mono); font-weight:600; }
+.trend-delta.up { color:var(--win); }
+.trend-delta.dn { color:var(--loss); }
+.spark-wrap { width:100%; height:80px; }
+.spark-wrap svg { width:100%; height:100%; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   COACHING
+═══════════════════════════════════════════════════════════════════ */
+.coaching-section { padding:80px 0; }
+.coaching-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:40px; align-items:start; }
+.modal-card { padding:0; overflow:hidden; }
+.modal-hdr {
+  display:flex; align-items:center; gap:12px;
+  padding:18px 20px; border-bottom:1px solid var(--border);
+}
+.modal-icon {
+  width:36px; height:36px; background:rgba(199,204,214,0.1);
+  border-radius:10px; display:flex; align-items:center; justify-content:center;
+  color:var(--accent); flex-shrink:0;
+}
+.modal-title { font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+.modal-sub { font-size:11px; color:var(--text-m); font-family:var(--mono); margin-top:2px; }
+.modal-body { padding:20px; font-size:13px; line-height:1.7; color:var(--text-2); }
+.modal-body h4 {
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px;
+  color:var(--text); margin-bottom:10px; font-family:var(--mono);
+}
+.modal-body p { margin-bottom:12px; }
+.modal-body strong { color:var(--text); font-weight:600; }
+.modal-foot {
+  padding:12px 20px; border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.modal-disc { font-size:10px; color:var(--text-m); font-style:italic; font-family:var(--mono); }
+.coach-features { display:flex; flex-direction:column; gap:12px; }
+.cf-item { padding:16px 20px; display:flex; align-items:flex-start; gap:14px; }
+.cf-dot {
+  width:6px; height:6px; border-radius:50%; background:var(--accent);
+  margin-top:6px; flex-shrink:0; box-shadow:0 0 8px rgba(199,204,214,0.4);
+}
+.cf-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:3px; }
+.cf-desc { font-size:12px; color:var(--text-m); line-height:1.5; font-family:var(--mono); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PROFILE
+═══════════════════════════════════════════════════════════════════ */
+.profile-section { padding:80px 0; }
+.profile-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:40px; align-items:start; }
+.record-card { padding:40px 28px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.record-big {
+  font-size:56px; font-weight:300; font-feature-settings:"tnum";
+  letter-spacing:-0.04em; line-height:1;
+  background:linear-gradient(180deg,#fff 0%,#c8cdd7 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.record-sub { font-size:12px; color:var(--text-m); font-family:var(--mono); margin-top:4px; }
+.record-rate { font-weight:700; color:var(--win); }
+.record-stats {
+  display:flex; justify-content:center; gap:28px; margin-top:20px;
+  padding-top:20px; border-top:1px solid var(--border); width:100%;
+}
+.rs-item { text-align:center; }
+.rs-val {
+  font-size:22px; font-weight:300; letter-spacing:-0.03em; font-feature-settings:"tnum";
+  background:linear-gradient(180deg,#fff 0%,#c8cdd7 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.rs-lbl { font-size:10px; font-weight:600; color:var(--text-m); text-transform:uppercase; letter-spacing:0.1em; font-family:var(--mono); }
+.radar-card { padding:24px 28px; }
+.radar-lbl { font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.12em; color:var(--text-m); font-weight:600; margin-bottom:20px; }
+.radar-wrap { display:flex; justify-content:center; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   CHARACTERS
+═══════════════════════════════════════════════════════════════════ */
+.chars-section { padding:80px 0; }
+.char-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; margin-top:40px; }
+.char-card {
+  padding:18px 16px; display:flex; flex-direction:column;
+  align-items:center; gap:4px; text-align:center; cursor:default;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.char-card:hover {
+  border-color:rgba(255,255,255,0.25);
+  box-shadow:0 0 20px rgba(255,255,255,0.06), var(--shadow-md);
+}
+.char-emoji { font-size:28px; line-height:1; margin-bottom:6px; }
+.char-name { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text); }
+.char-sig { font-size:11px; font-family:var(--mono); color:var(--text-m); margin-top:2px; }
+.char-sig-val { font-size:16px; font-weight:600; font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--text); margin-top:4px; }
+.char-bar { width:100%; margin-top:8px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   INSTALL
+═══════════════════════════════════════════════════════════════════ */
+.install-section { padding:100px 40px; text-align:center; max-width:700px; margin:0 auto; }
+.install-h2 { font-size:clamp(36px,5vw,60px); font-weight:300; letter-spacing:-0.03em; line-height:1.1; margin-bottom:16px; }
+.install-h2 strong {
+  font-weight:700;
+  background:linear-gradient(135deg,#ffffff 0%,#c7ccd6 50%,#a0a8ff 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.install-sub { font-size:15px; color:var(--text-2); line-height:1.7; margin-bottom:40px; }
+.clone-block {
+  display:flex; align-items:center; gap:12px;
+  background:var(--s1); border:1px solid var(--border-hi);
+  border-radius:14px; padding:14px 20px;
+  margin:0 auto 32px; max-width:520px;
+  backdrop-filter:blur(20px); cursor:pointer;
+  transition:border-color 0.15s;
+}
+.clone-block:hover { border-color:rgba(255,255,255,0.3); }
+.clone-prompt { color:var(--text-m); font-family:var(--mono); font-size:12px; flex-shrink:0; }
+.clone-cmd { font-family:var(--mono); font-size:13px; color:var(--text); flex:1; text-align:left; }
+.clone-copy { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-m); flex-shrink:0; transition:color 0.15s; }
+.clone-block:hover .clone-copy { color:var(--text); }
+.install-actions { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
+.platform-badges { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
+.plat {
+  font-size:11px; font-family:var(--mono); color:var(--text-m);
+  padding:4px 10px; border:1px solid var(--border); border-radius:6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════════════════ */
+footer {
+  border-top:1px solid var(--border);
+  padding:32px 40px; display:flex; align-items:center;
+  justify-content:space-between; gap:20px; flex-wrap:wrap;
+}
+.foot-brand { display:flex; align-items:center; gap:10px; }
+.foot-name { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; }
+.foot-sub { font-size:11px; color:var(--text-m); font-family:var(--mono); }
+.foot-links { display:flex; gap:20px; }
+.foot-link {
+  font-size:11px; font-family:var(--mono); text-transform:uppercase;
+  letter-spacing:0.1em; color:var(--text-m); text-decoration:none; transition:color 0.15s;
+}
+.foot-link:hover { color:var(--text); }
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width:900px) {
+  .kpi-grid { grid-template-columns:repeat(2,1fr); }
+  .shell-wrap { grid-template-columns:1fr; }
+  .sb { display:none; }
+  .trends-grid { grid-template-columns:1fr; }
+  .coaching-grid { grid-template-columns:1fr; }
+  .profile-grid { grid-template-columns:1fr; }
+  nav { padding:0 20px; }
+  .nav-links .nav-link { display:none; }
+  .wrap { padding:0 20px; }
+  .hero { padding:100px 20px 60px; }
+}
+@media (max-width:600px) {
+  .char-grid { grid-template-columns:repeat(2,1fr); }
+  .hero-h1 { font-size:40px; }
+  .hero-meta { gap:20px; }
+}
+  </style>
 </head>
 <body>
+<div class="page">
 
-<!-- NAV -->
+<!-- ── Nav ──────────────────────────────────────────────────────────── -->
 <nav>
-  <a href="#" class="nav-brand">MAGI</a>
+  <a class="nav-brand" href="#">
+    <div class="nav-mark"><img src="magilogo2.png" alt="MAGI" /></div>
+    <span class="nav-name">MAGI</span>
+  </a>
   <div class="nav-links">
-    <a href="#features" class="nav-link hide-mobile">Features</a>
-    <a href="#discovery" class="nav-link hide-mobile">Discovery</a>
-    <a href="https://github.com/Bloodshed-Rain/themagi" class="nav-link" target="_blank" rel="noopener">GitHub</a>
-    <a href="https://github.com/Bloodshed-Rain/themagi/releases" class="nav-cta" target="_blank" rel="noopener">Download</a>
+    <a class="nav-link" href="#shell">Dashboard</a>
+    <a class="nav-link" href="#trends">Trends</a>
+    <a class="nav-link" href="#coaching">Coaching</a>
+    <a class="nav-link" href="#chars">Characters</a>
+    <a class="nav-link" href="https://github.com/Bloodshed-Rain/TheMAGI" target="_blank">GitHub</a>
+    <a class="nav-cta" href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank">Download</a>
   </div>
 </nav>
 
-<div class="container">
-
-<!-- HERO -->
-<header class="hero">
-  <div class="hero-eyebrow">Open-source Melee coaching</div>
-  <h1>
-    MAGI
-    <span>Melee Analysis through Generative Intelligence</span>
+<!-- ── Hero ─────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-eye">Open source &middot; Local-first &middot; No account required</div>
+  <h1 class="hero-h1">
+    Melee analysis<br>through <strong>generative<br>intelligence.</strong>
   </h1>
-  <p class="hero-desc">Drop your Slippi replays into a desktop app that runs 40+ statistical analyses per game, finds correlations you'd never spot watching VODs, and explains what it all means in plain Melee — not marketing speak.</p>
+  <p class="hero-sub">
+    MAGI parses your Slippi replays, computes 40+ per-game metrics, and delivers blunt AI coaching — fully local, no API key required.
+  </p>
   <div class="hero-actions">
-    <a href="https://github.com/Bloodshed-Rain/themagi/releases" class="btn btn-primary" target="_blank" rel="noopener">Download Latest Release</a>
-    <a href="https://github.com/Bloodshed-Rain/themagi" class="btn btn-secondary" target="_blank" rel="noopener">View Source on GitHub</a>
+    <a class="btn btn-p" href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download Latest
+    </a>
+    <a class="btn" href="https://github.com/Bloodshed-Rain/TheMAGI" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      View Source
+    </a>
   </div>
-</header>
-
-<!-- FEATURES -->
-<section id="features" class="reveal">
-  <div class="section-label">What it does</div>
-  <h2>Your .slp files are denser than you think.</h2>
-  <p>MAGI parses every frame of every replay — inputs, positions, state transitions, DI vectors, ledge options, punish windows. Not sampling. Every frame, across all 26 characters. Then it runs the numbers and surfaces what actually matters to your improvement.</p>
-  <div class="stats-row reveal-stagger">
-    <div class="stat"><div class="stat-val">40+</div><div class="stat-lbl">Metrics per game</div></div>
-    <div class="stat"><div class="stat-val">26</div><div class="stat-lbl">Characters</div></div>
-    <div class="stat"><div class="stat-val">6</div><div class="stat-lbl">LLM providers</div></div>
-    <div class="stat"><div class="stat-val">∞</div><div class="stat-lbl">Local replays</div></div>
-  </div>
-</section>
-
-<!-- DEEP DISCOVERY -->
-<section id="discovery" class="reveal">
-  <div class="section-label">Deep Discovery engine</div>
-  <h2>Correlations you'd never find watching VODs.</h2>
-  <p>Full pairwise Pearson correlation across 21 performance axes. MAGI doesn't just count — it finds relationships between metrics and explains what they mean for your character, matchup, and habits.</p>
-  <div class="analysis-block">
-    <span class="ab-dim">// Deep Discovery output</span><br><br>
-    CORR: openings_per_kill ↔ neutral_win_rate<br>
-    r = 0.847 &nbsp;|&nbsp; p &lt; 0.001 &nbsp;|&nbsp; <span class="ab-amber">STRONG POSITIVE</span><br><br>
-    CORR: stocks_lost ↔ di_quality<br>
-    r = -0.631 &nbsp;|&nbsp; p &lt; 0.01 &nbsp;|&nbsp; <span class="ab-red">NEGATIVE — INVESTIGATE</span><br><br>
-    <span class="ab-dim">// DI quality degrades after losing stocks.</span><br>
-    <span class="ab-dim">// Tilt-correlated? Fatigue? Pattern exploit?</span>
+  <div class="hero-meta">
+    <div class="hero-meta-item">
+      <span class="hero-meta-val">40+</span>
+      <span class="hero-meta-lbl">Per-game metrics</span>
+    </div>
+    <div class="hero-div"></div>
+    <div class="hero-meta-item">
+      <span class="hero-meta-val">26</span>
+      <span class="hero-meta-lbl">Characters tracked</span>
+    </div>
+    <div class="hero-div"></div>
+    <div class="hero-meta-item">
+      <span class="hero-meta-val">6</span>
+      <span class="hero-meta-lbl">LLM providers</span>
+    </div>
+    <div class="hero-div"></div>
+    <div class="hero-meta-item">
+      <span class="hero-meta-val">$0</span>
+      <span class="hero-meta-lbl">Required to run</span>
+    </div>
   </div>
 </section>
 
-<!-- AI -->
-<section class="reveal">
-  <div class="section-label">AI coaching</div>
-  <h2>Six LLM providers. Your API key. No middleman.</h2>
-  <p>OpenAI, Anthropic, Google, Groq, Mistral, OpenRouter — bring your own key. Every prompt is built with matchup context, character frame data, and the statistical fingerprint of your session. Ask why you're losing the Fox matchup and get an answer in terms you'd hear from a top player doing commentary, not a chatbot telling you to "practice more."</p>
-</section>
-
-<!-- LOCAL & OPEN -->
-<section class="reveal">
-  <div class="section-label">Architecture</div>
-  <h2>Desktop app. Local data. Open source.</h2>
-  <p>Your replays stay on your machine. Analysis lives in a local SQLite database. Nothing phones home. Nothing requires an account. The codebase is MIT-licensed — fork it, extend it, break it apart. This is a tool, not a service.</p>
-  <div class="tech-tags reveal-stagger">
-    <span class="tech-tag">Electron</span>
-    <span class="tech-tag">TypeScript</span>
-    <span class="tech-tag">React</span>
-    <span class="tech-tag">Vite</span>
-    <span class="tech-tag">slippi-js</span>
-    <span class="tech-tag">SQLite</span>
-    <span class="tech-tag">MIT License</span>
-  </div>
-</section>
-
-<!-- INSTALL -->
-<section class="install-section reveal">
-  <div class="section-label">Run it</div>
-  <h2>Clone. Install. Go.</h2>
-  <div class="install-block">
-    <div>
-      <div class="install-cmd" id="cloneCmd" tabindex="0" role="button" aria-label="Copy clone command">
-        <span class="prompt">$</span>
-        <span>git clone https://github.com/Bloodshed-Rain/themagi.git</span>
+<!-- ── App shell preview ─────────────────────────────────────────────── -->
+<section class="shell-section" id="shell">
+  <div class="wrap">
+    <div class="eyebrow">App preview</div>
+    <div class="shell-wrap reveal">
+      <!-- Sidebar -->
+      <div class="sb">
+        <div class="sb-brand">
+          <div class="sb-mark"><img src="magilogo2.png" alt="MAGI" /></div>
+          <span class="sb-name">MAGI</span>
+        </div>
+        <div class="sb-section-lbl">Analyze</div>
+        <div class="sb-item on">
+          <span class="sb-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+          Dashboard
+        </div>
+        <div class="sb-item">
+          <span class="sb-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          Trends
+        </div>
+        <div class="sb-item">
+          <span class="sb-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></span>
+          Profile
+        </div>
+        <div class="sb-item">
+          <span class="sb-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          Characters
+        </div>
+        <div class="sb-section-lbl">System</div>
+        <div class="sb-item">
+          <span class="sb-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span>
+          Oracle
+        </div>
+        <div class="sb-item">
+          <span class="sb-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span>
+          Settings
+        </div>
+        <div class="sb-foot">
+          <div class="sb-foot-row"><span class="status-dot"></span>Watcher active</div>
+          <div style="font-family:var(--mono)">68 games</div>
+        </div>
       </div>
-      <div class="install-note">Requires Node 18+. Builds for macOS, Windows, Linux.</div>
+      <!-- Main -->
+      <div class="sh-main">
+        <div class="sh-ph">
+          <div>
+            <h3>Dashboard</h3>
+            <p>68 games &middot; 30W&ndash;38L</p>
+          </div>
+          <div class="sh-btn">Import Replays</div>
+        </div>
+        <div class="kpi-grid" style="margin-bottom:20px">
+          <div class="kpi"><div class="kpi-lbl">Win Rate</div><div class="kpi-val">44%</div><div class="kpi-sub">30W &middot; 38L</div></div>
+          <div class="kpi"><div class="kpi-lbl">Neutral WR</div><div class="kpi-val">52.6%</div><div class="kpi-sub good">&#8593; 3.6pp</div></div>
+          <div class="kpi"><div class="kpi-lbl">L-Cancel</div><div class="kpi-val">44.0%</div><div class="kpi-sub good">&#8593; 4.6pp</div></div>
+          <div class="kpi"><div class="kpi-lbl">Dmg / Opening</div><div class="kpi-val">6.8</div><div class="kpi-sub bad">&#8595; 0.4</div></div>
+        </div>
+        <div class="game-list">
+          <div class="game-row w">
+            <span class="dot w"></span>
+            <div class="gr-match"><div class="gr-name">Marth vs Link</div><div class="gr-opp">vs MyLeftNut</div></div>
+            <div class="gr-stage">Fountain of Dreams</div>
+            <div class="gr-stats">
+              <div class="gr-stat"><span class="gr-val" style="color:var(--win)">68%</span><span class="gr-lbl">Neutral</span></div>
+              <div class="gr-stat"><span class="gr-val" style="color:var(--caution)">6.0</span><span class="gr-lbl">Op/Kill</span></div>
+              <div class="gr-stat"><span class="gr-val" style="color:var(--loss)">55%</span><span class="gr-lbl">L-Cancel</span></div>
+            </div>
+          </div>
+          <div class="game-row w">
+            <span class="dot w"></span>
+            <div class="gr-match"><div class="gr-name">Peach vs Falcon</div><div class="gr-opp">vs MyLeftNut</div></div>
+            <div class="gr-stage">Battlefield</div>
+            <div class="gr-stats">
+              <div class="gr-stat"><span class="gr-val" style="color:var(--win)">68%</span><span class="gr-lbl">Neutral</span></div>
+              <div class="gr-stat"><span class="gr-val" style="color:var(--caution)">7.3</span><span class="gr-lbl">Op/Kill</span></div>
+              <div class="gr-stat"><span class="gr-val" style="color:var(--loss)">35%</span><span class="gr-lbl">L-Cancel</span></div>
+            </div>
+          </div>
+          <div class="game-row l">
+            <span class="dot l"></span>
+            <div class="gr-match"><div class="gr-name">Marth vs Roy</div><div class="gr-opp">vs Capitan Chill</div></div>
+            <div class="gr-stage">Battlefield</div>
+            <div class="gr-stats">
+              <div class="gr-stat"><span class="gr-val" style="color:var(--loss)">41%</span><span class="gr-lbl">Neutral</span></div>
+              <div class="gr-stat"><span class="gr-val" style="color:var(--caution)">7.3</span><span class="gr-lbl">Op/Kill</span></div>
+              <div class="gr-stat"><span class="gr-val" style="color:var(--loss)">40%</span><span class="gr-lbl">L-Cancel</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Trends ────────────────────────────────────────────────────────── -->
+<section class="trends-section" id="trends">
+  <div class="wrap">
+    <div class="eyebrow">Long-term tracking</div>
+    <div class="ph"><h2>Trends</h2><p>5-game rolling averages across your full career</p></div>
+    <div class="trends-grid reveal">
+      <div class="card trend-card">
+        <div class="trend-hdr"><span class="trend-metric">Neutral Win Rate</span><span class="trend-val">52.6%</span><span class="trend-delta up">&#8593; 3.6pp</span></div>
+        <div class="spark-wrap"><svg id="sp0" viewBox="0 0 400 80" preserveAspectRatio="none"></svg></div>
+      </div>
+      <div class="card trend-card">
+        <div class="trend-hdr"><span class="trend-metric">L-Cancel Rate</span><span class="trend-val">44.0%</span><span class="trend-delta up">&#8593; 4.6pp</span></div>
+        <div class="spark-wrap"><svg id="sp1" viewBox="0 0 400 80" preserveAspectRatio="none"></svg></div>
+      </div>
+      <div class="card trend-card">
+        <div class="trend-hdr"><span class="trend-metric">Conversion Rate</span><span class="trend-val">51.2%</span><span class="trend-delta dn">&#8595; 2.4pp</span></div>
+        <div class="spark-wrap"><svg id="sp2" viewBox="0 0 400 80" preserveAspectRatio="none"></svg></div>
+      </div>
+      <div class="card trend-card">
+        <div class="trend-hdr"><span class="trend-metric">Openings / Kill</span><span class="trend-val">6.8</span><span class="trend-delta dn">&#8595; 0.4</span></div>
+        <div class="spark-wrap"><svg id="sp3" viewBox="0 0 400 80" preserveAspectRatio="none"></svg></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Coaching ──────────────────────────────────────────────────────── -->
+<section class="coaching-section" id="coaching">
+  <div class="wrap">
+    <div class="eyebrow">AI analysis</div>
+    <div class="ph"><h2>MAGI Coaching</h2><p>Game &middot; Set &middot; Matchup &middot; Stage &middot; Career &middot; Dossier</p></div>
+    <div class="coaching-grid reveal">
+      <div class="card modal-card">
+        <div class="modal-hdr">
+          <div class="modal-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+          <div><div class="modal-title">MAGI Coaching</div><div class="modal-sub">Full Career Analysis</div></div>
+        </div>
+        <div class="modal-body">
+          <h4>1. Executive Summary</h4>
+          <p>You're not getting farmed in neutral. That's the big thing.</p>
+          <p>Your <strong>neutral win rate is 50.76%</strong>, which means across your lifetime sample, you're actually winning neutral slightly more often than your opponents. Your <strong>conversion rate is 52.36%</strong>, also solid enough to suggest you're not clueless once you get an opening.</p>
+          <p>And yet your <strong>win rate is only 44.1%</strong>.</p>
+          <p>That means your biggest career leak is pretty clear: <strong>you are playing enough good Melee to stay competitive, but you are bleeding value in the high-leverage parts of the game</strong> &mdash; finishing stocks, edgeguards, defensive survivability, and basic punish efficiency.</p>
+        </div>
+        <div class="modal-foot">
+          <span class="modal-disc">AI analysis may occasionally hallucinate frame-perfect tech.</span>
+          <div class="sh-btn">Close</div>
+        </div>
+      </div>
+      <div class="coach-features">
+        <div class="card cf-item"><div class="cf-dot"></div><div><div class="cf-title">Six analysis scopes</div><div class="cf-desc">Game, Set, Matchup, Stage, Career, and Opponent Dossier — each with a tailored prompt and stat context.</div></div></div>
+        <div class="card cf-item"><div class="cf-dot"></div><div><div class="cf-title">Six LLM providers</div><div class="cf-desc">GPT-4o, Anthropic Claude, Gemini, OpenRouter, DeepSeek, and local Ollama. Bring your own key or run fully offline.</div></div></div>
+        <div class="card cf-item"><div class="cf-dot"></div><div><div class="cf-title">Streaming output</div><div class="cf-desc">Token-by-token streaming with blinking cursor. Analysis caching means the same game costs $0 twice.</div></div></div>
+        <div class="card cf-item"><div class="cf-dot"></div><div><div class="cf-title">Blunt MAGI personality</div><div class="cf-desc">No flattery. MAGI reads your stats and tells you exactly what the numbers say about your game.</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Profile ───────────────────────────────────────────────────────── -->
+<section class="profile-section">
+  <div class="wrap">
+    <div class="eyebrow">Player profile</div>
+    <div class="ph"><h2>Profile</h2><p>Skill radar &middot; Habit entropy &middot; Matchup records</p></div>
+    <div class="profile-grid reveal">
+      <div class="card record-card">
+        <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:var(--text-m);font-weight:600;margin-bottom:12px">Overall Record</div>
+        <div class="record-big">
+          <span style="color:var(--win)">30</span>
+          <span style="color:var(--text-m);margin:0 8px">&ndash;</span>
+          <span style="color:var(--loss)">38</span>
+        </div>
+        <div class="record-sub">68 games &middot; <span class="record-rate">44.1% win rate</span></div>
+        <div class="record-stats">
+          <div class="rs-item"><div class="rs-val">52.6%</div><div class="rs-lbl">Neutral WR</div></div>
+          <div class="rs-item"><div class="rs-val">44.0%</div><div class="rs-lbl">L-Cancel</div></div>
+          <div class="rs-item"><div class="rs-val">51.2%</div><div class="rs-lbl">Conversion</div></div>
+        </div>
+      </div>
+      <div class="card radar-card">
+        <div class="radar-lbl">Skill Profile</div>
+        <div class="radar-wrap">
+          <svg id="radar" width="260" height="260" viewBox="0 0 260 260">
+            <polygon id="rr3" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <polygon id="rr2" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <polygon id="rr1" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <g id="raxes" stroke="rgba(255,255,255,0.08)" stroke-width="1"></g>
+            <polygon id="rdata" fill="rgba(199,204,214,0.15)" stroke="rgba(199,204,214,0.7)" stroke-width="1.5"/>
+            <g id="rlabels" font-family="'JetBrains Mono',monospace" font-size="10" fill="#6a707b" font-weight="600"></g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Characters ────────────────────────────────────────────────────── -->
+<section class="chars-section" id="chars">
+  <div class="wrap">
+    <div class="eyebrow">Character tracking</div>
+    <div class="ph"><h2>Characters</h2><p>26 characters &middot; Signature stats per roster slot</p></div>
+    <div class="char-grid reveal" id="char-grid"></div>
+  </div>
+</section>
+
+<!-- ── Install ───────────────────────────────────────────────────────── -->
+<section>
+  <div class="install-section">
+    <div class="eyebrow" style="justify-content:center">Get started</div>
+    <h2 class="install-h2">Clone.<br><strong>Install. Go.</strong></h2>
+    <p class="install-sub">No account. No API key required. No server. Download a release, open the app, import your replays, and start getting coached in under two minutes.</p>
+    <div class="clone-block" onclick="copyClone()">
+      <span class="clone-prompt">$</span>
+      <span class="clone-cmd">git clone https://github.com/Bloodshed-Rain/TheMAGI.git</span>
+      <span class="clone-copy" id="copy-lbl">Copy</span>
     </div>
     <div class="install-actions">
-      <a href="https://github.com/Bloodshed-Rain/themagi" class="btn btn-primary" target="_blank" rel="noopener">Source →</a>
-      <a href="https://github.com/Bloodshed-Rain/themagi/releases" class="btn btn-secondary" target="_blank" rel="noopener">Releases</a>
+      <a class="btn btn-p" href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Latest Release
+      </a>
+      <a class="btn" href="https://github.com/Bloodshed-Rain/TheMAGI" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <div class="platform-badges">
+      <span class="plat">&#x1F5A5; Windows .exe</span>
+      <span class="plat">&#xF8FF; macOS .dmg</span>
+      <span class="plat">&#x1F427; Linux AppImage</span>
+      <span class="plat">&#x1F427; Linux .deb</span>
     </div>
   </div>
 </section>
 
-<!-- FOOTER -->
+<!-- ── Footer ────────────────────────────────────────────────────────── -->
 <footer>
-  <div class="footer-text">
-    MAGI v1.3 — Melee Analysis through Generative Intelligence<br>
-    Open source. Built by a player. Not a company.
+  <div class="foot-brand">
+    <div class="nav-mark"><img src="magilogo2.png" alt="MAGI" /></div>
+    <div>
+      <div class="foot-name">MAGI v1.6.0</div>
+      <div class="foot-sub">Melee Analysis through Generative Intelligence &middot; Open source &middot; Built by a player, not a company.</div>
+    </div>
   </div>
-  <nav class="footer-links" aria-label="Footer links">
-    <a href="https://github.com/Bloodshed-Rain/themagi" target="_blank" rel="noopener">GitHub</a>
-    <a href="https://github.com/Bloodshed-Rain/themagi/releases" target="_blank" rel="noopener">Releases</a>
-  </nav>
+  <div class="foot-links">
+    <a class="foot-link" href="https://github.com/Bloodshed-Rain/TheMAGI" target="_blank">GitHub</a>
+    <a class="foot-link" href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank">Releases</a>
+    <a class="foot-link" href="https://github.com/Bloodshed-Rain/TheMAGI/blob/main/LICENSE" target="_blank">MIT License</a>
+  </div>
 </footer>
 
 </div>
 
 <script>
-// Scroll reveal
+/* ── Sparklines ─────────────────────────────────────────────────── */
+function seeded(s){return()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;}}
+function genSeries(seed,base,amp,n){const rng=seeded(seed);const v=[];let c=base;for(let i=0;i<n;i++){c+=(rng()-0.5)*amp;c=Math.max(0.05,Math.min(0.95,c));v.push(c);}return v;}
+function spark(id,vals,color){
+  const svg=document.getElementById(id);if(!svg)return;
+  const W=400,H=80;
+  const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+  const pts=vals.map((v,i)=>[i/(vals.length-1)*W,H-((v-mn)/rng)*(H*0.8)-H*0.1]);
+  const ps=pts.map(p=>p.join(',')).join(' ');
+  const as=`0,${H} ${ps} ${W},${H}`;
+  const gid=id+'g';
+  svg.innerHTML=`<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.25"/><stop offset="100%" stop-color="${color}" stop-opacity="0.02"/></linearGradient></defs>`
+    +[0.25,0.5,0.75].map(f=>`<line x1="0" y1="${H*f}" x2="${W}" y2="${H*f}" stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="4 4"/>`).join('')
+    +`<polygon points="${as}" fill="url(#${gid})"/>`
+    +`<polyline points="${ps}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>`
+    +`<circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="3" fill="${color}"/>`;
+}
+spark('sp0',genSeries(42,0.45,0.06,68),'#7ee8c5');
+spark('sp1',genSeries(77,0.38,0.08,68),'#7ee8c5');
+spark('sp2',genSeries(13,0.50,0.06,68),'#ffd47a');
+spark('sp3',genSeries(99,0.55,0.07,68),'#ff8a9e');
+
+/* ── Radar ──────────────────────────────────────────────────────── */
 (function(){
-  const obs = new IntersectionObserver(entries=>{
-    entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
-  },{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
-  document.querySelectorAll('.reveal,.reveal-stagger').forEach(el=>obs.observe(el));
+  const labels=['Neutral','Punish','Tech Skill','Defense','Edgeguard','Consistency'];
+  const vals=[0.72,0.55,0.44,0.48,0.38,0.60];
+  const cx=130,cy=130,r=90,n=labels.length;
+  const ang=i=>(i/n)*Math.PI*2-Math.PI/2;
+  const poly=s=>labels.map((_,i)=>[cx+Math.cos(ang(i))*r*s,cy+Math.sin(ang(i))*r*s]);
+  const ps=pts=>pts.map(p=>p.join(',')).join(' ');
+  [1,2,3].forEach(i=>document.getElementById('rr'+i).setAttribute('points',ps(poly([1,0.66,0.33][i-1]))));
+  const ax=document.getElementById('raxes');
+  labels.forEach((_,i)=>{const a=ang(i);ax.innerHTML+=`<line x1="${cx}" y1="${cy}" x2="${cx+Math.cos(a)*r}" y2="${cy+Math.sin(a)*r}"/>`;});
+  document.getElementById('rdata').setAttribute('points',ps(vals.map((v,i)=>[cx+Math.cos(ang(i))*r*v,cy+Math.sin(ang(i))*r*v])));
+  const lg=document.getElementById('rlabels');
+  labels.forEach((lbl,i)=>{
+    const a=ang(i),lx=cx+Math.cos(a)*(r+18),ly=cy+Math.sin(a)*(r+18);
+    const anchor=lx<cx-5?'end':lx>cx+5?'start':'middle';
+    lg.innerHTML+=`<text x="${lx}" y="${ly+4}" text-anchor="${anchor}">${lbl}</text>`;
+  });
 })();
 
-// Copy clone command
-document.getElementById('cloneCmd').addEventListener('click',function(){
-  navigator.clipboard.writeText('git clone https://github.com/Bloodshed-Rain/themagi.git').then(()=>{
-    const sp=this.querySelector('span:last-child');
-    const o=sp.textContent;
-    sp.textContent='Copied to clipboard.';
-    sp.style.color='#E8A030';
-    setTimeout(()=>{sp.textContent=o;sp.style.color=''},1800);
-  });
+/* ── Character grid ─────────────────────────────────────────────── */
+const chars=[
+  {e:'🦊',n:'Fox',     s:'Waveshines',      v:'88%'},
+  {e:'🐦',n:'Falco',   s:'Pillars/game',    v:'7.2'},
+  {e:'⚔️', n:'Marth',   s:'Ken combos',      v:'3'},
+  {e:'🌸',n:'Peach',   s:'Turnips/game',    v:'4.1'},
+  {e:'⚡',n:'Pikachu', s:'Thunder rate',    v:'88%'},
+  {e:'🎵',n:'Puff',    s:'Rests/set',       v:'2.3'},
+  {e:'🥷',n:'Sheik',   s:'Tech chases',     v:'91%'},
+  {e:'🦅',n:'Falcon',  s:'Knees/game',      v:'5.8'},
+  {e:'🎮',n:'Samus',   s:'Zair uses',       v:'4.2'},
+  {e:'🔗',n:'Link',    s:'Boomerangs/game', v:'3.1'},
+  {e:'🌿',n:'Yoshi',   s:'Egg throws',      v:'2.8'},
+  {e:'👊',n:'Ganon',   s:'Warlock punches', v:'1.2'},
+];
+const rng=seeded(7);
+const grid=document.getElementById('char-grid');
+chars.forEach(c=>{
+  const wr=Math.floor((rng()*0.4+0.35)*100);
+  grid.innerHTML+=`<div class="card char-card">
+    <div class="char-emoji">${c.e}</div>
+    <div class="char-name">${c.n}</div>
+    <div class="char-sig">${c.s}</div>
+    <div class="char-sig-val">${c.v}</div>
+    <div class="char-bar">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:9px;font-family:var(--mono);color:var(--text-m);text-transform:uppercase;letter-spacing:1px">Win Rate</span>
+        <span style="font-size:10px;font-family:var(--mono);font-weight:600;color:var(--text)">${wr}%</span>
+      </div>
+      <div class="wr-bar"><div class="wr-fill" style="width:${wr}%"></div></div>
+    </div>
+  </div>`;
 });
-document.getElementById('cloneCmd').addEventListener('keydown',function(e){
-  if(e.key==='Enter'||e.key===' '){e.preventDefault();this.click()}
-});
-</script>
 
+/* ── Scroll reveal ──────────────────────────────────────────────── */
+const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');obs.unobserve(e.target);}});},{threshold:0.08});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+/* ── Copy clone ─────────────────────────────────────────────────── */
+function copyClone(){
+  navigator.clipboard.writeText('git clone https://github.com/Bloodshed-Rain/TheMAGI.git').then(()=>{
+    const l=document.getElementById('copy-lbl');l.textContent='Copied!';
+    setTimeout(()=>l.textContent='Copy',2000);
+  });
+}
+</script>
 </body>
 </html>
