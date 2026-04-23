@@ -7,7 +7,7 @@
   <meta name="description" content="Open-source AI coaching for Super Smash Bros. Melee. Drop your .slp replays. Get coached by an AI that actually knows your data." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
 /* ── Reset ──────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -24,7 +24,7 @@ html { scroll-behavior: smooth; }
   --border-hi:    rgba(255,255,255,0.18);
   --text:         #f5f7fa;
   --text-2:       #cfd4dc;
-  --text-m:       #6a707b;
+  --text-m:       #949ba6; /* Increased contrast from #6a707b */
   --accent:       #c7ccd6;
   --accent-m:     rgba(199,204,214,0.14);
   --win:          #7ee8c5;
@@ -50,7 +50,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
-  font-size: 14px;
+  font-size: 16px; /* Increased from 14px */
   line-height: 1.6;
   overflow-x: hidden;
 }
@@ -101,9 +101,9 @@ body::after {
 
 /* ── Section label ───────────────────────────────────────────────── */
 .eyebrow {
-  font-size: 10px; font-family: var(--mono);
+  font-size: 11px; font-family: var(--mono);
   text-transform: uppercase; letter-spacing: 0.14em;
-  color: var(--text-m); font-weight: 600;
+  color: var(--text-m); font-weight: 700;
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 12px;
 }
@@ -115,11 +115,11 @@ body::after {
   padding-left: 14px; margin-bottom: 0;
 }
 .ph h2 {
-  font-size: 18px; font-weight: 700;
+  font-size: 20px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 2px; color: var(--text);
 }
 .ph p {
-  font-size: 10px; font-family: var(--mono);
+  font-size: 11px; font-family: var(--mono);
   color: var(--text-m); letter-spacing: 0.5px; margin-top: 4px;
   text-transform: uppercase;
 }
@@ -139,18 +139,18 @@ body::after {
   background:var(--glint); opacity:0.5; pointer-events:none; mix-blend-mode:overlay;
 }
 .kpi-lbl {
-  font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
-  color: var(--text-m); font-weight: 600; margin-bottom: 6px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--text-m); font-weight: 700; margin-bottom: 6px;
   font-family: var(--mono);
 }
 .kpi-val {
-  font-family: var(--sans); font-weight: 300; font-size: 36px;
+  font-family: var(--sans); font-weight: 400; font-size: 36px;
   letter-spacing: -0.04em; font-feature-settings: "tnum";
   background: linear-gradient(180deg,rgba(255,255,255,1) 0%,rgba(200,205,215,1) 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   line-height: 1.1;
 }
-.kpi-sub { font-size: 12px; color: var(--text-2); font-weight: 500; margin-top: 4px; }
+.kpi-sub { font-size: 13px; color: var(--text-2); font-weight: 600; margin-top: 4px; }
 .kpi-sub.good { color: var(--win); }
 .kpi-sub.bad  { color: var(--loss); }
 
@@ -179,23 +179,24 @@ body::after {
 
 /* ── Buttons ─────────────────────────────────────────────────────── */
 .btn {
-  padding: 10px 20px; border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.15);
+  padding: 12px 24px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.2);
   background: linear-gradient(145deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04));
-  color: var(--text); font-size: 13px; font-weight: 600;
+  color: var(--text); font-size: 14px; font-weight: 600;
   font-family: var(--sans); cursor: pointer; text-decoration: none;
   display: inline-flex; align-items: center; gap: 8px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
   backdrop-filter: blur(12px);
 }
 .btn:hover {
   background: linear-gradient(145deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08));
-  border-color: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.35);
 }
+.btn:active { transform: scale(0.98); }
 .btn-p {
   background: linear-gradient(145deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08));
-  border-color: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.4);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 24px rgba(0,0,0,0.3);
 }
 .btn-p:hover {
@@ -212,8 +213,8 @@ body::after {
 nav {
   position: fixed; top:0; left:0; right:0; z-index:100;
   display: flex; align-items:center; justify-content:space-between;
-  padding: 0 40px; height: 60px;
-  background: rgba(10,13,20,0.65);
+  padding: 0 40px; height: 64px;
+  background: rgba(10,13,20,0.8);
   backdrop-filter: blur(24px) saturate(1.5);
   -webkit-backdrop-filter: blur(24px) saturate(1.5);
   border-bottom: 1px solid var(--border);
@@ -229,11 +230,11 @@ nav {
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
   display:block;
 }
-.nav-name { font-size:14px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.nav-name { font-size:15px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
 .nav-links { display:flex; align-items:center; gap:6px; }
 .nav-link {
   padding:7px 14px; border-radius:10px; text-decoration:none;
-  color:var(--text-m); font-size:13px; font-weight:500;
+  color:var(--text-m); font-size:14px; font-weight:600;
   transition:color 0.15s, background 0.15s;
 }
 .nav-link:hover { color:var(--text); background:var(--s2); }
@@ -242,7 +243,7 @@ nav {
   background: linear-gradient(145deg,rgba(255,255,255,0.16),rgba(255,255,255,0.04));
   border: 1px solid rgba(255,255,255,0.2);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
-  color:var(--text); font-size:13px; font-weight:600; text-decoration:none;
+  color:var(--text); font-size:14px; font-weight:600; text-decoration:none;
   transition:background 0.15s; backdrop-filter:blur(12px);
 }
 .nav-cta:hover { background:linear-gradient(145deg,rgba(255,255,255,0.22),rgba(255,255,255,0.08)); }
@@ -255,13 +256,13 @@ nav {
   padding: 120px 40px 80px; max-width:1100px; margin:0 auto;
 }
 .hero-eye {
-  font-size:10px; font-family:var(--mono); text-transform:uppercase;
-  letter-spacing:0.14em; color:var(--text-m); font-weight:600;
+  font-size:11px; font-family:var(--mono); text-transform:uppercase;
+  letter-spacing:0.14em; color:var(--text-m); font-weight:700;
   margin-bottom:24px; display:flex; align-items:center; gap:10px;
 }
 .hero-eye::before { content:""; display:block; width:24px; height:1px; background:var(--text-m); }
 .hero-h1 {
-  font-size: clamp(48px,7vw,88px); font-weight:300; letter-spacing:-0.03em;
+  font-size: clamp(48px,7vw,88px); font-weight:400; letter-spacing:-0.03em;
   line-height:1.0; color:var(--text); margin-bottom:28px;
 }
 .hero-h1 strong {
@@ -270,21 +271,21 @@ nav {
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
 }
 .hero-sub {
-  font-size:17px; color:var(--text-2); max-width:520px;
+  font-size:18px; color:var(--text-2); max-width:560px;
   line-height:1.7; margin-bottom:40px; font-weight:400;
 }
-.hero-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:80px; }
+.hero-actions { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:80px; }
 .hero-meta { display:flex; gap:32px; flex-wrap:wrap; }
 .hero-meta-item { display:flex; flex-direction:column; gap:2px; }
 .hero-meta-val {
-  font-size:22px; font-weight:300; letter-spacing:-0.03em;
+  font-size:24px; font-weight:400; letter-spacing:-0.03em;
   background: linear-gradient(180deg,#fff 0%,#c8cdd7 100%);
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
   font-feature-settings:"tnum";
 }
 .hero-meta-lbl {
-  font-size:10px; font-family:var(--mono); text-transform:uppercase;
-  letter-spacing:0.12em; color:var(--text-m); font-weight:600;
+  font-size:11px; font-family:var(--mono); text-transform:uppercase;
+  letter-spacing:0.12em; color:var(--text-m); font-weight:700;
 }
 .hero-div { width:1px; height:32px; background:var(--border-hi); align-self:center; }
 
@@ -317,15 +318,15 @@ nav {
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
   display:block;
 }
-.sb-name { font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.sb-name { font-size:14px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
 .sb-section-lbl {
-  font-size:10px; text-transform:uppercase; letter-spacing:0.12em;
-  color:var(--text-m); padding:12px 12px 6px; font-weight:600;
+  font-size:11px; text-transform:uppercase; letter-spacing:0.12em;
+  color:var(--text-m); padding:12px 12px 6px; font-weight:700;
 }
 .sb-item {
   display:flex; align-items:center; gap:10px;
   padding:11px 14px; border-radius:12px;
-  color:var(--text-2); font-size:13px; font-weight:500;
+  color:var(--text-2); font-size:14px; font-weight:500;
   cursor:default; transition:background 0.15s;
 }
 .sb-item:hover { background:var(--s2); color:var(--text); }
@@ -339,7 +340,7 @@ nav {
 .sb-item.on .sb-ico { opacity:1; }
 .sb-foot {
   margin-top:auto; padding:16px 12px;
-  font-size:10px; color:var(--text-m);
+  font-size:11px; color:var(--text-m);
   letter-spacing:0.1em; text-transform:uppercase;
 }
 .sb-foot-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
@@ -358,12 +359,12 @@ nav {
   border-left:3px solid var(--accent); padding-left:14px;
   margin-bottom:28px; display:flex; align-items:flex-start; justify-content:space-between;
 }
-.sh-ph h3 { font-size:18px; font-weight:700; text-transform:uppercase; letter-spacing:2px; }
-.sh-ph p { font-size:10px; font-family:var(--mono); color:var(--text-m); letter-spacing:0.5px; margin-top:4px; text-transform:uppercase; }
+.sh-ph h3 { font-size:20px; font-weight:700; text-transform:uppercase; letter-spacing:2px; }
+.sh-ph p { font-size:11px; font-family:var(--mono); color:var(--text-m); letter-spacing:0.5px; margin-top:4px; text-transform:uppercase; }
 .sh-btn {
   padding:8px 14px; border-radius:10px;
   border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06);
-  color:var(--text-2); font-size:11px; font-weight:600;
+  color:var(--text-2); font-size:12px; font-weight:600;
   font-family:var(--mono); text-transform:uppercase; letter-spacing:0.5px; cursor:default; white-space:nowrap;
 }
 /* Game list */
@@ -374,19 +375,19 @@ nav {
 .game-row {
   display:flex; align-items:center; gap:14px;
   padding:12px 16px; border-bottom:1px solid var(--border-sub);
-  border-left:3px solid transparent; background:var(--s1); font-size:12px;
+  border-left:3px solid transparent; background:var(--s1); font-size:13px;
 }
 .game-row:last-child { border-bottom:none; }
 .game-row.w { border-left-color:var(--win); }
 .game-row.l { border-left-color:var(--loss); }
 .gr-match { flex:1; }
 .gr-name { font-weight:600; color:var(--text); }
-.gr-opp { font-size:11px; color:var(--text-m); font-family:var(--mono); }
-.gr-stage { font-family:var(--mono); color:var(--text-2); font-size:11px; }
+.gr-opp { font-size:12px; color:var(--text-m); font-family:var(--mono); }
+.gr-stage { font-family:var(--mono); color:var(--text-2); font-size:12px; }
 .gr-stats { display:flex; gap:20px; }
 .gr-stat { display:flex; flex-direction:column; align-items:flex-end; }
-.gr-val { font-family:var(--mono); font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; }
-.gr-lbl { font-family:var(--mono); font-size:9px; color:var(--text-m); text-transform:uppercase; letter-spacing:1px; }
+.gr-val { font-family:var(--mono); font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; }
+.gr-lbl { font-family:var(--mono); font-size:10px; color:var(--text-m); text-transform:uppercase; letter-spacing:1px; }
 
 /* ═══════════════════════════════════════════════════════════════════
    TRENDS
@@ -395,13 +396,13 @@ nav {
 .trends-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:40px; }
 .trend-card { padding:24px 28px; }
 .trend-hdr { display:flex; align-items:baseline; gap:12px; margin-bottom:16px; }
-.trend-metric { font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.12em; color:var(--text-m); font-weight:600; }
+.trend-metric { font-size:11px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.12em; color:var(--text-m); font-weight:700; }
 .trend-val {
-  font-size:28px; font-weight:300; letter-spacing:-0.03em; font-feature-settings:"tnum";
+  font-size:30px; font-weight:400; letter-spacing:-0.03em; font-feature-settings:"tnum";
   background:linear-gradient(180deg,#fff 0%,#c8cdd7 100%);
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
 }
-.trend-delta { font-size:12px; font-family:var(--mono); font-weight:600; }
+.trend-delta { font-size:13px; font-family:var(--mono); font-weight:700; }
 .trend-delta.up { color:var(--win); }
 .trend-delta.dn { color:var(--loss); }
 .spark-wrap { width:100%; height:80px; }
@@ -422,28 +423,28 @@ nav {
   border-radius:10px; display:flex; align-items:center; justify-content:center;
   color:var(--accent); flex-shrink:0;
 }
-.modal-title { font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
-.modal-sub { font-size:11px; color:var(--text-m); font-family:var(--mono); margin-top:2px; }
-.modal-body { padding:20px; font-size:13px; line-height:1.7; color:var(--text-2); }
+.modal-title { font-size:15px; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+.modal-sub { font-size:12px; color:var(--text-m); font-family:var(--mono); margin-top:2px; }
+.modal-body { padding:20px; font-size:15px; line-height:1.7; color:var(--text-2); }
 .modal-body h4 {
-  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px;
+  font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px;
   color:var(--text); margin-bottom:10px; font-family:var(--mono);
 }
 .modal-body p { margin-bottom:12px; }
-.modal-body strong { color:var(--text); font-weight:600; }
+.modal-body strong { color:var(--accent); font-weight:700; }
 .modal-foot {
   padding:12px 20px; border-top:1px solid var(--border);
   display:flex; justify-content:space-between; align-items:center;
 }
-.modal-disc { font-size:10px; color:var(--text-m); font-style:italic; font-family:var(--mono); }
+.modal-disc { font-size:11px; color:var(--text-m); font-style:italic; font-family:var(--mono); }
 .coach-features { display:flex; flex-direction:column; gap:12px; }
 .cf-item { padding:16px 20px; display:flex; align-items:flex-start; gap:14px; }
 .cf-dot {
   width:6px; height:6px; border-radius:50%; background:var(--accent);
   margin-top:6px; flex-shrink:0; box-shadow:0 0 8px rgba(199,204,214,0.4);
 }
-.cf-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:3px; }
-.cf-desc { font-size:12px; color:var(--text-m); line-height:1.5; font-family:var(--mono); }
+.cf-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:3px; }
+.cf-desc { font-size:13px; color:var(--text-m); line-height:1.5; font-family:var(--mono); }
 
 /* ═══════════════════════════════════════════════════════════════════
    PROFILE
@@ -452,12 +453,12 @@ nav {
 .profile-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:40px; align-items:start; }
 .record-card { padding:40px 28px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; }
 .record-big {
-  font-size:56px; font-weight:300; font-feature-settings:"tnum";
+  font-size:64px; font-weight:400; font-feature-settings:"tnum";
   letter-spacing:-0.04em; line-height:1;
   background:linear-gradient(180deg,#fff 0%,#c8cdd7 100%);
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
 }
-.record-sub { font-size:12px; color:var(--text-m); font-family:var(--mono); margin-top:4px; }
+.record-sub { font-size:13px; color:var(--text-m); font-family:var(--mono); margin-top:4px; }
 .record-rate { font-weight:700; color:var(--win); }
 .record-stats {
   display:flex; justify-content:center; gap:28px; margin-top:20px;
@@ -465,13 +466,13 @@ nav {
 }
 .rs-item { text-align:center; }
 .rs-val {
-  font-size:22px; font-weight:300; letter-spacing:-0.03em; font-feature-settings:"tnum";
+  font-size:24px; font-weight:400; letter-spacing:-0.03em; font-feature-settings:"tnum";
   background:linear-gradient(180deg,#fff 0%,#c8cdd7 100%);
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
 }
-.rs-lbl { font-size:10px; font-weight:600; color:var(--text-m); text-transform:uppercase; letter-spacing:0.1em; font-family:var(--mono); }
+.rs-lbl { font-size:11px; font-weight:700; color:var(--text-m); text-transform:uppercase; letter-spacing:0.1em; font-family:var(--mono); }
 .radar-card { padding:24px 28px; }
-.radar-lbl { font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.12em; color:var(--text-m); font-weight:600; margin-bottom:20px; }
+.radar-lbl { font-size:11px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.12em; color:var(--text-m); font-weight:700; margin-bottom:20px; }
 .radar-wrap { display:flex; justify-content:center; }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -488,23 +489,26 @@ nav {
   border-color:rgba(255,255,255,0.25);
   box-shadow:0 0 20px rgba(255,255,255,0.06), var(--shadow-md);
 }
-.char-emoji { font-size:28px; line-height:1; margin-bottom:6px; }
-.char-name { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text); }
-.char-sig { font-size:11px; font-family:var(--mono); color:var(--text-m); margin-top:2px; }
-.char-sig-val { font-size:16px; font-weight:600; font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--text); margin-top:4px; }
+.char-emoji { font-size:32px; line-height:1; margin-bottom:6px; }
+.char-name { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text); }
+.char-sig { font-size:12px; font-family:var(--mono); color:var(--text-m); margin-top:2px; }
+.char-sig-val { font-size:18px; font-weight:700; font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--text); margin-top:4px; }
 .char-bar { width:100%; margin-top:8px; }
 
 /* ═══════════════════════════════════════════════════════════════════
    INSTALL
 ═══════════════════════════════════════════════════════════════════ */
 .install-section { padding:100px 40px; text-align:center; max-width:700px; margin:0 auto; }
-.install-h2 { font-size:clamp(36px,5vw,60px); font-weight:300; letter-spacing:-0.03em; line-height:1.1; margin-bottom:16px; }
+.install-h2 {
+  font-size: clamp(40px,6vw,64px); font-weight:400; letter-spacing:-0.02em;
+  line-height:1.1; color:var(--text); margin-bottom:24px;
+}
 .install-h2 strong {
   font-weight:700;
   background:linear-gradient(135deg,#ffffff 0%,#c7ccd6 50%,#a0a8ff 100%);
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
 }
-.install-sub { font-size:15px; color:var(--text-2); line-height:1.7; margin-bottom:40px; }
+.install-sub { font-size:18px; color:var(--text-2); line-height:1.7; margin-bottom:40px; }
 .clone-block {
   display:flex; align-items:center; gap:12px;
   background:var(--s1); border:1px solid var(--border-hi);
@@ -514,14 +518,14 @@ nav {
   transition:border-color 0.15s;
 }
 .clone-block:hover { border-color:rgba(255,255,255,0.3); }
-.clone-prompt { color:var(--text-m); font-family:var(--mono); font-size:12px; flex-shrink:0; }
-.clone-cmd { font-family:var(--mono); font-size:13px; color:var(--text); flex:1; text-align:left; }
-.clone-copy { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-m); flex-shrink:0; transition:color 0.15s; }
+.clone-prompt { color:var(--text-m); font-family:var(--mono); font-size:13px; flex-shrink:0; }
+.clone-cmd { font-family:var(--mono); font-size:14px; color:var(--text); flex:1; text-align:left; }
+.clone-copy { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-m); font-weight:700; flex-shrink:0; transition:color 0.15s; }
 .clone-block:hover .clone-copy { color:var(--text); }
-.install-actions { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
+.install-actions { display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
 .platform-badges { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
 .plat {
-  font-size:11px; font-family:var(--mono); color:var(--text-m);
+  font-size:12px; font-family:var(--mono); color:var(--text-m); font-weight:600;
   padding:4px 10px; border:1px solid var(--border); border-radius:6px;
 }
 
@@ -534,12 +538,12 @@ footer {
   justify-content:space-between; gap:20px; flex-wrap:wrap;
 }
 .foot-brand { display:flex; align-items:center; gap:10px; }
-.foot-name { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; }
-.foot-sub { font-size:11px; color:var(--text-m); font-family:var(--mono); }
+.foot-name { font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; }
+.foot-sub { font-size:12px; color:var(--text-m); font-family:var(--mono); font-weight:500; }
 .foot-links { display:flex; gap:20px; }
 .foot-link {
-  font-size:11px; font-family:var(--mono); text-transform:uppercase;
-  letter-spacing:0.1em; color:var(--text-m); text-decoration:none; transition:color 0.15s;
+  font-size:12px; font-family:var(--mono); text-transform:uppercase;
+  letter-spacing:0.1em; color:var(--text-m); text-decoration:none; transition:color 0.15s; font-weight:700;
 }
 .foot-link:hover { color:var(--text); }
 
@@ -569,16 +573,16 @@ footer {
 <!-- ── Nav ──────────────────────────────────────────────────────────── -->
 <nav>
   <a class="nav-brand" href="#">
-    <div class="nav-mark"><img src="magilogo2.png" alt="MAGI" /></div>
+    <div class="nav-mark"><img src="magilogo2.png" alt="MAGI Logo" /></div>
     <span class="nav-name">MAGI</span>
   </a>
   <div class="nav-links">
-    <a class="nav-link" href="#shell">Dashboard</a>
+    <a class="nav-link" href="#shell">Your Dashboard</a>
     <a class="nav-link" href="#trends">Trends</a>
-    <a class="nav-link" href="#coaching">Coaching</a>
-    <a class="nav-link" href="#chars">Characters</a>
+    <a class="nav-link" href="#coaching">AI Coaching</a>
+    <a class="nav-link" href="#chars">Character Statistics</a>
     <a class="nav-link" href="https://github.com/Bloodshed-Rain/TheMAGI" target="_blank">GitHub</a>
-    <a class="nav-cta" href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank">Download</a>
+    <a class="nav-cta" href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank">Download MAGI</a>
   </div>
 </nav>
 
@@ -594,11 +598,11 @@ footer {
   <div class="hero-actions">
     <a class="btn btn-p" href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Download Latest
+      Download Latest for Windows
     </a>
     <a class="btn" href="https://github.com/Bloodshed-Rain/TheMAGI" target="_blank">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-      View Source
+      View Source on GitHub
     </a>
   </div>
   <div class="hero-meta">
@@ -632,7 +636,7 @@ footer {
       <!-- Sidebar -->
       <div class="sb">
         <div class="sb-brand">
-          <div class="sb-mark"><img src="magilogo2.png" alt="MAGI" /></div>
+          <div class="sb-mark"><img src="magilogo2.png" alt="MAGI Logo" /></div>
           <span class="sb-name">MAGI</span>
         </div>
         <div class="sb-section-lbl">Analyze</div>
@@ -748,7 +752,7 @@ footer {
 <section class="coaching-section" id="coaching">
   <div class="wrap">
     <div class="eyebrow">AI analysis</div>
-    <div class="ph"><h2>MAGI Coaching</h2><p>Game &middot; Set &middot; Matchup &middot; Stage &middot; Career &middot; Dossier</p></div>
+    <div class="ph"><h2>AI Coaching</h2><p>Game &middot; Set &middot; Matchup &middot; Stage &middot; Career &middot; Dossier</p></div>
     <div class="coaching-grid reveal">
       <div class="card modal-card">
         <div class="modal-hdr">
@@ -784,7 +788,7 @@ footer {
     <div class="ph"><h2>Profile</h2><p>Skill radar &middot; Habit entropy &middot; Matchup records</p></div>
     <div class="profile-grid reveal">
       <div class="card record-card">
-        <div style="font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:var(--text-m);font-weight:600;margin-bottom:12px">Overall Record</div>
+        <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:var(--text-m);font-weight:700;margin-bottom:12px">Overall Record</div>
         <div class="record-big">
           <span style="color:var(--win)">30</span>
           <span style="color:var(--text-m);margin:0 8px">&ndash;</span>
@@ -806,7 +810,7 @@ footer {
             <polygon id="rr1" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
             <g id="raxes" stroke="rgba(255,255,255,0.08)" stroke-width="1"></g>
             <polygon id="rdata" fill="rgba(199,204,214,0.15)" stroke="rgba(199,204,214,0.7)" stroke-width="1.5"/>
-            <g id="rlabels" font-family="'JetBrains Mono',monospace" font-size="10" fill="#6a707b" font-weight="600"></g>
+            <g id="rlabels" font-family="'JetBrains Mono',monospace" font-size="10" fill="#949ba6" font-weight="700"></g>
           </svg>
         </div>
       </div>
@@ -818,7 +822,7 @@ footer {
 <section class="chars-section" id="chars">
   <div class="wrap">
     <div class="eyebrow">Character tracking</div>
-    <div class="ph"><h2>Characters</h2><p>26 characters &middot; Signature stats per roster slot</p></div>
+    <div class="ph"><h2>Character Statistics</h2><p>26 characters &middot; Signature stats per roster slot</p></div>
     <div class="char-grid reveal" id="char-grid"></div>
   </div>
 </section>
@@ -837,7 +841,7 @@ footer {
     <div class="install-actions">
       <a class="btn btn-p" href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download Latest Release
+        Download MAGI for Windows
       </a>
       <a class="btn" href="https://github.com/Bloodshed-Rain/TheMAGI" target="_blank">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
@@ -856,7 +860,7 @@ footer {
 <!-- ── Footer ────────────────────────────────────────────────────────── -->
 <footer>
   <div class="foot-brand">
-    <div class="nav-mark"><img src="magilogo2.png" alt="MAGI" /></div>
+    <div class="nav-mark"><img src="magilogo2.png" alt="MAGI Logo" /></div>
     <div>
       <div class="foot-name">MAGI v1.6.0</div>
       <div class="foot-sub">Melee Analysis through Generative Intelligence &middot; Open source &middot; Built by a player, not a company.</div>
@@ -899,65 +903,71 @@ spark('sp3',genSeries(99,0.55,0.07,68),'#ff8a9e');
   const labels=['Neutral','Punish','Tech Skill','Defense','Edgeguard','Consistency'];
   const vals=[0.72,0.55,0.44,0.48,0.38,0.60];
   const cx=130,cy=130,r=90,n=labels.length;
-  const ang=i=>(i/n)*Math.PI*2-Math.PI/2;
-  const poly=s=>labels.map((_,i)=>[cx+Math.cos(ang(i))*r*s,cy+Math.sin(ang(i))*r*s]);
-  const ps=pts=>pts.map(p=>p.join(',')).join(' ');
-  [1,2,3].forEach(i=>document.getElementById('rr'+i).setAttribute('points',ps(poly([1,0.66,0.33][i-1]))));
-  const ax=document.getElementById('raxes');
-  labels.forEach((_,i)=>{const a=ang(i);ax.innerHTML+=`<line x1="${cx}" y1="${cy}" x2="${cx+Math.cos(a)*r}" y2="${cy+Math.sin(a)*r}"/>`;});
-  document.getElementById('rdata').setAttribute('points',ps(vals.map((v,i)=>[cx+Math.cos(ang(i))*r*v,cy+Math.sin(ang(i))*r*v])));
-  const lg=document.getElementById('rlabels');
-  labels.forEach((lbl,i)=>{
-    const a=ang(i),lx=cx+Math.cos(a)*(r+18),ly=cy+Math.sin(a)*(r+18);
-    const anchor=lx<cx-5?'end':lx>cx+5?'start':'middle';
-    lg.innerHTML+=`<text x="${lx}" y="${ly+4}" text-anchor="${anchor}">${lbl}</text>`;
-  });
+  
+  const axes=document.getElementById('raxes');
+  const labelsG=document.getElementById('rlabels');
+  const data=document.getElementById('rdata');
+  
+  for(let i=0;i<n;i++){
+    const a=(i/n)*Math.PI*2 - Math.PI/2;
+    const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r;
+    axes.innerHTML+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/>`;
+    const lx=cx+Math.cos(a)*(r+24), ly=cy+Math.sin(a)*(r+12);
+    labelsG.innerHTML+=`<text x="${lx}" y="${ly}" text-anchor="middle">${labels[i]}</text>`;
+  }
+  
+  function getPoly(vArr,rad){
+    return vArr.map((v,i)=>{
+      const a=(i/n)*Math.PI*2 - Math.PI/2;
+      return (cx+Math.cos(a)*rad*v)+','+(cy+Math.sin(a)*rad*v);
+    }).join(' ');
+  }
+  data.setAttribute('points',getPoly(vals,r));
+  document.getElementById('rr1').setAttribute('points',getPoly([1,1,1,1,1,1],r*0.33));
+  document.getElementById('rr2').setAttribute('points',getPoly([1,1,1,1,1,1],r*0.66));
+  document.getElementById('rr3').setAttribute('points',getPoly([1,1,1,1,1,1],r));
 })();
 
-/* ── Character grid ─────────────────────────────────────────────── */
+/* ── Characters ──────────────────────────────────────────────────── */
 const chars=[
-  {e:'🦊',n:'Fox',     s:'Waveshines',      v:'88%'},
-  {e:'🐦',n:'Falco',   s:'Pillars/game',    v:'7.2'},
-  {e:'⚔️', n:'Marth',   s:'Ken combos',      v:'3'},
-  {e:'🌸',n:'Peach',   s:'Turnips/game',    v:'4.1'},
-  {e:'⚡',n:'Pikachu', s:'Thunder rate',    v:'88%'},
-  {e:'🎵',n:'Puff',    s:'Rests/set',       v:'2.3'},
-  {e:'🥷',n:'Sheik',   s:'Tech chases',     v:'91%'},
-  {e:'🦅',n:'Falcon',  s:'Knees/game',      v:'5.8'},
-  {e:'🎮',n:'Samus',   s:'Zair uses',       v:'4.2'},
-  {e:'🔗',n:'Link',    s:'Boomerangs/game', v:'3.1'},
-  {e:'🌿',n:'Yoshi',   s:'Egg throws',      v:'2.8'},
-  {e:'👊',n:'Ganon',   s:'Warlock punches', v:'1.2'},
+  {n:'Fox',e:'🦊',s:'Waveshines',v:'88%',w:44},
+  {n:'Falco',e:'🐦',s:'Pillars/game',v:'7.2',w:71},
+  {n:'Marth',e:'⚔️',s:'Ken combos',v:'3',w:59},
+  {n:'Peach',e:'🌸',s:'Turnips/game',v:'4.1',w:72},
+  {n:'Pikachu',e:'⚡',s:'Thunder rate',v:'88%',w:36},
+  {n:'Puff',e:'🎵',s:'Rests/set',v:'2.3',w:69},
+  {n:'Sheik',e:'🥷',s:'Tech chases',v:'91%',w:49},
+  {n:'Falcon',e:'🦅',s:'Knees/game',v:'5.8',w:37},
+  {n:'Samus',e:'🎮',s:'Zair uses',v:'4.2',w:37},
+  {n:'Link',e:'🔗',s:'Boomerangs/game',v:'3.1',w:74},
+  {n:'Yoshi',e:'🌿',s:'Egg throws',v:'2.8',w:73},
+  {n:'Ganon',e:'👊',s:'Warlock punches',v:'1.2',w:56}
 ];
-const rng=seeded(7);
 const grid=document.getElementById('char-grid');
 chars.forEach(c=>{
-  const wr=Math.floor((rng()*0.4+0.35)*100);
-  grid.innerHTML+=`<div class="card char-card">
-    <div class="char-emoji">${c.e}</div>
-    <div class="char-name">${c.n}</div>
-    <div class="char-sig">${c.s}</div>
-    <div class="char-sig-val">${c.v}</div>
-    <div class="char-bar">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:9px;font-family:var(--mono);color:var(--text-m);text-transform:uppercase;letter-spacing:1px">Win Rate</span>
-        <span style="font-size:10px;font-family:var(--mono);font-weight:600;color:var(--text)">${wr}%</span>
-      </div>
-      <div class="wr-bar"><div class="wr-fill" style="width:${wr}%"></div></div>
+  grid.innerHTML+=`
+    <div class="card char-card">
+      <div class="char-emoji">${c.e}</div>
+      <div class="char-name">${c.n}</div>
+      <div class="char-sig">${c.s}</div>
+      <div class="char-sig-val">${c.v}</div>
+      <div class="char-bar"><div class="wr-bar"><div class="wr-fill" style="width:${c.w}%"></div></div></div>
+      <div style="font-size:9px;font-family:var(--mono);color:var(--text-m);margin-top:4px;text-transform:uppercase;font-weight:700">Win Rate ${c.w}%</div>
     </div>
-  </div>`;
+  `;
 });
 
-/* ── Scroll reveal ──────────────────────────────────────────────── */
-const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');obs.unobserve(e.target);}});},{threshold:0.08});
-document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+/* ── Reveal ─────────────────────────────────────────────────────── */
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('vis'); });
+},{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(r=>obs.observe(r));
 
-/* ── Copy clone ─────────────────────────────────────────────────── */
 function copyClone(){
-  navigator.clipboard.writeText('git clone https://github.com/Bloodshed-Rain/TheMAGI.git').then(()=>{
-    const l=document.getElementById('copy-lbl');l.textContent='Copied!';
-    setTimeout(()=>l.textContent='Copy',2000);
-  });
+  navigator.clipboard.writeText('git clone https://github.com/Bloodshed-Rain/TheMAGI.git');
+  const lbl=document.getElementById('copy-lbl');
+  lbl.innerText='Copied!';
+  setTimeout(()=>lbl.innerText='Copy',2000);
 }
 </script>
 </body>
