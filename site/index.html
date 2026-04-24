@@ -1030,10 +1030,13 @@ function copyClone(){
   const GAP_MS_MAX        = 1800;
   const PEAK_OPACITY_MIN  = 0.07;
   const PEAK_OPACITY_MAX  = 0.13;
-  // Responsive size: smaller on mobile so they don't dominate
+  // Mobile-specific overrides: larger, more visible
+  const MOBILE_PEAK_MIN   = 0.18;
+  const MOBILE_PEAK_MAX   = 0.28;
+  // Responsive size
   function getSizeVh(){
     return window.innerWidth < 600
-      ? rand(40, 65)   // mobile: 40-65vh
+      ? rand(70, 90)   // mobile: large, prominent
       : rand(60, 88);  // desktop: 60-88vh
   }
 
@@ -1091,17 +1094,23 @@ function copyClone(){
     const charHeightPx  = sizeVh / 100 * vh;
     const charWidthPx   = charHeightPx * 0.65; // estimated aspect ratio
 
-    // Horizontal: keep at least 20% of character visible on each side
-    const leftMin = -(charWidthPx * 0.20);
-    const leftMax = vw - charWidthPx * 0.80;
-    const leftPx  = leftMin + Math.random() * (leftMax - leftMin);
-
-    // Vertical: keep character mostly within viewport
-    // Allow slight bleed at top/bottom for atmosphere
-    const topMin  = -(charHeightPx * 0.10);
-    const topMax  = vh - charHeightPx * 0.80;
-    const topPx   = topMin + Math.random() * Math.max(0, topMax - topMin);
-
+     let leftPx, topPx;
+    if (isMobile) {
+      // Mobile: anchor to bottom-right with slight random jitter
+      // Character bleeds ~20-40% off the right and bottom edges for a bold look
+      const jitterX = rand(0, charWidthPx * 0.25);
+      const jitterY = rand(0, charHeightPx * 0.15);
+      leftPx = vw - charWidthPx * 0.70 + jitterX;  // right-anchored
+      topPx  = vh - charHeightPx * 0.80 + jitterY;  // bottom-anchored
+    } else {
+      // Desktop: random placement, keep mostly in viewport
+      const leftMin = -(charWidthPx * 0.20);
+      const leftMax = vw - charWidthPx * 0.80;
+      leftPx = leftMin + Math.random() * (leftMax - leftMin);
+      const topMin  = -(charHeightPx * 0.10);
+      const topMax  = vh - charHeightPx * 0.80;
+      topPx  = topMin + Math.random() * Math.max(0, topMax - topMin);
+    }
     img.style.left = leftPx + 'px';
     img.style.top  = topPx  + 'px';
 
@@ -1116,7 +1125,9 @@ function copyClone(){
     const fadeIn  = rand(FADE_MS_MIN, FADE_MS_MAX);
     const fadeOut = rand(FADE_MS_MIN, FADE_MS_MAX);
     const hold    = rand(HOLD_MS_MIN, HOLD_MS_MAX);
-    const peak    = rand(PEAK_OPACITY_MIN, PEAK_OPACITY_MAX);
+    const peak    = isMobile
+      ? rand(MOBILE_PEAK_MIN, MOBILE_PEAK_MAX)
+      : rand(PEAK_OPACITY_MIN, PEAK_OPACITY_MAX);
     img.style.transition = `opacity ${fadeIn}ms ease-in-out`;
     bg.appendChild(img);
 
