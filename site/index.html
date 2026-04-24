@@ -89,17 +89,23 @@ body::after {
 .wireframe-char {
   position: absolute;
   opacity: 0;
-  /* fade is driven by JS-set transition */
+  /* sizing is set by JS; keep aspect ratio */
+  width: auto;
+  /* drift animation — uses CSS var so JS rotation stays separate */
+  animation: wf-drift 28s ease-in-out infinite alternate;
   will-change: opacity, transform;
   user-select: none;
   -webkit-user-drag: none;
-  /* very subtle drift while visible */
-  animation: wf-drift 28s ease-in-out infinite alternate;
+  /* prevent any stray layout influence */
+  display: block;
+  max-width: none;
 }
 @keyframes wf-drift {
-  0%   { transform: translate3d(0,0,0) scale(1); }
-  100% { transform: translate3d(0,-14px,0) scale(1.02); }
+  /* rotate is applied via JS on the element; animation only drifts Y */
+  from { translate: 0 0;    scale: 1;    }
+  to   { translate: 0 -16px; scale: 1.02; }
 }
+/* On mobile, hide if user prefers reduced motion OR just keep subtle */
 @media (prefers-reduced-motion: reduce) {
   .wireframe-bg { display: none; }
 }
@@ -1024,8 +1030,12 @@ function copyClone(){
   const GAP_MS_MAX        = 1800;
   const PEAK_OPACITY_MIN  = 0.07;
   const PEAK_OPACITY_MAX  = 0.13;
-  const SIZE_VH_MIN       = 65;      // size as % of viewport height
-  const SIZE_VH_MAX       = 95;
+  // Responsive size: smaller on mobile so they don't dominate
+  function getSizeVh(){
+    return window.innerWidth < 600
+      ? rand(40, 65)   // mobile: 40-65vh
+      : rand(60, 88);  // desktop: 60-88vh
+  }
 
   // shuffle helper
   function shuffled(arr){
@@ -1058,7 +1068,6 @@ function copyClone(){
 
   function spawn(){
     const name = nextChar();
-
     const img = document.createElement('img');
     img.className = 'wireframe-char';
     img.alt = '';
@@ -1066,35 +1075,49 @@ function copyClone(){
     img.decoding = 'async';
     img.loading = 'lazy';
 
-    // random sizing (height-driven so very tall figures don’t overflow weirdly)
-    const sizeVh = rand(SIZE_VH_MIN, SIZE_VH_MAX);
+    // --- Responsive sizing ---
+    const isMobile = window.innerWidth < 600;
+    const sizeVh = getSizeVh();
     img.style.height = sizeVh + 'vh';
-    img.style.width = 'auto';
-    img.style.maxWidth = '70vw';
+    img.style.width  = 'auto';
 
-    // random anchor position; allow figure to bleed slightly off edges
-    // for a more atmospheric feel
-    const top  = rand(-8, 100 - sizeVh * 0.55);
-    const left = rand(-12, 88);
-    img.style.top  = top + 'vh';
-    img.style.left = left + 'vw';
+    // --- Responsive positioning ---
+    // We want the character to be fully (or mostly) visible on screen.
+    // Estimate character width: wireframes are roughly portrait 0.6:1 aspect.
+    // At sizeVh vh tall, width ≈ sizeVh * 0.6 vh ≈ sizeVh * 0.6 * (vw/vh) vw.
+    // Simpler: clamp left so character doesn't bleed more than 15% off either edge.
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const charHeightPx  = sizeVh / 100 * vh;
+    const charWidthPx   = charHeightPx * 0.65; // estimated aspect ratio
 
-    // very subtle random tilt
-    const rot = rand(-4, 4);
-    img.style.setProperty('--wf-rot', rot + 'deg');
-    // bake the rotation into the base transform alongside the drift animation
-    img.style.transform = `rotate(${rot}deg)`;
+    // Horizontal: keep at least 20% of character visible on each side
+    const leftMin = -(charWidthPx * 0.20);
+    const leftMax = vw - charWidthPx * 0.80;
+    const leftPx  = leftMin + Math.random() * (leftMax - leftMin);
 
-    // randomise the drift animation phase a bit
-    img.style.animationDelay = (-rand(0, 28)) + 's';
+    // Vertical: keep character mostly within viewport
+    // Allow slight bleed at top/bottom for atmosphere
+    const topMin  = -(charHeightPx * 0.10);
+    const topMax  = vh - charHeightPx * 0.80;
+    const topPx   = topMin + Math.random() * Math.max(0, topMax - topMin);
+
+    img.style.left = leftPx + 'px';
+    img.style.top  = topPx  + 'px';
+
+    // --- Subtle tilt (separate from drift animation) ---
+    const rot = rand(-5, 5);
+    img.style.rotate = rot + 'deg'; // CSS individual transform, doesn't fight animation
+
+    // --- Drift animation phase ---
+    img.style.animationDelay    = (-rand(0, 28)) + 's';
     img.style.animationDuration = rand(22, 34) + 's';
 
     const fadeIn  = rand(FADE_MS_MIN, FADE_MS_MAX);
     const fadeOut = rand(FADE_MS_MIN, FADE_MS_MAX);
     const hold    = rand(HOLD_MS_MIN, HOLD_MS_MAX);
     const peak    = rand(PEAK_OPACITY_MIN, PEAK_OPACITY_MAX);
-
-       img.style.transition = `opacity ${fadeIn}ms ease-in-out`;
+    img.style.transition = `opacity ${fadeIn}ms ease-in-out`;
     bg.appendChild(img);
 
     // kick off fade-in on next frame
