@@ -89,9 +89,6 @@ body::after {
 .wireframe-char {
   position: absolute;
   opacity: 0;
-  filter: blur(0.4px);
-  /* mix into the dark background tastefully */
-  mix-blend-mode: screen;
   /* fade is driven by JS-set transition */
   will-change: opacity, transform;
   user-select: none;
@@ -1019,16 +1016,16 @@ function copyClone(){
   ];
 
   // tunable parameters
-  const POOL_SIZE         = 3;       // number of wireframes visible at once
-  const FADE_MS_MIN       = 4500;    // fade in/out duration
-  const FADE_MS_MAX       = 7000;
-  const HOLD_MS_MIN       = 6000;    // time fully visible
-  const HOLD_MS_MAX       = 11000;
-  const PEAK_OPACITY_MIN  = 0.06;
-  const PEAK_OPACITY_MAX  = 0.12;
-  const SIZE_VH_MIN       = 55;      // size as % of viewport height
-  const SIZE_VH_MAX       = 90;
-  const STAGGER_MS        = 1800;    // delay between initial spawns
+  const FADE_MS_MIN       = 3500;    // fade in/out duration
+  const FADE_MS_MAX       = 5500;
+  const HOLD_MS_MIN       = 5000;    // time fully visible
+  const HOLD_MS_MAX       = 8000;
+  const GAP_MS_MIN        = 600;     // empty gap between characters
+  const GAP_MS_MAX        = 1800;
+  const PEAK_OPACITY_MIN  = 0.07;
+  const PEAK_OPACITY_MAX  = 0.13;
+  const SIZE_VH_MIN       = 65;      // size as % of viewport height
+  const SIZE_VH_MAX       = 95;
 
   // shuffle helper
   function shuffled(arr){
@@ -1042,26 +1039,25 @@ function copyClone(){
   function rand(min, max){ return min + Math.random() * (max - min); }
   function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 
-  // queue of upcoming characters (so we cycle through the whole roster
-  // without immediate repeats before replenishing)
+    // queue cycles through the entire roster before reshuffling,
+  // guaranteeing every character gets seen and no immediate repeats.
   let queue = shuffled(ROSTER);
-  let lastUsed = new Set();
-  function nextChar(activeNames){
-    if (queue.length === 0) queue = shuffled(ROSTER);
-    // avoid showing the same character that's currently on screen
-    let attempts = 0;
-    while (attempts < ROSTER.length && activeNames.has(queue[0])){
-      queue.push(queue.shift());
-      attempts++;
+  let lastShown = null;
+  function nextChar(){
+    if (queue.length === 0){
+      queue = shuffled(ROSTER);
+      // avoid back-to-back repeat at the shuffle seam
+      if (queue[0] === lastShown && queue.length > 1){
+        [queue[0], queue[1]] = [queue[1], queue[0]];
+      }
     }
-    return queue.shift();
+    const name = queue.shift();
+    lastShown = name;
+    return name;
   }
 
-  const active = new Map(); // element -> name
-
   function spawn(){
-    const activeNames = new Set(active.values());
-    const name = nextChar(activeNames);
+    const name = nextChar();
 
     const img = document.createElement('img');
     img.className = 'wireframe-char';
@@ -1098,35 +1094,29 @@ function copyClone(){
     const hold    = rand(HOLD_MS_MIN, HOLD_MS_MAX);
     const peak    = rand(PEAK_OPACITY_MIN, PEAK_OPACITY_MAX);
 
-    img.style.transition = `opacity ${fadeIn}ms ease-in-out`;
-
+       img.style.transition = `opacity ${fadeIn}ms ease-in-out`;
     bg.appendChild(img);
-    active.set(img, name);
 
     // kick off fade-in on next frame
     requestAnimationFrame(() => {
       requestAnimationFrame(() => { img.style.opacity = peak.toFixed(3); });
     });
 
-    // schedule fade-out
+    // schedule fade-out, then removal, then the next character (gap)
     setTimeout(() => {
       img.style.transition = `opacity ${fadeOut}ms ease-in-out`;
       img.style.opacity = '0';
       setTimeout(() => {
         img.remove();
-        active.delete(img);
-        // immediately start the next one so the pool stays full,
-        // with a tiny random offset so they don’t all land in sync
-        setTimeout(spawn, rand(400, 1800));
+        // a brief empty pause before the next character appears
+        setTimeout(spawn, rand(GAP_MS_MIN, GAP_MS_MAX));
       }, fadeOut + 200);
     }, fadeIn + hold);
   }
 
-  // initial staggered spawn so they don’t all appear at once
-  for (let i = 0; i < POOL_SIZE; i++){
-    setTimeout(spawn, i * STAGGER_MS);
-  }
-})();
+  // start the cycle
+  spawn();
+})();;
 </script>
 </body>
 </html>
