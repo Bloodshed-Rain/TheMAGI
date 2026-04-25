@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Card } from "../components/ui/Card";
+import { PROVIDERS, PROVIDER_BY_ID, type ProviderId } from "../../llmProviders";
 
-/** Config as returned by the main process — API keys are redacted to booleans */
+/** Config as returned by the main process — apiKeys are redacted to booleans */
 interface Config {
   targetPlayer: string | null;
   connectCode: string | null;
@@ -9,34 +10,19 @@ interface Config {
   dolphinPath: string | null;
   meleeIsoPath: string | null;
   llmModelId: string | null;
-  openrouterApiKey: true | null;
-  geminiApiKey: true | null;
-  anthropicApiKey: true | null;
+  apiKeys: Partial<Record<ProviderId, true>>;
   localEndpoint: string | null;
   theme: string | null;
   colorMode: string | null;
 }
 
-/** Tracks new key values the user has typed (write-only — never populated from main) */
-interface KeyEdits {
-  openrouterApiKey: string;
-  geminiApiKey: string;
-  anthropicApiKey: string;
-}
-
 interface FetchedModel {
   id: string;
   label: string;
-  provider: string;
+  provider: ProviderId;
 }
 
-const PROVIDER_LABELS: Record<string, string> = {
-  gemini: "Google Gemini",
-  openrouter: "OpenRouter",
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  local: "Local",
-};
+const KEY_PROVIDERS = PROVIDERS.filter((p) => p.needsKey);
 
 const STATIC_MODELS: FetchedModel[] = [
   { id: "gpt-4o-mini", label: "GPT-4o Mini (default)", provider: "openai" },
@@ -47,6 +33,18 @@ const STATIC_MODELS: FetchedModel[] = [
 ];
 
 const DEFAULT_MODEL_ID = "gpt-4o-mini";
+
+/** Heuristic mirror of getModelProvider in src/llm.ts — runs in the renderer
+ *  where we don't want to import llm.ts (Node deps). */
+function inferProvider(modelId: string): ProviderId {
+  const known = STATIC_MODELS.find((m) => m.id === modelId);
+  if (known) return known.provider;
+  if (modelId.includes("/")) return "openrouter";
+  if (modelId.startsWith("gemini")) return "gemini";
+  if (modelId.startsWith("claude")) return "anthropic";
+  if (modelId.startsWith("gpt-") || modelId.startsWith("o1") || modelId.startsWith("o3")) return "openai";
+  return "local";
+}
 
 // ── Component ────────────────────────────────────────────────────────
 
@@ -62,19 +60,13 @@ export function Settings({ onImport }: SettingsProps) {
     dolphinPath: null,
     meleeIsoPath: null,
     llmModelId: null,
-    openrouterApiKey: null,
-    geminiApiKey: null,
-    anthropicApiKey: null,
+    apiKeys: {},
     localEndpoint: null,
     theme: null,
     colorMode: null,
   });
   // Write-only key inputs — never populated from main process
-  const [keyEdits, setKeyEdits] = useState<KeyEdits>({
-    openrouterApiKey: "",
-    geminiApiKey: "",
-    anthropicApiKey: "",
-  });
+  const [keyEdits, setKeyEdits] = useState<Partial<Record<ProviderId, string>>>({});
   const [saved, setSaved] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -156,20 +148,27 @@ export function Settings({ onImport }: SettingsProps) {
   }, [watching, onImport]);
 
   const selectedModel = config.llmModelId || DEFAULT_MODEL_ID;
+  const selectedProvider = useMemo(() => inferProvider(selectedModel), [selectedModel]);
+  const selectedProviderInfo = PROVIDER_BY_ID[selectedProvider];
+  const selectedProviderHasKey =
+    !!config.apiKeys[selectedProvider] || !!keyEdits[selectedProvider]?.trim();
+  const selectedModelReady =
+    !selectedProviderInfo.needsKey || selectedProviderHasKey || selectedProviderInfo.proxied;
 
   const handleSave = useCallback(async () => {
     try {
-      // Build save payload: non-secret fields from config + only non-empty key edits
+      // Build save payload: non-secret fields + only non-empty key edits.
+      // Strip the redacted apiKeys map (booleans) so saveConfig never overwrites
+      // real keys with `true`.
       const payload: Record<string, unknown> = { ...config };
-      // Remove boolean key placeholders — never send true back to main
-      delete payload.openrouterApiKey;
-      delete payload.geminiApiKey;
-      delete payload.anthropicApiKey;
-      // Only include keys the user actually typed
-      if (keyEdits.openrouterApiKey) payload.openrouterApiKey = keyEdits.openrouterApiKey;
-      if (keyEdits.geminiApiKey) payload.geminiApiKey = keyEdits.geminiApiKey;
-      if (keyEdits.anthropicApiKey) payload.anthropicApiKey = keyEdits.anthropicApiKey;
+      delete payload.apiKeys;
+      const updatedKeys: Partial<Record<ProviderId, string>> = {};
+      for (const [pid, val] of Object.entries(keyEdits)) {
+        if (val && val.trim()) updatedKeys[pid as ProviderId] = val.trim();
+      }
+      if (Object.keys(updatedKeys).length > 0) payload.apiKeys = updatedKeys;
       await window.clippi.saveConfig(payload);
+      setKeyEdits({});
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: unknown) {
@@ -469,7 +468,10 @@ export function Settings({ onImport }: SettingsProps) {
                 ? Object.entries(dynamicModels)
                     .filter(([, models]) => models.length > 0)
                     .map(([provider, models]) => (
-                      <optgroup key={provider} label={PROVIDER_LABELS[provider] ?? provider}>
+                      <optgroup
+                        key={provider}
+                        label={PROVIDER_BY_ID[provider as ProviderId]?.label ?? provider}
+                      >
                         {models.map((m) => (
                           <option key={`${provider}-${m.id}`} value={m.id}>
                             {m.label}
@@ -488,53 +490,59 @@ export function Settings({ onImport }: SettingsProps) {
         <p style={{ color: "var(--text-muted)", fontSize: 11, margin: "4px 0 0", fontFamily: "var(--font-mono)" }}>
           Current: {selectedModel}
         </p>
+        <p style={{ fontSize: 11, margin: "6px 0 0" }}>
+          Uses your <strong>{selectedProviderInfo.label}</strong> key —{" "}
+          {selectedModelReady ? (
+            <span style={{ color: "var(--green, #4caf50)" }}>
+              {selectedProviderInfo.proxied && !selectedProviderHasKey
+                ? "ready (provided by MAGI)"
+                : "set"}
+            </span>
+          ) : (
+            <span style={{ color: "var(--orange, #f59e0b)" }}>
+              not set — add it below
+            </span>
+          )}
+        </p>
       </Card>
 
       {/* API Keys */}
       <Card title="API Keys">
-        <p style={{ color: "var(--text-dim)", fontSize: 11, margin: "0 0 8px", fontFamily: "var(--font-mono)" }}>
-          OpenAI (GPT-4o Mini) is provided by MAGI — no key needed. Add keys below to use other providers.
+        <p style={{ color: "var(--text-dim)", fontSize: 11, margin: "0 0 12px", fontFamily: "var(--font-mono)" }}>
+          OpenAI is bundled — MAGI provides a default key for GPT models. Add your own keys to use any other
+          provider, or to override the bundled OpenAI key.
         </p>
-        <div className="settings-field">
-          <label>
-            OpenRouter API Key{" "}
-            {config.openrouterApiKey && (
-              <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>
-            )}
-          </label>
-          <input
-            type="password"
-            value={keyEdits.openrouterApiKey}
-            onChange={(e) => setKeyEdits({ ...keyEdits, openrouterApiKey: e.target.value })}
-            placeholder={config.openrouterApiKey ? "Enter new key to replace" : "sk-or-..."}
-          />
-        </div>
-        <div className="settings-field">
-          <label>
-            Gemini API Key{" "}
-            {config.geminiApiKey && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}
-          </label>
-          <input
-            type="password"
-            value={keyEdits.geminiApiKey}
-            onChange={(e) => setKeyEdits({ ...keyEdits, geminiApiKey: e.target.value })}
-            placeholder={config.geminiApiKey ? "Enter new key to replace" : "AI..."}
-          />
-        </div>
-        <div className="settings-field">
-          <label>
-            Anthropic API Key{" "}
-            {config.anthropicApiKey && (
-              <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>
-            )}
-          </label>
-          <input
-            type="password"
-            value={keyEdits.anthropicApiKey}
-            onChange={(e) => setKeyEdits({ ...keyEdits, anthropicApiKey: e.target.value })}
-            placeholder={config.anthropicApiKey ? "Enter new key to replace" : "sk-ant-..."}
-          />
-        </div>
+        {KEY_PROVIDERS.map((p) => {
+          const isSet = !!config.apiKeys[p.id];
+          const editValue = keyEdits[p.id] ?? "";
+          return (
+            <div key={p.id} className="settings-field">
+              <label>
+                {p.label}{" "}
+                {isSet && <span style={{ color: "var(--green, #4caf50)", fontSize: 10 }}>(configured)</span>}
+                {p.proxied && !isSet && (
+                  <span style={{ color: "var(--text-muted)", fontSize: 10 }}>(bundled — optional override)</span>
+                )}
+                {p.signupUrl && (
+                  <a
+                    href={p.signupUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ marginLeft: 8, fontSize: 10, color: "var(--text-muted)" }}
+                  >
+                    get a key →
+                  </a>
+                )}
+              </label>
+              <input
+                type="password"
+                value={editValue}
+                onChange={(e) => setKeyEdits({ ...keyEdits, [p.id]: e.target.value })}
+                placeholder={isSet ? "Enter new key to replace" : p.keyPlaceholder}
+              />
+            </div>
+          );
+        })}
         <div className="settings-field">
           <label>Local Endpoint URL</label>
           <input

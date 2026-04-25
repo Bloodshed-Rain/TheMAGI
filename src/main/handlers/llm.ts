@@ -133,9 +133,9 @@ export function registerLlmHandlers(safeHandle: SafeHandleFn): void {
   // Fetch models from all configured providers
   safeHandle("llm:fetch-all-models", async () => {
     const config = loadConfig();
-    const openrouterKey = config.openrouterApiKey || process.env.OPENROUTER_API_KEY;
-    const geminiKey = config.geminiApiKey || process.env.GEMINI_API_KEY;
-    const anthropicKey = config.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+    const openrouterKey = config.apiKeys.openrouter || process.env.OPENROUTER_API_KEY;
+    const geminiKey = config.apiKeys.gemini || process.env.GEMINI_API_KEY;
+    const anthropicKey = config.apiKeys.anthropic || process.env.ANTHROPIC_API_KEY;
 
     const fetches: Promise<FetchedModel[]>[] = [];
     const providers: ProviderId[] = [];

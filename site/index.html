@@ -113,7 +113,7 @@ body::after {
 .page { position: relative; z-index: 1; }
 
 /* ── Container ───────────────────────────────────────────────────── */
-.wrap { max-width: 1100px; margin: 0 auto; padding: 0 40px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
 
 /* ── Glass card ──────────────────────────────────────────────────── */
 .card {
@@ -283,8 +283,8 @@ nav {
    HERO
 ═══════════════════════════════════════════════════════════════════ */
 .hero {
-  min-height: 100vh; display:flex; flex-direction:column; justify-content:center;
-  padding: 120px 40px 80px; max-width:1100px; margin:0 auto;
+  min-height: 95vh; display:flex; flex-direction:column; justify-content:center;
+  padding: 120px 40px 120px; max-width:1200px; margin:0 auto;
 }
 .hero-eye {
   font-size:11px; font-family:var(--mono); text-transform:uppercase;
@@ -323,7 +323,7 @@ nav {
 /* ═══════════════════════════════════════════════════════════════════
    APP SHELL PREVIEW
 ═══════════════════════════════════════════════════════════════════ */
-.shell-section { padding:80px 0; }
+.shell-section { padding:0 0 80px; margin-top:-80px; position:relative; z-index:10; }
 .shell-wrap {
   display:grid; grid-template-columns:240px 1fr;
   border-radius:var(--r-md); overflow:hidden;
@@ -540,15 +540,26 @@ nav {
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
 }
 .install-sub { font-size:18px; color:var(--text-2); line-height:1.7; margin-bottom:40px; }
+.clone-wrap {
+  background:var(--s1); border:1px solid var(--border-hi);
+  border-radius:14px; margin:0 auto 32px; max-width:520px;
+  backdrop-filter:blur(20px); overflow:hidden;
+  box-shadow:var(--shadow-md); transition:border-color 0.15s;
+}
+.clone-wrap:hover { border-color:rgba(255,255,255,0.3); }
+.clone-hdr {
+  background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border-sub);
+  padding: 10px 16px; display: flex; gap: 8px; align-items: center;
+}
+.clone-dot { width: 10px; height: 10px; border-radius: 50%; }
+.cd-r { background: #ff5f56; }
+.cd-y { background: #ffbd2e; }
+.cd-g { background: #27c93f; }
 .clone-block {
   display:flex; align-items:center; gap:12px;
-  background:var(--s1); border:1px solid var(--border-hi);
-  border-radius:14px; padding:14px 20px;
-  margin:0 auto 32px; max-width:520px;
-  backdrop-filter:blur(20px); cursor:pointer;
-  transition:border-color 0.15s;
+  padding:16px 20px; cursor:pointer; transition:background 0.15s;
 }
-.clone-block:hover { border-color:rgba(255,255,255,0.3); }
+.clone-block:hover { background: rgba(255,255,255,0.02); }
 .clone-prompt { color:var(--text-m); font-family:var(--mono); font-size:13px; flex-shrink:0; }
 .clone-cmd { font-family:var(--mono); font-size:14px; color:var(--text); flex:1; text-align:left; }
 .clone-copy { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-m); font-weight:700; flex-shrink:0; transition:color 0.15s; }
@@ -820,6 +831,19 @@ footer {
     <div class="eyebrow">Player profile</div>
     <div class="ph"><h2>Profile</h2><p>Skill radar &middot; Habit entropy &middot; Matchup records</p></div>
     <div class="profile-grid reveal">
+      <div class="card radar-card">
+        <div class="radar-lbl">Skill Profile</div>
+        <div class="radar-wrap">
+          <svg id="radar" width="260" height="260" viewBox="0 0 260 260">
+            <polygon id="rr3" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <polygon id="rr2" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <polygon id="rr1" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <g id="raxes" stroke="rgba(255,255,255,0.08)" stroke-width="1"></g>
+            <polygon id="rdata" fill="rgba(199,204,214,0.15)" stroke="rgba(199,204,214,0.7)" stroke-width="1.5"/>
+            <g id="rlabels" font-family="'JetBrains Mono',monospace" font-size="10" fill="#949ba6" font-weight="700"></g>
+          </svg>
+        </div>
+      </div>
       <div class="card record-card">
         <div style="font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:var(--text-m);font-weight:700;margin-bottom:12px">Overall Record</div>
         <div class="record-big">
@@ -832,19 +856,6 @@ footer {
           <div class="rs-item"><div class="rs-val">52.6%</div><div class="rs-lbl">Neutral WR</div></div>
           <div class="rs-item"><div class="rs-val">44.0%</div><div class="rs-lbl">L-Cancel</div></div>
           <div class="rs-item"><div class="rs-val">51.2%</div><div class="rs-lbl">Conversion</div></div>
-        </div>
-      </div>
-      <div class="card radar-card">
-        <div class="radar-lbl">Skill Profile</div>
-        <div class="radar-wrap">
-          <svg id="radar" width="260" height="260" viewBox="0 0 260 260">
-            <polygon id="rr3" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <polygon id="rr2" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <polygon id="rr1" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <g id="raxes" stroke="rgba(255,255,255,0.08)" stroke-width="1"></g>
-            <polygon id="rdata" fill="rgba(199,204,214,0.15)" stroke="rgba(199,204,214,0.7)" stroke-width="1.5"/>
-            <g id="rlabels" font-family="'JetBrains Mono',monospace" font-size="10" fill="#949ba6" font-weight="700"></g>
-          </svg>
         </div>
       </div>
     </div>
@@ -866,10 +877,17 @@ footer {
     <div class="eyebrow" style="justify-content:center">Get started</div>
     <h2 class="install-h2">Clone.<br><strong>Install. Go.</strong></h2>
     <p class="install-sub">No account. No API key required. No server. Download a release, open the app, import your replays, and start getting coached in under two minutes.</p>
-    <div class="clone-block" onclick="copyClone()">
-      <span class="clone-prompt">$</span>
-      <span class="clone-cmd">git clone https://github.com/Bloodshed-Rain/TheMAGI.git</span>
-      <span class="clone-copy" id="copy-lbl">Copy</span>
+    <div class="clone-wrap">
+      <div class="clone-hdr">
+        <div class="clone-dot cd-r"></div>
+        <div class="clone-dot cd-y"></div>
+        <div class="clone-dot cd-g"></div>
+      </div>
+      <div class="clone-block" onclick="copyClone()">
+        <span class="clone-prompt">$</span>
+        <span class="clone-cmd">git clone https://github.com/Bloodshed-Rain/TheMAGI.git</span>
+        <span class="clone-copy" id="copy-lbl">Copy</span>
+      </div>
     </div>
     <div class="install-actions">
       <a class="btn btn-p" href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank">
@@ -1022,17 +1040,17 @@ function copyClone(){
   ];
 
   // tunable parameters
-  const FADE_MS_MIN       = 3500;    // fade in/out duration
-  const FADE_MS_MAX       = 5500;
-  const HOLD_MS_MIN       = 5000;    // time fully visible
-  const HOLD_MS_MAX       = 8000;
-  const GAP_MS_MIN        = 600;     // empty gap between characters
-  const GAP_MS_MAX        = 1800;
-  const PEAK_OPACITY_MIN  = 0.07;
-  const PEAK_OPACITY_MAX  = 0.13;
+  const FADE_MS_MIN       = 2000;    // fade in/out duration
+  const FADE_MS_MAX       = 3500;
+  const HOLD_MS_MIN       = 4000;    // time fully visible
+  const HOLD_MS_MAX       = 6000;
+  const GAP_MS_MIN        = 100;     // empty gap between characters
+  const GAP_MS_MAX        = 400;
+  const PEAK_OPACITY_MIN  = 0.25;
+  const PEAK_OPACITY_MAX  = 0.40;
   // Mobile-specific overrides: larger, more visible
-  const MOBILE_PEAK_MIN   = 0.18;
-  const MOBILE_PEAK_MAX   = 0.28;
+  const MOBILE_PEAK_MIN   = 0.35;
+  const MOBILE_PEAK_MAX   = 0.50;
   // Responsive size
   function getSizeVh(){
     return window.innerWidth < 600
@@ -1054,7 +1072,9 @@ function copyClone(){
 
     // queue cycles through the entire roster before reshuffling,
   // guaranteeing every character gets seen and no immediate repeats.
-  let queue = shuffled(ROSTER);
+  const initialRoster = ROSTER.filter(c => c !== 'marth_dair');
+  let queue = shuffled(initialRoster);
+  queue.unshift('marth_dair'); // Make marth_dair show first
   let lastShown = null;
   function nextChar(){
     if (queue.length === 0){
@@ -1069,7 +1089,7 @@ function copyClone(){
     return name;
   }
 
-  function spawn(){
+  function spawn(isInitial = false){
     const name = nextChar();
     const img = document.createElement('img');
     img.className = 'wireframe-char';
@@ -1104,16 +1124,16 @@ function copyClone(){
       img.style.left   = 'auto';
       img.style.top    = 'auto';
     } else {
-      // Desktop: random placement, keep mostly in viewport
-      const leftMin = -(charWidthPx * 0.20);
-      const leftMax = vw - charWidthPx * 0.80;
-      const leftPx  = leftMin + Math.random() * (leftMax - leftMin);
+      // Desktop: anchor to the right side so images of varying widths never get cut off
+      const rightMin = vw * 0.02; // keeping it fully on-screen (at least 2% from right edge)
+      const rightMax = vw * 0.18; // pushed no further left than 18% from right edge
+      const rightPx  = rightMin + Math.random() * (rightMax - rightMin);
       const topMin  = -(charHeightPx * 0.10);
       const topMax  = vh - charHeightPx * 0.80;
       const topPx   = topMin + Math.random() * Math.max(0, topMax - topMin);
-      img.style.left   = leftPx + 'px';
+      img.style.right  = rightPx + 'px';
       img.style.top    = topPx  + 'px';
-      img.style.right  = 'auto';
+      img.style.left   = 'auto';
       img.style.bottom = 'auto';
     }
 
@@ -1125,9 +1145,9 @@ function copyClone(){
     img.style.animationDelay    = (-rand(0, 28)) + 's';
     img.style.animationDuration = rand(22, 34) + 's';
 
-    const fadeIn  = rand(FADE_MS_MIN, FADE_MS_MAX);
+    const fadeIn  = isInitial ? 0 : rand(FADE_MS_MIN, FADE_MS_MAX);
     const fadeOut = rand(FADE_MS_MIN, FADE_MS_MAX);
-    const hold    = rand(HOLD_MS_MIN, HOLD_MS_MAX);
+    const hold    = isInitial ? rand(HOLD_MS_MIN, HOLD_MS_MAX) * 1.5 : rand(HOLD_MS_MIN, HOLD_MS_MAX);
     const peak    = isMobile
       ? rand(MOBILE_PEAK_MIN, MOBILE_PEAK_MAX)
       : rand(PEAK_OPACITY_MIN, PEAK_OPACITY_MAX);
@@ -1136,7 +1156,10 @@ function copyClone(){
 
     // kick off fade-in on next frame
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => { img.style.opacity = peak.toFixed(3); });
+      requestAnimationFrame(() => {
+        if (isInitial) img.style.transition = 'none';
+        img.style.opacity = peak.toFixed(3);
+      });
     });
 
     // schedule fade-out, then removal, then the next character (gap)
@@ -1146,13 +1169,13 @@ function copyClone(){
       setTimeout(() => {
         img.remove();
         // a brief empty pause before the next character appears
-        setTimeout(spawn, rand(GAP_MS_MIN, GAP_MS_MAX));
+        setTimeout(() => spawn(false), rand(GAP_MS_MIN, GAP_MS_MAX));
       }, fadeOut + 200);
     }, fadeIn + hold);
   }
 
   // start the cycle
-  spawn();
+  spawn(true);
 })();;
 </script>
 </body>

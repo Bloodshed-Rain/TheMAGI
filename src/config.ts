@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { type ProviderId } from "./llmProviders";
 
 const DATA_DIR = path.join(require("os").homedir(), ".magi-melee");
 const CONFIG_PATH = path.join(DATA_DIR, "config.json");
@@ -8,12 +9,9 @@ export interface Config {
   targetPlayer: string | null;
   connectCode: string | null;
   replayFolder: string | null;
-  // LLM provider settings
+  // LLM
   llmModelId: string | null;
-  openrouterApiKey: string | null;
-  geminiApiKey: string | null;
-  anthropicApiKey: string | null;
-  openaiApiKey: string | null;
+  apiKeys: Partial<Record<ProviderId, string>>;
   localEndpoint: string | null;
   // Dolphin
   dolphinPath: string | null;
@@ -29,10 +27,7 @@ const DEFAULTS: Config = {
   connectCode: null,
   replayFolder: null,
   llmModelId: null,
-  openrouterApiKey: null,
-  geminiApiKey: null,
-  anthropicApiKey: null,
-  openaiApiKey: null,
+  apiKeys: {},
   localEndpoint: null,
   dolphinPath: null,
   meleeIsoPath: null,
@@ -41,13 +36,54 @@ const DEFAULTS: Config = {
   density: null,
 };
 
+const LEGACY_KEY_FIELDS: Array<{ field: string; provider: ProviderId }> = [
+  { field: "openrouterApiKey", provider: "openrouter" },
+  { field: "geminiApiKey", provider: "gemini" },
+  { field: "anthropicApiKey", provider: "anthropic" },
+  { field: "openaiApiKey", provider: "openai" },
+];
+
+/** Fold legacy per-provider key fields into the unified apiKeys map. */
+function migrateLegacyKeys(raw: Record<string, unknown>): {
+  config: Partial<Config>;
+  migrated: boolean;
+} {
+  const apiKeys: Partial<Record<ProviderId, string>> =
+    raw.apiKeys && typeof raw.apiKeys === "object" && !Array.isArray(raw.apiKeys)
+      ? { ...(raw.apiKeys as Partial<Record<ProviderId, string>>) }
+      : {};
+
+  let migrated = false;
+  for (const { field, provider } of LEGACY_KEY_FIELDS) {
+    const v = raw[field];
+    if (typeof v === "string" && v && !apiKeys[provider]) {
+      apiKeys[provider] = v;
+      migrated = true;
+    }
+    if (field in raw) delete raw[field];
+  }
+
+  return { config: { ...(raw as Partial<Config>), apiKeys }, migrated };
+}
+
 export function loadConfig(): Config {
   if (!fs.existsSync(CONFIG_PATH)) {
     return { ...DEFAULTS };
   }
   try {
-    const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8")) as Partial<Config>;
-    return { ...DEFAULTS, ...raw };
+    const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8")) as Record<string, unknown>;
+    const { config, migrated } = migrateLegacyKeys(raw);
+    const merged: Config = { ...DEFAULTS, ...config };
+
+    if (migrated) {
+      try {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2) + "\n");
+      } catch {
+        // Best-effort persistence — next load will retry the migration
+      }
+    }
+
+    return merged;
   } catch {
     return { ...DEFAULTS };
   }
@@ -59,7 +95,20 @@ export function saveConfig(config: Partial<Config>): Config {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     const current = loadConfig();
-    const merged = { ...current, ...config };
+    const merged: Config = { ...current, ...config };
+    // Deep-merge apiKeys so partial saves (e.g. just one provider's key) don't
+    // wipe the others. An explicit empty string clears that provider's key.
+    if (config.apiKeys) {
+      const next = { ...current.apiKeys };
+      for (const [k, v] of Object.entries(config.apiKeys)) {
+        if (v && typeof v === "string") {
+          next[k as ProviderId] = v;
+        } else {
+          delete next[k as ProviderId];
+        }
+      }
+      merged.apiKeys = next;
+    }
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2) + "\n");
     return merged;
   } catch (err) {

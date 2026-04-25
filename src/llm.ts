@@ -13,12 +13,8 @@
 
 // ── Provider types ───────────────────────────────────────────────────
 
-export type ProviderId =
-  | "openrouter"
-  | "gemini"
-  | "anthropic"
-  | "openai"
-  | "local";
+export type { ProviderId } from "./llmProviders";
+import { PROVIDER_BY_ID, type ProviderId } from "./llmProviders";
 
 export interface ModelOption {
   id: string;          // model identifier sent to the API
@@ -171,21 +167,27 @@ export function getModelLabel(modelId: string): string {
 
 export interface LLMConfig {
   modelId: string;
-  openrouterApiKey: string | null;
-  geminiApiKey: string | null;
-  anthropicApiKey: string | null;
-  openaiApiKey: string | null;
+  apiKeys: Partial<Record<ProviderId, string>>;
   localEndpoint: string | null;   // e.g. "http://localhost:1234/v1"
 }
 
 export const LLM_DEFAULTS: LLMConfig = {
   modelId: DEFAULT_MODEL_ID,
-  openrouterApiKey: null,
-  geminiApiKey: null,
-  anthropicApiKey: null,
-  openaiApiKey: null,
+  apiKeys: {},
   localEndpoint: null,
 };
+
+/** Resolve an API key: user config first, then env var. */
+export function getApiKey(provider: ProviderId, config: LLMConfig): string | null {
+  const fromConfig = config.apiKeys[provider];
+  if (fromConfig) return fromConfig;
+  const info = PROVIDER_BY_ID[provider];
+  if (info?.envVar) {
+    const fromEnv = process.env[info.envVar];
+    if (fromEnv) return fromEnv;
+  }
+  return null;
+}
 
 // ── Shared retry logic ───────────────────────────────────────────────
 
@@ -330,7 +332,7 @@ async function callOpenRouter(
   modelId: string,
   config: LLMConfig,
 ): Promise<string> {
-  const apiKey = config.openrouterApiKey ?? process.env["OPENROUTER_API_KEY"];
+  const apiKey = getApiKey("openrouter", config);
   if (!apiKey) {
     throw new Error(
       "OpenRouter API key is not set. Add it in Settings or set the OPENROUTER_API_KEY environment variable.",
@@ -404,7 +406,7 @@ async function callOpenRouterStream(
   config: LLMConfig,
   onChunk: StreamChunkCallback,
 ): Promise<string> {
-  const apiKey = config.openrouterApiKey ?? process.env["OPENROUTER_API_KEY"];
+  const apiKey = getApiKey("openrouter", config);
   if (!apiKey) {
     throw new Error("OpenRouter API key is not set. Add it in Settings or set the OPENROUTER_API_KEY environment variable.");
   }
@@ -488,7 +490,7 @@ async function callGemini(
   modelId: string,
   config: LLMConfig,
 ): Promise<string> {
-  const apiKey = config.geminiApiKey ?? process.env["GEMINI_API_KEY"];
+  const apiKey = getApiKey("gemini", config);
   if (!apiKey) {
     throw new Error(
       "Gemini API key is not set. Add it in Settings or set the GEMINI_API_KEY environment variable.",
@@ -562,7 +564,7 @@ async function callGeminiStream(
   config: LLMConfig,
   onChunk: StreamChunkCallback,
 ): Promise<string> {
-  const apiKey = config.geminiApiKey ?? process.env["GEMINI_API_KEY"];
+  const apiKey = getApiKey("gemini", config);
   if (!apiKey) {
     throw new Error(
       "Gemini API key is not set. Add it in Settings or set the GEMINI_API_KEY environment variable.",
@@ -695,7 +697,7 @@ async function callAnthropic(
   modelId: string,
   config: LLMConfig,
 ): Promise<string> {
-  const apiKey = config.anthropicApiKey ?? process.env["ANTHROPIC_API_KEY"];
+  const apiKey = getApiKey("anthropic", config);
   if (!apiKey) {
     throw new Error(
       "Anthropic API key is not set. Add it in Settings or set the ANTHROPIC_API_KEY environment variable.",
@@ -768,7 +770,7 @@ async function callAnthropicStream(
   config: LLMConfig,
   onChunk: StreamChunkCallback,
 ): Promise<string> {
-  const apiKey = config.anthropicApiKey ?? process.env["ANTHROPIC_API_KEY"];
+  const apiKey = getApiKey("anthropic", config);
   if (!apiKey) {
     throw new Error("Anthropic API key is not set. Add it in Settings or set the ANTHROPIC_API_KEY environment variable.");
   }
@@ -906,7 +908,7 @@ async function resolveOpenAIEndpoint(
     };
   }
   // Fallback: direct OpenAI call (dev / CLI with key.env)
-  const apiKey = config.openaiApiKey ?? process.env["OPENAI_API_KEY"];
+  const apiKey = getApiKey("openai", config);
   if (!apiKey) {
     throw new Error(
       "OpenAI API key is not set. Add it in Settings or set the OPENAI_API_KEY environment variable.",

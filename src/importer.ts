@@ -591,10 +591,7 @@ export async function importAndAnalyze(
   const userCfg = loadConfig();
   const llmConfig: LLMConfig = {
     modelId: userCfg.llmModelId ?? LLM_DEFAULTS.modelId,
-    openrouterApiKey: userCfg.openrouterApiKey,
-    geminiApiKey: userCfg.geminiApiKey,
-    anthropicApiKey: userCfg.anthropicApiKey,
-    openaiApiKey: null,
+    apiKeys: userCfg.apiKeys,
     localEndpoint: userCfg.localEndpoint,
   };
   const analysis = await callLLM({

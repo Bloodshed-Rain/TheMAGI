@@ -165,6 +165,9 @@ test-replays/
 key.env
 build.env
 
+# Claude Code per-machine settings
+.claude/settings.local.json
+
 # Native module rebuilds
 build/
 

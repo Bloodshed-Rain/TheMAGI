@@ -223,12 +223,13 @@ function handleTool(name: string, args: Args) {
     // 10. magi_get_config
     case "magi_get_config": {
       const config = loadConfig();
+      const redactedKeys: Record<string, string | null> = {};
+      for (const [provider, key] of Object.entries(config.apiKeys)) {
+        redactedKeys[provider] = redactKey(key ?? null);
+      }
       const redacted = {
         ...config,
-        openrouterApiKey: redactKey(config.openrouterApiKey),
-        geminiApiKey: redactKey(config.geminiApiKey),
-        anthropicApiKey: redactKey(config.anthropicApiKey),
-        openaiApiKey: "(managed by MAGI proxy)",
+        apiKeys: redactedKeys,
       };
       return ok(redacted);
     }

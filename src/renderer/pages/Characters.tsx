@@ -10,22 +10,57 @@ import { Card } from "../components/ui/Card";
 import { DataTable } from "../components/ui/DataTable";
 import { WinrateBar } from "../components/ui/WinrateBar";
 import { StatGroupCard, type StatItem } from "../components/ui/StatGroupCard";
-import { EmptyState } from "../components/ui/EmptyState";
 import { CoachingModal } from "../components/CoachingModal";
 
 // ── Character card art (dynamic, falls back to emoji) ────────────────
 
 const CHARACTER_IMAGE_NAMES: Record<string, string> = {
+  Fox: "fox.png",
+  Falco: "falco.png",
   Marth: "marth.png",
+  Sheik: "sheik.png",
+  Falcon: "falcon.png",
+  Puff: "puff.png",
   Peach: "peach.png",
+  ICs: "ics.png",
+  Samus: "samus.png",
+  Pikachu: "pikachu.png",
+  Luigi: "luigi.png",
+  Mario: "mario.png",
+  Doc: "doc.png",
+  Yoshi: "yoshi.png",
+  Ganon: "ganon.png",
+  Link: "link.png",
+  YLink: "ylink.png",
+  Zelda: "zelda.png",
+  Roy: "roy.png",
+  Mewtwo: "mewtwo.png",
+  Ness: "ness.png",
+  Bowser: "bowser.png",
+  Kirby: "kirby.png",
+  DK: "dk.png",
+  Pichu: "pichu.png",
 };
 
-function CharacterCardImage({ character }: { character: string }) {
-  const [error, setError] = useState(false);
+function CharacterCardImage({
+  character,
+  variant = "bg",
+  color,
+}: {
+  character: string;
+  variant?: "bg" | "portrait";
+  color?: string;
+}) {
   const filename = CHARACTER_IMAGE_NAMES[character];
-  if (!filename || error) return null;
+  if (!filename) return null;
   const src = new URL(`../assets/characters/${filename}`, import.meta.url).href;
-  return <img src={src} alt="" className="char-card-bg-img" onError={() => setError(true)} draggable={false} />;
+  const className = variant === "portrait" ? "char-hero-portrait" : "char-card-bg-img";
+  const style: React.CSSProperties = {
+    WebkitMaskImage: `url(${src})`,
+    maskImage: `url(${src})`,
+    backgroundColor: color ?? "var(--text)",
+  };
+  return <div className={className} style={style} aria-hidden />;
 }
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -321,40 +356,74 @@ export function Characters({ refreshKey: _ }: { refreshKey: number }) {
     return () => window.removeEventListener("nav:reactivate", listener);
   }, []);
 
-  if (list.length === 0) {
-    return <EmptyState title="No character data yet" sub="Import replays to see character stats." />;
-  }
-
   if (selected) {
     return <CharacterDetail character={selected} onBack={() => setSelected(null)} />;
   }
+
+  const allCharacters = Object.keys(CHARACTER_META);
+  const playedCount = list.filter((c) => (c.gamesPlayed ?? 0) > 0).length;
+  const merged = allCharacters
+    .map((name) => {
+      const found = list.find((c) => c.character === name);
+      return (
+        found ?? {
+          character: name,
+          gamesPlayed: 0,
+          wins: 0,
+          losses: 0,
+          winRate: 0,
+        }
+      );
+    })
+    .sort((a, b) => (b.gamesPlayed ?? 0) - (a.gamesPlayed ?? 0));
 
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
       <div className="page-header">
         <div>
           <h1>Characters</h1>
-          <p>{list.length} characters played</p>
+          <p>
+            {playedCount} of {allCharacters.length} played
+          </p>
         </div>
       </div>
       <div className="characters-grid">
-        {list.map((c) => {
+        {merged.map((c) => {
           const meta = CHARACTER_META[c.character] ?? DEFAULT_META;
           const games = c.gamesPlayed ?? 0;
           const wins = c.wins ?? 0;
           const losses = c.losses ?? Math.max(0, games - wins);
           const wr = c.winRate ?? (games > 0 ? wins / games : 0);
+          const unplayed = games === 0;
           return (
-            <button key={c.character} className="card character-tile" onClick={() => setSelected(c.character)}>
-              <CharacterCardImage character={c.character} />
-              <div className="character-tile-name" style={{ color: meta.color }}>
-                {c.character}
+            <button
+              key={c.character}
+              className={`card character-tile${unplayed ? " character-tile-unplayed" : ""}`}
+              onClick={() => setSelected(c.character)}
+            >
+              <div className="character-tile-art">
+                {CHARACTER_IMAGE_NAMES[c.character] ? (
+                  <CharacterCardImage character={c.character} />
+                ) : (
+                  <div className="character-tile-emoji">{meta.emoji}</div>
+                )}
               </div>
-              <div className="character-tile-record">
-                <span style={{ color: "var(--win)" }}>{wins}W</span>-
-                <span style={{ color: "var(--loss)" }}>{losses}L</span> &middot; {games} games
+              <div className="character-tile-info">
+                <div className="character-tile-name" style={{ color: meta.color }}>
+                  {c.character}
+                </div>
+                <div className="character-tile-record">
+                  {unplayed ? (
+                    <span style={{ color: "var(--text-muted)" }}>No games yet</span>
+                  ) : (
+                    <>
+                      <span style={{ color: "var(--win)" }}>{wins}W</span>-
+                      <span style={{ color: "var(--loss)" }}>{losses}L</span> &middot; {games} games
+                    </>
+                  )}
+                </div>
+                <WinrateBar value={wr} />
               </div>
-              <WinrateBar value={wr} />
             </button>
           );
         })}
@@ -402,7 +471,13 @@ function CharacterDetail({ character, onBack }: { character: string; onBack: () 
       </button>
       <div className="character-detail-split">
         <Card tone="chrome-plate" className="character-hero">
-          <CharacterCardImage character={character} />
+          <div className="character-hero-art">
+            {CHARACTER_IMAGE_NAMES[character] ? (
+              <CharacterCardImage character={character} variant="portrait" color={meta.color} />
+            ) : (
+              <div className="character-hero-emoji">{meta.emoji}</div>
+            )}
+          </div>
           <h2 style={{ color: meta.color, marginTop: 10 }}>{character}</h2>
           <div style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 20 }}>{totalGames} games</div>
           <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setCoachOpen(true)}>

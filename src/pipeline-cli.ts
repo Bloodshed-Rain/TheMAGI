@@ -165,10 +165,7 @@ async function main() {
   const userConfig = configMod.loadConfig();
   const llmConfig: import("./llm").LLMConfig = {
     modelId: userConfig.llmModelId ?? llmMod.LLM_DEFAULTS.modelId,
-    openrouterApiKey: userConfig.openrouterApiKey,
-    geminiApiKey: userConfig.geminiApiKey,
-    anthropicApiKey: userConfig.anthropicApiKey,
-    openaiApiKey: null,
+    apiKeys: userConfig.apiKeys,
     localEndpoint: userConfig.localEndpoint,
   };
 
