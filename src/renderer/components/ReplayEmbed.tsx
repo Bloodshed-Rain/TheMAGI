@@ -1,3 +1,4 @@
+import { showNotice } from "../hooks/notice";
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import {
@@ -120,9 +121,10 @@ export function ReplayEmbed({
 
   const onOpenInDolphin = async () => {
     try {
-      await window.clippi.openInDolphinAtFrame(replayPath, currentFrame);
+      const opened = await window.clippi.openInDolphinAtFrame(replayPath, currentFrame);
+      if (!opened) throw new Error("Dolphin did not open. Check its path in Settings → Playback and try again.");
     } catch (error) {
-      console.error("Dolphin launch failed:", error);
+      showNotice(`Dolphin could not open: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 

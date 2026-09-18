@@ -168,7 +168,7 @@
 }
 
 .rivals-filter-button-active {
-  color: #0a0f0c;
+  color: var(--accent-contrast);
   background: var(--accent);
 }
 

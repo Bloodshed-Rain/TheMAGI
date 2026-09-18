@@ -149,3 +149,28 @@ describe("callLLM provider selection", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+
+describe("stream cancellation", () => {
+  it("does not submit an already cancelled question", async () => {
+    const controller = new AbortController(); controller.abort();
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    await expect(callLLMStream({systemPrompt:"s",userPrompt:"u",config:LLM_DEFAULTS,signal:controller.signal},()=>{})).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it.each(["openai", "azure", "openrouter", "anthropic", "gemini", "local", "pollinations"] as const)("aborts the %s provider request", async provider => {
+    const controller = new AbortController();
+    let received: AbortSignal | null | undefined;
+    vi.spyOn(globalThis,"fetch").mockImplementation(async (_url, init) => {
+      received = init?.signal;
+      return await new Promise<Response>((_resolve,reject) => {
+        received?.addEventListener("abort",()=>reject(new DOMException("Stopped","AbortError")),{once:true});
+      });
+    });
+    const pending = callLLMStream({systemPrompt:"s", userPrompt:"u", signal:controller.signal, config:{...LLM_DEFAULTS,modelId:"test-model",activeProvider:provider,apiKeys:{[provider]:"test-key"},azureEndpoint:"https://example.test",localEndpoint:"http://localhost:1234/v1"}},()=>{});
+    const assertion = expect(pending).rejects.toThrow();
+    controller.abort();
+    await assertion;
+    expect(received?.aborted).toBe(true);
+  });
+});

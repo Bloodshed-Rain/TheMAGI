@@ -3,6 +3,7 @@ import { buildSparklinePoints } from "./sparklineMath";
 
 interface SparklineProps {
   values: number[];
+  label?: string;
   kind?: "spark" | "chart";
   color?: string;
   height?: number;
@@ -16,6 +17,7 @@ interface SparklineProps {
 
 export function Sparkline({
   values,
+  label = "Trend",
   kind = "spark",
   color = "var(--accent)",
   height,
@@ -39,6 +41,8 @@ export function Sparkline({
 
   return (
     <svg
+      role="img"
+      aria-label={`${label}. ${values.length} points; first ${values[0]?.toFixed(2)}, last ${values.at(-1)?.toFixed(2)}.`}
       viewBox={`0 0 ${w} ${h}`}
       width={kind === "chart" ? "100%" : w}
       height={h}

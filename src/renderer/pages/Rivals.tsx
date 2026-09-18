@@ -1,6 +1,7 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useViewState } from "../hooks/useViewState";
+import { useDeferredValue, useEffect, useMemo, useRef } from "react";
 import { ArrowLeft, Search, SlidersHorizontal, Trophy, UserRound, Zap } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOpponents, useOpponentDetail } from "../hooks/queries";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Card } from "../components/ui/Card";
@@ -123,19 +124,24 @@ function rivalStatus(winRate: number): string {
 
 export function Rivals({ refreshKey: _ }: { refreshKey: number }) {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useViewState("rivals-search", "");
   const deferredSearch = useDeferredValue(search);
   const opponentSearch = deferredSearch.trim() || undefined;
-  const { data: rawOpponents = [], isLoading, isFetching, isError } = useOpponents(opponentSearch);
+  const { data: rawOpponents = [], isLoading, isFetching, isError, refetch } = useOpponents(opponentSearch);
   const opponents = rawOpponents as OpponentRecord[];
-  const [selected, setSelected] = useState<string | null>(null);
-  const [sort, setSort] = useState<RivalSort>("volume");
-  const [filter, setFilter] = useState<RivalFilter>("all");
-  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useViewState<string | null>("rivals-selected", null);
+  useEffect(() => { const key = params.get("opponent"); if (key) setSelected(key); }, [params, setSelected]);
+  const [sort, setSort] = useViewState<RivalSort>("rivals-sort", "volume");
+  const [filter, setFilter] = useViewState<RivalFilter>("rivals-filter", "all");
+  const [page, setPage] = useViewState("rivals-page", 0);
 
+  const filterKey = JSON.stringify([deferredSearch, sort, filter]);
+  const previousFilters = useRef(filterKey);
   useEffect(() => {
-    setPage(0);
-  }, [deferredSearch, sort, filter]);
+    if (previousFilters.current !== filterKey) setPage(0);
+    previousFilters.current = filterKey;
+  }, [filterKey, setPage]);
 
   const summary = useMemo(() => {
     const totalGames = opponents.reduce((sum, opponent) => sum + (opponent.totalGames ?? 0), 0);
@@ -184,12 +190,12 @@ export function Rivals({ refreshKey: _ }: { refreshKey: number }) {
   const pagedOpponents = visibleOpponents.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   useEffect(() => {
-    if (page > 0 && page >= pageCount) {
+    if (!isLoading && !isFetching && !isError && page > 0 && page >= pageCount) {
       setPage(pageCount - 1);
     }
-  }, [page, pageCount]);
+  }, [page, pageCount, isLoading, isFetching, isError, setPage]);
 
-  if (selected) return <RivalDetail opponentKey={selected} onBack={() => setSelected(null)} />;
+  if (selected) return <RivalDetail opponentKey={selected} onBack={() => { setSelected(null); setParams({}, { replace: true }); }} />;
 
   if (isLoading) {
     return (
@@ -200,7 +206,7 @@ export function Rivals({ refreshKey: _ }: { refreshKey: number }) {
     );
   }
   if (isError) {
-    return <div className="sessions-error">Failed to load rivals. Please try again.</div>;
+    return <div className="sessions-error">Failed to load rivals. <button className="btn" onClick={() => void refetch()}>Retry</button><button className="btn" onClick={() => void refetch()}>Retry</button></div>;
   }
   if (opponents.length === 0 && !opponentSearch) {
     return (
@@ -278,7 +284,7 @@ export function Rivals({ refreshKey: _ }: { refreshKey: number }) {
 
         <label className="rivals-sort" htmlFor="rivals-sort">
           <span>Sort</span>
-          <select id="rivals-sort" value={sort} onChange={(event) => setSort(event.target.value as RivalSort)}>
+          <select aria-label="Sort rivals" id="rivals-sort" value={sort} onChange={(event) => setSort(event.target.value as RivalSort)}>
             {Object.entries(SORT_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -291,6 +297,7 @@ export function Rivals({ refreshKey: _ }: { refreshKey: number }) {
           {FILTERS.map((item) => (
             <button
               key={item.id}
+              aria-pressed={filter === item.id}
               type="button"
               className={`rivals-filter-button${filter === item.id ? " rivals-filter-button-active" : ""}`}
               onClick={() => setFilter(item.id)}
@@ -400,7 +407,7 @@ export function Rivals({ refreshKey: _ }: { refreshKey: number }) {
 
 function RivalDetail({ opponentKey, onBack }: { opponentKey: string; onBack: () => void }) {
   const navigate = useNavigate();
-  const { data: rawDetail, isLoading, isError } = useOpponentDetail(opponentKey);
+  const { data: rawDetail, isLoading, isError, refetch } = useOpponentDetail(opponentKey);
   const detail = rawDetail as OpponentDetail | null | undefined;
 
   if (isLoading) {
@@ -418,19 +425,21 @@ function RivalDetail({ opponentKey, onBack }: { opponentKey: string; onBack: () 
           <ArrowLeft size={14} aria-hidden="true" />
           All Rivals
         </button>
-        <div className="sessions-error">Failed to load this rival.</div>
+        <div className="sessions-error">Failed to load this rival.<button className="btn" onClick={() => void refetch()}>Retry</button></div>
       </div>
     );
   }
 
   const games = detail.games ?? [];
   const recentGames = games.slice(0, 8);
+  const recentLosses = recentGames.filter(game => game.result === "loss").length;
+  const recentDraws = recentGames.length - recentLosses - recentGames.filter(game => game.result === "win").length;
   const recentWins = recentGames.filter((game) => game.result === "win").length;
   const avgNeutral = detail.avgNeutralWinRate ?? 0;
   const avgLCancel = detail.avgLCancelRate ?? 0;
   const avgOpeningsPerKill = detail.avgOpeningsPerKill ?? 0;
   const avgEdgeguard = detail.avgEdgeguardSuccessRate ?? 0;
-  const bestStage = [...(detail.stageBreakdown ?? [])].sort((a, b) => b.winRate - a.winRate)[0];
+  const bestStage = [...(detail.stageBreakdown ?? [])].filter(stage => stage.totalGames >= 5).sort((a, b) => b.winRate - a.winRate)[0];
   const mainCharacter = detail.characterBreakdown?.[0];
   const lastPlayed = games[0]?.playedAt ?? null;
 
@@ -462,7 +471,7 @@ function RivalDetail({ opponentKey, onBack }: { opponentKey: string; onBack: () 
         <div className="rival-detail-kpi">
           <span>Recent Form</span>
           <strong>
-            {recentWins}W-{recentGames.length - recentWins}L
+            {recentWins}W-{recentLosses}L{recentDraws > 0 ? `-${recentDraws}D` : ""}
           </strong>
           <div className="rival-form-strip" aria-label="Recent game results">
             {recentGames.map((game) => (
@@ -507,7 +516,7 @@ function RivalDetail({ opponentKey, onBack }: { opponentKey: string; onBack: () 
               />
               {bestStage && (
                 <p className="rival-scout-note">
-                  Best current stage: <strong>{bestStage.stage}</strong> at {pct(bestStage.winRate)}.
+                  Highest observed win rate (at least 5 games): <strong>{bestStage.stage}</strong> at {pct(bestStage.winRate)} across {bestStage.totalGames} games.
                 </p>
               )}
             </Card>

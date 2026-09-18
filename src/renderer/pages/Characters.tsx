@@ -1,3 +1,4 @@
+import { useViewState } from "../hooks/useViewState";
 import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { motion, type MotionStyle } from "framer-motion";
 import {
@@ -391,8 +392,8 @@ function rankRadarAxes(
 // ── Page ─────────────────────────────────────────────────────────────
 
 export function Characters({ refreshKey: _ }: { refreshKey: number }) {
-  const { data: list = [], isLoading, isError } = useCharacterList();
-  const [selected, setSelected] = useState<string | null>(null);
+  const { data: list = [], isLoading, isError, refetch } = useCharacterList();
+  const [selected, setSelected] = useViewState<string | null>("characters-selected", null);
 
   useEffect(() => {
     const listener = (e: Event) => {
@@ -401,7 +402,7 @@ export function Characters({ refreshKey: _ }: { refreshKey: number }) {
     };
     window.addEventListener("nav:reactivate", listener);
     return () => window.removeEventListener("nav:reactivate", listener);
-  }, []);
+  }, [setSelected]);
 
   if (selected) {
     return (
@@ -423,14 +424,8 @@ export function Characters({ refreshKey: _ }: { refreshKey: number }) {
   }
 
   if (isError) {
-    return (
-      <div className="page-header">
-        <div>
-          <h1>Characters</h1>
-          <p style={{ color: "var(--loss)" }}>Couldn't load character stats. Try reopening this page.</p>
-        </div>
-      </div>
-    );
+    return (<div role="alert">Characters could not load. <button className="btn" onClick={() => void refetch()}>Retry</button></div>);
+    
   }
 
   const allCharacters = Object.keys(CHARACTER_META);

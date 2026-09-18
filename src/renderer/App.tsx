@@ -1,3 +1,5 @@
+import { AppDataEvents } from "./components/AppDataEvents";
+import { ImportStatus } from "./components/ImportStatus";
 import { useCallback, useEffect, lazy, Suspense, useMemo, useState } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 
@@ -95,8 +97,8 @@ export function App() {
 
         // Legacy id remap.
         const migrated: ColorMode = ((): ColorMode => {
-          if (raw === "dark") return "telemetry";
-          if (raw === "win98" || raw === "melee") return "liquid";
+          if (raw === "win98") return "windows2000";
+          if (raw === "dark" || raw === "melee") return "liquid";
           return (raw in THEMES ? raw : "liquid") as ColorMode;
         })();
 
@@ -140,7 +142,7 @@ export function App() {
   }, [refreshKey, refetchRecord]);
 
   const handleCommandImport = useCallback(() => {
-    navigate("/settings");
+    navigate("/settings?section=replays");
   }, [navigate]);
 
   // Shared nav handler used by both shells.
@@ -197,15 +199,18 @@ export function App() {
 
   return (
     <>
-      <CommandPaletteHost navigateTo={(page) => navigate(`/${page}`)} onImport={handleCommandImport} />
+      <CommandPaletteHost navigateTo={(page) => { window.dispatchEvent(new CustomEvent("magi:restore")); navigate(`/${page}`); }} onImport={handleCommandImport} />
       <LiquidShell
         analyzeItems={ANALYZE_ITEMS}
         systemItems={SYSTEM_ITEMS}
         onNavigate={handleNavigate}
         isLiquidTheme={colorMode === "liquid"}
+        isWindows2000Theme={colorMode === "windows2000"}
         watcherActive={watcherActive}
         gamesCount={gamesCount}
       >
+        <AppDataEvents refreshKey={refreshKey} />
+        <ImportStatus />
         {routes}
       </LiquidShell>
       <TweaksPanel />

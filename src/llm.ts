@@ -179,6 +179,7 @@ class InvalidResponseError extends Error {
 // ── Main call function ───────────────────────────────────────────────
 
 export interface CallLLMOptions {
+  signal?: AbortSignal;
   systemPrompt: string;
   userPrompt: string;
   config: LLMConfig;
@@ -256,6 +257,7 @@ export type StreamChunkCallback = (chunk: string) => void;
  * Returns the full accumulated text when complete.
  */
 export async function callLLMStream(opts: CallLLMOptions, onChunk: StreamChunkCallback): Promise<string> {
+  opts.signal?.throwIfAborted();
   const modelId = opts.modelOverride ?? opts.config.modelId;
 
   if (!modelId) {
@@ -268,19 +270,19 @@ export async function callLLMStream(opts: CallLLMOptions, onChunk: StreamChunkCa
 
   switch (provider) {
     case "gemini":
-      return await callGeminiStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+      return await callGeminiStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk, opts.signal);
     case "openrouter":
-      return await callOpenRouterStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+      return await callOpenRouterStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk, opts.signal);
     case "anthropic":
-      return await callAnthropicStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+      return await callAnthropicStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk, opts.signal);
     case "openai":
-      return await callOpenAIStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+      return await callOpenAIStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk, "openai", opts.signal);
     case "azure":
-      return await callOpenAIStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk, "azure");
+      return await callOpenAIStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk, "azure", opts.signal);
     case "pollinations":
-      return await callPollinationsStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+      return await callPollinationsStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk, opts.signal);
     case "local":
-      return await callLocalStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
+      return await callLocalStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk, opts.signal);
     default:
       throw new Error(`Unknown provider: ${provider}`);
   }
@@ -431,6 +433,7 @@ async function callOpenRouterStream(
   modelId: string,
   config: LLMConfig,
   onChunk: StreamChunkCallback,
+  signal?: AbortSignal,
 ): Promise<string> {
   const apiKey = getApiKey("openrouter", config);
   if (!apiKey) {
@@ -471,7 +474,7 @@ async function callOpenRouterStream(
           "X-Title": "MAGI",
         },
         body,
-        signal: controller.signal,
+        signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
       });
     } catch (err) {
       clearTimeout(timeout);
@@ -592,6 +595,7 @@ async function callGeminiStream(
   modelId: string,
   config: LLMConfig,
   onChunk: StreamChunkCallback,
+  signal?: AbortSignal,
 ): Promise<string> {
   const apiKey = getApiKey("gemini", config);
   if (!apiKey) {
@@ -620,7 +624,7 @@ async function callGeminiStream(
           "Content-Type": "application/json",
         },
         body,
-        signal: controller.signal,
+        signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
       });
     } catch (err) {
       clearTimeout(timeout);
@@ -786,6 +790,7 @@ async function callAnthropicStream(
   modelId: string,
   config: LLMConfig,
   onChunk: StreamChunkCallback,
+  signal?: AbortSignal,
 ): Promise<string> {
   const apiKey = getApiKey("anthropic", config);
   if (!apiKey) {
@@ -819,7 +824,7 @@ async function callAnthropicStream(
           "Content-Type": "application/json",
         },
         body,
-        signal: controller.signal,
+        signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
       });
     } catch (err) {
       clearTimeout(timeout);
@@ -1039,6 +1044,7 @@ async function callOpenAIStream(
   config: LLMConfig,
   onChunk: StreamChunkCallback,
   provider: OpenAICloudProvider = "openai",
+  signal?: AbortSignal,
 ): Promise<string> {
   const body = JSON.stringify({
     model: modelId,
@@ -1068,7 +1074,7 @@ async function callOpenAIStream(
         method: "POST",
         headers,
         body,
-        signal: controller.signal,
+        signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
       });
     } catch (err) {
       clearTimeout(timeout);
@@ -1182,6 +1188,7 @@ async function callLocalStream(
   modelId: string,
   config: LLMConfig,
   onChunk: StreamChunkCallback,
+  signal?: AbortSignal,
 ): Promise<string> {
   const endpoint = config.localEndpoint ?? "http://localhost:1234/v1";
   const url = `${endpoint}/chat/completions`;
@@ -1205,7 +1212,7 @@ async function callLocalStream(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
-      signal: controller.signal,
+      signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
     });
   } catch (err) {
     clearTimeout(timeout);
@@ -1299,6 +1306,7 @@ async function callPollinationsStream(
   modelId: string,
   _config: LLMConfig,
   onChunk: StreamChunkCallback,
+  signal?: AbortSignal,
 ): Promise<string> {
   const url = "https://text.pollinations.ai/openai";
   const body = JSON.stringify({
@@ -1319,7 +1327,7 @@ async function callPollinationsStream(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
-      signal: controller.signal,
+      signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
     });
   } catch (err) {
     clearTimeout(timeout);

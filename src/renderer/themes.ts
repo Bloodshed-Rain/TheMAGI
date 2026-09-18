@@ -38,7 +38,7 @@ export interface Theme {
   fontDisplay: string;
   easeSpring: string;
   easeOut: string;
-  // Liquid-only optional tokens — other themes leave undefined.
+  // Optional material and geometry tokens.
   surfaceBlur?: string;
   chromeGlint?: string;
   radiusXs?: string;
@@ -47,22 +47,17 @@ export interface Theme {
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
- * MAGI Theme Definitions — 6 curated themes
+ * MAGI Theme Definitions — 3 distinct themes
  *
  *   liquid      — default chrome/glass aesthetic
- *   telemetry   — dark blue data-forward mode
- *   tournament  — high-contrast black for tournament overlays
- *   crt         — green phosphor CRT look
- *   amber       — warm monochrome amber CRT variant
- *   light       — clean bright mode for daytime / well-lit rooms
+ *   indigo      — molded GameCube-inspired console hardware
+ *   windows2000 — classic Windows 2000 desktop chrome
  *
  * Extra per-theme visual treatment (bevels, sizing) is handled by
  * selectors in styles/tokens.css keyed off `[data-theme="<id>"]`.
  * ─────────────────────────────────────────────────────────────────────────── */
 
-const FONT_SANS = "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 const FONT_MONO = "'JetBrains Mono', 'Fira Code', monospace";
-const FONT_DISPLAY = "'Chakra Petch', 'DM Sans', -apple-system, sans-serif";
 const EASE_SPRING = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_OUT = "cubic-bezier(0, 0, 0.2, 1)";
 
@@ -117,227 +112,106 @@ export const THEMES: Record<string, Theme> = {
     radiusMd: "20px",
   },
 
-  telemetry: {
-    id: "telemetry",
-    name: "Telemetry",
-    bg: "#0f172a",
-    surface1: "#1e293b",
-    surface2: "#334155",
-    surface3: "#475569",
-    border: "rgba(148, 163, 184, 0.1)",
-    borderSubtle: "rgba(148, 163, 184, 0.05)",
-    borderMuted: "rgba(148, 163, 184, 0.2)",
-    text: "#f8fafc",
-    textSecondary: "#cbd5e1",
-    textMuted: "#a8b5c6", // raised to clear WCAG AA 4.5:1 on surface-1/2 (was #64748b ≈ 2.2:1 on surface-2)
-    accent: "#22d3ee",
-    accentHover: "#06b6d4",
-    accentMuted: "rgba(34, 211, 238, 0.15)",
-    win: "#4ade80",
-    loss: "#f87171",
-    caution: "#fbbf24",
-    sidebarBg: "#0f172a",
-    sidebarHover: "#1e293b",
-    sidebarActiveBg: "rgba(34, 211, 238, 0.12)",
-    sidebarAccent: "#22d3ee",
-    shadowSm: "0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25)",
-    shadowMd: "0 4px 16px rgba(0,0,0,0.4)",
-    shadowLg: "0 12px 40px rgba(0,0,0,0.5)",
+  /* ─── GameCube Indigo — molded console hardware ───────────────── */
+  indigo: {
+    id: "indigo",
+    name: "GameCube Indigo",
+    bg: "#17132d",
+    surface1: "#2d2554",
+    surface2: "#3d326d",
+    surface3: "#504383",
+    border: "rgba(222,216,255,0.24)",
+    borderSubtle: "rgba(222,216,255,0.1)",
+    borderMuted: "rgba(222,216,255,0.42)",
+    text: "#fbf9ff",
+    textSecondary: "#ded8f0",
+    textMuted: "#bdb4d4",
+    accent: "#79d6a3",
+    accentHover: "#9aebba",
+    accentMuted: "rgba(121,214,163,0.2)",
+    win: "#79d6a3",
+    loss: "#ef6a7a",
+    caution: "#f2c94c",
+    sidebarBg: "#211a43",
+    sidebarHover: "#352b61",
+    sidebarActiveBg: "#443875",
+    sidebarAccent: "#9aebba",
+    shadowSm:
+      "inset 0 2px 1px rgba(255,255,255,0.12), inset 0 -3px 5px rgba(10,6,28,0.28), 0 5px 12px rgba(8,5,24,0.3)",
+    shadowMd:
+      "inset 0 3px 2px rgba(255,255,255,0.14), inset 0 -5px 8px rgba(10,6,28,0.32), 0 14px 28px rgba(8,5,24,0.38)",
+    shadowLg:
+      "inset 0 3px 2px rgba(255,255,255,0.16), inset 0 -7px 12px rgba(10,6,28,0.36), 0 24px 52px rgba(8,5,24,0.48)",
     appBackgroundImage:
-      "radial-gradient(760px 520px at 12% 18%, rgba(34,211,238,0.16), transparent 62%), radial-gradient(760px 540px at 88% 74%, rgba(129,140,248,0.12), transparent 64%), linear-gradient(135deg, #0f172a 0%, #08111f 48%, #101c2d 100%)",
+      "radial-gradient(circle at 86% 16%, rgba(242,201,76,0.17) 0 28px, transparent 29px), radial-gradient(circle at 78% 22%, rgba(239,106,122,0.15) 0 18px, transparent 19px), radial-gradient(900px 620px at 12% 14%, rgba(134,111,218,0.42), transparent 62%), linear-gradient(145deg, #211945 0%, #17132d 50%, #0f0b23 100%)",
     appBackgroundPosition: "center",
     appBackgroundSize: "cover",
     appBackgroundRepeat: "no-repeat",
     appBackgroundBlendMode: "normal",
-    magiBackgroundOpacity: "0.14", // visible without bleeding behind charts/tables
-    magiBackgroundFilter: "drop-shadow(0 24px 60px rgba(0,0,0,0.45)) hue-rotate(150deg) saturate(0.85)",
-    magiBackgroundPosition: "center",
-    magiBackgroundSize: "min(1120px, 76vw) auto",
-    fontMono: FONT_MONO,
-    fontSans: FONT_SANS,
-    fontDisplay: FONT_DISPLAY,
-    easeSpring: EASE_SPRING,
+    magiBackgroundOpacity: "0.12",
+    magiBackgroundFilter: "drop-shadow(0 22px 54px rgba(7,4,22,0.55)) hue-rotate(225deg) saturate(0.8)",
+    magiBackgroundPosition: "center right 4vw",
+    magiBackgroundSize: "min(980px, 68vw) auto",
+    fontMono: "'Trebuchet MS', 'Arial Rounded MT Bold', Arial, sans-serif",
+    fontSans: "'Trebuchet MS', 'Arial Rounded MT Bold', Arial, sans-serif",
+    fontDisplay: "'Trebuchet MS', 'Arial Rounded MT Bold', Arial, sans-serif",
+    easeSpring: "cubic-bezier(0.18, 1.38, 0.42, 1)",
     easeOut: EASE_OUT,
+    radiusXs: "8px",
+    radiusSm: "14px",
+    radiusMd: "22px",
   },
 
-  tournament: {
-    id: "tournament",
-    name: "Tournament",
-    bg: "#000000",
-    surface1: "#0a0a0a",
-    surface2: "#141414",
-    surface3: "#1f1f1f",
-    border: "rgba(255,255,255,0.08)",
-    borderSubtle: "rgba(255,255,255,0.04)",
-    borderMuted: "rgba(255,255,255,0.14)",
-    text: "#ffffff",
-    textSecondary: "#d4d4d4",
-    textMuted: "#a3a3a3", // raised to clear WCAG AA 4.5:1 (was #737373 ≈ 3.9:1)
-    accent: "#3b82f6",
-    accentHover: "#2563eb",
-    accentMuted: "rgba(59,130,246,0.15)",
-    win: "#4ade80",
-    loss: "#f87171",
-    caution: "#fbbf24",
-    sidebarBg: "#000000",
-    sidebarHover: "#0a0a0a",
-    sidebarActiveBg: "rgba(59,130,246,0.15)",
-    sidebarAccent: "#3b82f6",
-    shadowSm: "0 1px 3px rgba(0,0,0,0.6)",
-    shadowMd: "0 4px 16px rgba(0,0,0,0.6)",
-    shadowLg: "0 12px 40px rgba(0,0,0,0.7)",
-    appBackgroundImage:
-      "radial-gradient(680px 460px at 20% 16%, rgba(59,130,246,0.16), transparent 62%), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(180deg, #000000 0%, #05070b 52%, #000000 100%)",
-    appBackgroundPosition: "center",
-    appBackgroundSize: "cover, 44px 44px, cover",
-    appBackgroundRepeat: "no-repeat, repeat, no-repeat",
-    appBackgroundBlendMode: "normal",
-    magiBackgroundOpacity: "0.22",
-    magiBackgroundFilter: "drop-shadow(0 24px 60px rgba(0,0,0,0.75)) grayscale(0.2) contrast(1.1)",
-    magiBackgroundPosition: "center",
-    magiBackgroundSize: "min(1100px, 74vw) auto",
-    fontMono: FONT_MONO,
-    fontSans: FONT_SANS,
-    fontDisplay: FONT_DISPLAY,
-    easeSpring: EASE_SPRING,
-    easeOut: EASE_OUT,
-  },
-
-  crt: {
-    id: "crt",
-    name: "CRT",
-    bg: "#050a05",
-    surface1: "#0a140a",
-    surface2: "#111e11",
-    surface3: "#1a2e1a",
-    border: "rgba(51,255,51,0.08)",
-    borderSubtle: "rgba(51,255,51,0.04)",
-    borderMuted: "rgba(51,255,51,0.15)",
-    text: "#33ff33",
-    textSecondary: "#29cc29",
-    textMuted: "#2fd02f", // raised to clear WCAG AA 4.5:1 (was #1a801a ≈ 3.7:1)
-    accent: "#33ff33",
-    accentHover: "#29cc29",
-    accentMuted: "rgba(51,255,51,0.12)",
-    win: "#33ff33",
-    loss: "#ff3333",
-    caution: "#ffcc00",
-    sidebarBg: "#050a05",
-    sidebarHover: "#0a140a",
-    sidebarActiveBg: "rgba(51,255,51,0.12)",
-    sidebarAccent: "#33ff33",
-    shadowSm: "0 0 4px rgba(51,255,51,0.25)",
-    shadowMd: "0 0 12px rgba(51,255,51,0.3)",
-    shadowLg: "0 0 24px rgba(51,255,51,0.35)",
-    appBackgroundImage:
-      "radial-gradient(700px 520px at 20% 20%, rgba(51,255,51,0.12), transparent 66%), repeating-linear-gradient(0deg, rgba(51,255,51,0.035) 0 1px, transparent 1px 5px), radial-gradient(circle at 50% 50%, #0a160a 0%, #050a05 72%)",
-    appBackgroundPosition: "center",
-    appBackgroundSize: "cover",
-    appBackgroundRepeat: "no-repeat",
-    appBackgroundBlendMode: "screen, normal, normal",
-    magiBackgroundOpacity: "0.13",
-    magiBackgroundFilter:
-      "drop-shadow(0 0 34px rgba(51,255,51,0.2)) sepia(1) hue-rotate(70deg) saturate(1.8) brightness(0.9)",
-    magiBackgroundPosition: "center",
-    magiBackgroundSize: "min(1080px, 74vw) auto",
-    fontMono: FONT_MONO,
-    fontSans: FONT_MONO,
-    fontDisplay: FONT_MONO,
-    easeSpring: EASE_SPRING,
-    easeOut: EASE_OUT,
-  },
-
-  amber: {
-    id: "amber",
-    name: "Amber",
-    bg: "#1a1006",
-    surface1: "#231709",
-    surface2: "#2e200e",
-    surface3: "#3d2c15",
-    border: "rgba(217,175,106,0.1)",
-    borderSubtle: "rgba(217,175,106,0.05)",
-    borderMuted: "rgba(217,175,106,0.18)",
-    text: "#f5e6c8",
-    textSecondary: "#c9a96e",
-    textMuted: "#b89461", // raised to clear WCAG AA 4.5:1 (was #8b6d3f ≈ 3.6:1)
-    accent: "#d9a540",
-    accentHover: "#c4922e",
-    accentMuted: "rgba(217,165,64,0.14)",
-    win: "#7dba5a",
-    loss: "#d95b5b",
-    caution: "#d9a540",
-    sidebarBg: "#1a1006",
-    sidebarHover: "#231709",
-    sidebarActiveBg: "rgba(217,165,64,0.14)",
-    sidebarAccent: "#d9a540",
-    shadowSm: "0 2px 6px rgba(0,0,0,0.4)",
-    shadowMd: "0 6px 18px rgba(0,0,0,0.5)",
-    shadowLg: "0 16px 48px rgba(0,0,0,0.6)",
-    appBackgroundImage:
-      "radial-gradient(760px 520px at 18% 20%, rgba(217,165,64,0.14), transparent 64%), radial-gradient(640px 520px at 86% 78%, rgba(125,186,90,0.08), transparent 64%), linear-gradient(145deg, #1a1006 0%, #271708 48%, #120904 100%)",
+  /* ─── Windows 2000 — classic desktop chrome ──────────────────── */
+  windows2000: {
+    id: "windows2000",
+    name: "Windows 2000",
+    bg: "#008080",
+    surface1: "#d4d0c8",
+    surface2: "#ece9d8",
+    surface3: "#b8b4ac",
+    border: "#808080",
+    borderSubtle: "#b0b0b0",
+    borderMuted: "#404040",
+    text: "#000000",
+    textSecondary: "#202020",
+    textMuted: "#4b4b4b",
+    accent: "#000080",
+    accentHover: "#0000a8",
+    accentMuted: "#b8b8d8",
+    win: "#008000",
+    loss: "#c00000",
+    caution: "#806000",
+    sidebarBg: "#d4d0c8",
+    sidebarHover: "#ece9d8",
+    sidebarActiveBg: "#000080",
+    sidebarAccent: "#ffffff",
+    shadowSm: "inset 1px 1px 0 #ffffff, inset -1px -1px 0 #404040",
+    shadowMd: "inset 1px 1px 0 #ffffff, inset -2px -2px 0 #404040, 2px 2px 0 rgba(0,0,0,0.28)",
+    shadowLg: "inset 2px 2px 0 #ffffff, inset -2px -2px 0 #404040, 5px 5px 0 rgba(0,0,0,0.32)",
+    appBackgroundImage: "linear-gradient(#008080, #008080)",
     appBackgroundPosition: "center",
     appBackgroundSize: "cover",
     appBackgroundRepeat: "no-repeat",
     appBackgroundBlendMode: "normal",
-    magiBackgroundOpacity: "0.16",
-    magiBackgroundFilter:
-      "drop-shadow(0 24px 58px rgba(0,0,0,0.55)) sepia(0.75) hue-rotate(330deg) saturate(1.2) brightness(0.92)",
+    magiBackgroundOpacity: "0.035",
+    magiBackgroundFilter: "grayscale(1) contrast(1.5)",
     magiBackgroundPosition: "center",
-    magiBackgroundSize: "min(1120px, 76vw) auto",
-    fontMono: FONT_MONO,
-    fontSans: FONT_SANS,
-    fontDisplay: FONT_DISPLAY,
-    easeSpring: EASE_SPRING,
-    easeOut: EASE_OUT,
-  },
-
-  light: {
-    id: "light",
-    name: "Light",
-    bg: "#ffffff",
-    surface1: "#f8fafc",
-    surface2: "#f1f5f9",
-    surface3: "#e2e8f0",
-    border: "rgba(15, 23, 42, 0.08)",
-    borderSubtle: "rgba(15, 23, 42, 0.04)",
-    borderMuted: "rgba(15, 23, 42, 0.14)",
-    text: "#0f172a",
-    textSecondary: "#475569",
-    textMuted: "#5b6675", // darkened to clear WCAG AA 4.5:1 on light surfaces (was #94a3b8 ≈ 2.4:1)
-    accent: "#0ea5e9",
-    accentHover: "#0284c7",
-    accentMuted: "rgba(14, 165, 233, 0.1)",
-    win: "#22c55e",
-    loss: "#ef4444",
-    caution: "#f59e0b",
-    sidebarBg: "#0f172a",
-    sidebarHover: "#1e293b",
-    sidebarActiveBg: "rgba(34, 211, 238, 0.12)",
-    sidebarAccent: "#22d3ee",
-    shadowSm: "0 1px 2px rgba(0,0,0,0.05)",
-    shadowMd: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
-    shadowLg: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
-    appBackgroundImage:
-      "radial-gradient(760px 520px at 10% 12%, rgba(14,165,233,0.14), transparent 66%), radial-gradient(720px 540px at 90% 78%, rgba(99,102,241,0.1), transparent 66%), linear-gradient(145deg, #ffffff 0%, #f8fafc 58%, #eef5ff 100%)",
-    appBackgroundPosition: "center",
-    appBackgroundSize: "cover",
-    appBackgroundRepeat: "no-repeat",
-    appBackgroundBlendMode: "normal",
-    magiBackgroundOpacity: "0.14",
-    magiBackgroundFilter: "drop-shadow(0 18px 46px rgba(15,23,42,0.12)) saturate(0.75) brightness(1.12)",
-    magiBackgroundPosition: "center",
-    magiBackgroundSize: "min(1120px, 76vw) auto",
-    fontMono: FONT_MONO,
-    fontSans: FONT_SANS,
-    fontDisplay: FONT_DISPLAY,
-    easeSpring: EASE_SPRING,
-    easeOut: EASE_OUT,
+    magiBackgroundSize: "min(900px, 64vw) auto",
+    fontMono: "Tahoma, 'MS Sans Serif', Arial, sans-serif",
+    fontSans: "Tahoma, 'MS Sans Serif', Arial, sans-serif",
+    fontDisplay: "Tahoma, 'MS Sans Serif', Arial, sans-serif",
+    easeSpring: "linear",
+    easeOut: "linear",
+    radiusXs: "0px",
+    radiusSm: "0px",
+    radiusMd: "0px",
   },
 };
 
-export const THEME_ORDER = ["liquid", "telemetry", "tournament", "crt", "amber", "light"] as const;
+export const THEME_ORDER = ["liquid", "indigo", "windows2000"] as const;
 
-export type ColorMode = "liquid" | "telemetry" | "tournament" | "crt" | "amber" | "light";
+export type ColorMode = "liquid" | "indigo" | "windows2000";
 
 /**
  * Resolve a saved theme ID to an actual Theme, falling back to liquid for
@@ -438,7 +312,7 @@ export function applyTheme(theme: Theme): void {
   root.style.setProperty("--red-rgb", hexToRgb(theme.loss));
   root.style.setProperty("--yellow-rgb", hexToRgb(theme.caution));
 
-  // Liquid-only tokens — use explicit fallbacks so other themes stay sane.
+  // Optional tokens use explicit fallbacks for themes that do not define them.
   root.style.setProperty("--surface-blur", theme.surfaceBlur ?? "0px");
   root.style.setProperty("--chrome-glint", theme.chromeGlint ?? "transparent");
   root.style.setProperty("--radius-xs", theme.radiusXs ?? "2px");

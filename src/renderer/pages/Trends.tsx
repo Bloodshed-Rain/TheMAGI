@@ -1,3 +1,4 @@
+import { LoadError } from "../components/ui/LoadError";
 import { useState } from "react";
 import { useLibraryGames, useTrendSeriesBundle } from "../hooks/queries";
 import { Card } from "../components/ui/Card";
@@ -54,8 +55,8 @@ const METRICS: Array<{
     label: "Avg Death %",
     fmt: (v) => `${v.toFixed(0)}%`,
     color: "var(--text-secondary)",
-    // No `pct`: stored on a 0–100 scale, so its delta is already in points (avoid 100x delta inflation).
-    domain: [0, 100],
+    // Damage percent is unbounded; its delta is already in percentage points.
+    
   },
 ];
 
@@ -87,7 +88,7 @@ export function Trends({ refreshKey: _ }: { refreshKey: number }) {
   const [metric, setMetric] = useState<MetricKey>("neutralWinRate");
   const [filterChar, setFilterChar] = useState<string>("all");
 
-  const { data: libraryOptions, isLoading: optionsLoading } = useLibraryGames({
+  const { data: libraryOptions, isLoading: optionsLoading, isError: optionsError, refetch: retryOptions } = useLibraryGames({
     search: "",
     char: "all",
     stage: "all",
@@ -102,6 +103,7 @@ export function Trends({ refreshKey: _ }: { refreshKey: number }) {
     data: trendSeries,
     isLoading,
     isError,
+    refetch,
   } = useTrendSeriesBundle(range, filterChar === "all" ? null : filterChar);
 
   const current = METRICS.find((m) => m.key === metric)!;
@@ -121,14 +123,15 @@ export function Trends({ refreshKey: _ }: { refreshKey: number }) {
     );
   }
 
+  if (optionsError) return <LoadError message="Trend filters could not load." retry={() => void retryOptions()} />;
+
   if (totalGames === 0) {
     return <EmptyState title="No games yet" sub="Trends appear once you have replays imported." />;
   }
 
-  // y-axis tick labels (top → bottom) when the metric has a fixed domain.
-  const yTicks = current.domain
-    ? [current.domain[1], (current.domain[0] + current.domain[1]) / 2, current.domain[0]].map((v) => current.fmt(v))
-    : null;
+  const chartDomain: [number, number] = current.domain ?? [Math.min(0, ...smoothed), Math.max(1, ...smoothed) * 1.05];
+  // Axis labels use the same domain as the plot.
+  const yTicks = [chartDomain[1], (chartDomain[0] + chartDomain[1]) / 2, chartDomain[0]].map(current.fmt);
 
   return (
     <div>
@@ -194,7 +197,7 @@ export function Trends({ refreshKey: _ }: { refreshKey: number }) {
           </div>
         ) : isError ? (
           <div className="trends-chart-message" style={{ height: 260 }}>
-            Couldn&apos;t load trend data. Try again.
+            <LoadError message="Trend data could not load." retry={() => void refetch()} />
           </div>
         ) : lowSample ? (
           <div className="trends-chart-message" style={{ height: 260 }}>
@@ -217,7 +220,8 @@ export function Trends({ refreshKey: _ }: { refreshKey: number }) {
                   height={260}
                   color={current.color}
                   fill
-                  {...(current.domain ? { domain: current.domain } : {})}
+                  domain={chartDomain}
+                  label={`${current.label}: ${series.length} games, five-game rolling average`}
                 />
               </div>
             </div>
@@ -232,6 +236,8 @@ export function Trends({ refreshKey: _ }: { refreshKey: number }) {
         )}
       </Card>
 
+      <p className="audit-sample-note">Points are equally spaced by game, not elapsed time. Change compares the mean rolling average in the later half with the earlier half of this filtered sample.</p>
+      <details><summary>View {current.label} data</summary><div className="audit-data-scroll"><table><thead><tr><th>Game date</th><th>Value</th><th>Rolling average</th></tr></thead><tbody>{series.map((point, index) => <tr key={index}><td>{new Date(point.playedAt).toLocaleString()}</td><td>{current.fmt(point.value)}</td><td>{current.fmt(smoothed[index]!)}</td></tr>)}</tbody></table></div></details>
       <div className="trends-grid">
         {METRICS.filter((m) => m.key !== metric).map((m) => (
           <MiniChart key={m.key} metric={m} series={trendSeries?.[m.key] ?? []} onSelect={() => setMetric(m.key)} />

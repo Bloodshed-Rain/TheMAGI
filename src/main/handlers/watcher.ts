@@ -62,6 +62,7 @@ export function startReplayWatcher(replayFolder: string, targetPlayer: string): 
 }
 
 export function registerWatcherHandlers(safeHandle: SafeHandleFn): void {
+  safeHandle("watcher:status", () => getFileWatcher() !== null);
   safeHandle("watcher:start", (_e, replayFolder: string, targetPlayer: string) => {
     startReplayWatcher(replayFolder, targetPlayer);
     return true;

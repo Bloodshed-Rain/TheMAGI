@@ -1,3 +1,5 @@
+import { LoadError } from "../components/ui/LoadError";
+import { useViewState } from "../hooks/useViewState";
 import { FormEvent, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, BookOpenCheck, ClipboardPenLine, Dumbbell, Plus, Target } from "lucide-react";
@@ -47,7 +49,9 @@ function dateLabel(value: string): string {
 export function PerformanceLab({ refreshKey: _ }: { refreshKey: number }) {
   const navigate = useNavigate();
   const { data: hub, isLoading, isError, refetch: refetchHub } = usePerformanceHub();
-  const { data: logs = [], refetch: refetchLogs } = useTrainingLog(30);
+  const [logPage, setLogPage] = useViewState("training-page", 0);
+  const { data: logRows = [], isError: logsError, refetch: refetchLogs } = useTrainingLog(21, logPage * 20);
+  const logs = logRows.slice(0, 20);
   const [showLogForm, setShowLogForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -56,7 +60,9 @@ export function PerformanceLab({ refreshKey: _ }: { refreshKey: number }) {
 
   const saveLog = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    if (saving) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
     setSaving(true);
     setFormError(null);
     try {
@@ -68,7 +74,8 @@ export function PerformanceLab({ refreshKey: _ }: { refreshKey: number }) {
         confidence: data.get("confidence") ? Number(data.get("confidence")) : null,
         notes: String(data.get("notes") ?? ""),
       });
-      event.currentTarget.reset();
+      form.reset();
+      setLogPage(0);
       setShowLogForm(false);
       await Promise.all([refetchLogs(), refetchHub()]);
     } catch (error) {
@@ -88,17 +95,9 @@ export function PerformanceLab({ refreshKey: _ }: { refreshKey: number }) {
   }
 
   if (isError || !hub) {
-    return <EmptyState title="Performance Lab is unavailable" sub="Try refreshing after your next replay import." />;
+    return <LoadError message="Performance Lab could not load." retry={() => void refetchHub()} />;
   }
 
-  if (hub.sample.gamesScanned === 0) {
-    return (
-      <EmptyState
-        title="No replay data to analyze yet"
-        sub="Import Slippi replays to build a current-form scorecard and review queue. You can still log training blocks below."
-      />
-    );
-  }
 
   return (
     <div className="performance-lab">
@@ -119,6 +118,7 @@ export function PerformanceLab({ refreshKey: _ }: { refreshKey: number }) {
         </button>
       </div>
 
+      {hub.sample.gamesScanned === 0 && <EmptyState title="No replay data to analyze yet" sub="Import replays for your scorecard. You can log training now." />}
       {showLogForm && (
         <Card className="training-log-form-card">
           <form className="training-log-form" onSubmit={saveLog}>
@@ -266,10 +266,10 @@ export function PerformanceLab({ refreshKey: _ }: { refreshKey: number }) {
               <span className="performance-eyebrow">Player context</span>
               <h2 id="training-log-heading">Training log</h2>
             </div>
-            <span className="performance-data-note">{trackedMinutes} min tracked</span>
+            <span className="performance-data-note">{trackedMinutes} min on this page</span>
           </div>
           <Card className="training-log-card">
-            {logs.length === 0 ? (
+            {logsError ? <LoadError message="Training history could not load." retry={() => void refetchLogs()} /> : logs.length === 0 ? (
               <div className="training-log-empty">
                 <ClipboardPenLine size={18} />
                 <p>Log warmups, drills, VOD review, tournament sets, and coaching takeaways alongside replay data.</p>
@@ -279,7 +279,7 @@ export function PerformanceLab({ refreshKey: _ }: { refreshKey: number }) {
               </div>
             ) : (
               <div className="training-log-list">
-                {logs.slice(0, 6).map((entry) => (
+                {logs.map((entry) => (
                   <div key={entry.id} className="training-log-entry">
                     <div className="training-log-entry-topline">
                       <strong>{entry.activityType}</strong>
@@ -297,6 +297,7 @@ export function PerformanceLab({ refreshKey: _ }: { refreshKey: number }) {
               </div>
             )}
           </Card>
+          <div className="audit-pagination"><button className="btn" disabled={logPage === 0} onClick={() => setLogPage(p => p - 1)}>Newer blocks</button><span>Page {logPage + 1}</span><button className="btn" disabled={logRows.length <= 20} onClick={() => setLogPage(p => p + 1)}>Older blocks</button></div>
         </section>
       </div>
 

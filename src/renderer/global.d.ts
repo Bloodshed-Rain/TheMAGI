@@ -75,6 +75,7 @@ declare global {
         id: number;
         name: string;
         weaknessSummary: string | null;
+        baselineJson?: string | null;
         createdAt: string;
         drills: Array<{ id: number; name: string; target: string; completed: boolean; sortOrder: number }>;
       }>;
@@ -82,13 +83,16 @@ declare global {
         id: number;
         name: string;
         weaknessSummary: string | null;
+        baselineJson?: string | null;
         createdAt: string;
         drills: Array<{ id: number; name: string; target: string; completed: boolean; sortOrder: number }>;
       }>>;
       setDrillCompletion: (drillId: number, completed: boolean) => Promise<boolean>;
       deletePracticePlan: (planId: number) => Promise<boolean>;
       oracleListMessages: () => Promise<Array<{ id: number; role: "user" | "assistant"; content: string; createdAt: string }>>;
-      oracleAsk: (text: string) => Promise<{
+      oracleCancel: (requestId: string) => Promise<boolean>;
+      onOracleStream: (callback: (event: {requestId: string; chunk: string; status: string}) => void) => () => void;
+      oracleAsk: (text: string, requestId?: string) => Promise<{
         user: { id: number; role: "user"; content: string; createdAt: string };
         assistant: { id: number; role: "assistant"; content: string; createdAt: string };
       }>;
@@ -189,7 +193,7 @@ declare global {
         >
       >;
       getPerformanceHub: () => Promise<PerformanceHub>;
-      getTrainingLog: (limit?: number) => Promise<TrainingLogEntry[]>;
+      getTrainingLog: (limit?: number, offset?: number) => Promise<TrainingLogEntry[]>;
       createTrainingLog: (entry: CreateTrainingLogEntry) => Promise<TrainingLogEntry>;
       getGameReviewNotes: (gameId: number) => Promise<GameReviewNote[]>;
       addGameReviewNote: (
@@ -217,6 +221,8 @@ declare global {
       getStockTimeline: (replayPath: string) => Promise<any>;
       openFileDialog: (title: string, filters: { name: string; extensions: string[] }[]) => Promise<string | null>;
       startWatcher: (replayFolder: string, targetPlayer: string) => Promise<boolean>;
+      getWatcherStatus: () => Promise<boolean>;
+      onWatcherStatus: (callback: (active: boolean) => void) => () => void;
       stopWatcher: () => Promise<boolean>;
       onImported: (callback: (result: any) => void) => () => void;
       onWatcherError: (callback: (message: string) => void) => () => void;

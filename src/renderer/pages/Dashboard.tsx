@@ -1,3 +1,6 @@
+import { useImportStore } from "../stores/useImportStore";
+import { showNotice } from "../hooks/notice";
+import { LoadError } from "../components/ui/LoadError";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -65,10 +68,10 @@ function buildRecentSummary(games: RecentGame[]): string {
 
 export function Dashboard({ refreshKey }: { refreshKey: number }) {
   const navigate = useNavigate();
-  const { data: games = [], isLoading, refetch } = useRecentGames(20);
+  const { data: games = [], isLoading, isError, refetch } = useRecentGames(20);
   const { data: record, refetch: refetchRecord } = useOverallRecord();
   const { data: highlights, refetch: refetchHighlights } = useDashboardHighlights();
-  const [importing, setImporting] = useState(false);
+  const importing = useImportStore((state) => state.busy);
 
   useEffect(() => {
     refetch();
@@ -77,24 +80,15 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
   }, [refreshKey, refetch, refetchRecord, refetchHighlights]);
 
   const handleImport = useCallback(async () => {
-    const config = await window.clippi.loadConfig();
-    const tag = config?.connectCode || config?.targetPlayer;
-    if (!tag) {
-      navigate("/settings");
-      return;
-    }
-    const folder = await window.clippi.openFolder();
-    if (!folder) return;
-    setImporting(true);
+    if (useImportStore.getState().busy) return;
     try {
-      await window.clippi.importFolder(folder, tag);
-      refetch();
-      refetchRecord();
-      refetchHighlights();
-    } finally {
-      setImporting(false);
-    }
-  }, [navigate, refetch, refetchRecord, refetchHighlights]);
+      const config = await window.clippi.loadConfig();
+      const tag = config?.connectCode?.trim() || config?.targetPlayer?.trim();
+      if (!tag) { navigate("/settings?section=profile"); return; }
+      const folder = await window.clippi.openFolder();
+      if (folder) await useImportStore.getState().run(folder, tag);
+    } catch (error) { showNotice(error instanceof Error ? error.message : String(error)); }
+  }, [navigate]);
 
   const recent = useMemo(() => (games as unknown as RecentGame[]).slice(0, 20), [games]);
   const last10 = recent.slice(0, 10);
@@ -131,13 +125,15 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
     );
   }
 
+  if (isError) return <LoadError message="Could not load your replays." retry={() => void refetch()} />;
+
   if (games.length === 0) {
     return (
       <div className="dashboard-empty-wrap">
         <EmptyState
           title="No replays imported yet"
           sub="Point MAGI at your Slippi folder to start tracking stats and coaching."
-          cta={{ label: "Import Replays", onClick: handleImport }}
+          cta={{ label: importing ? "Importing…" : "Import Replays", onClick: handleImport, disabled: importing }}
         />
       </div>
     );
@@ -182,7 +178,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
             show: { opacity: 1, y: 0, transition: { type: "spring", bounce: 0.4 } },
           }}
         >
-          <KPI label="Win Rate" value={`${overallWR.toFixed(0)}%`} sub={`${wins}W · ${losses}L`} />
+          <KPI label="Win Rate · all games" value={`${overallWR.toFixed(0)}%`} sub={`${wins}W · ${losses}L`} />
         </motion.div>
         <motion.div
           variants={{
@@ -191,7 +187,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
           }}
         >
           <KPI
-            label="Neutral WR"
+            label={`Neutral WR · last ${recent.length}`}
             value={`${(avgNeutral * 100).toFixed(1)}%`}
             sub={neutralD.label}
             subTone={neutralD.tone}
@@ -204,7 +200,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
           }}
         >
           <KPI
-            label="L-Cancel"
+            label={`L-Cancel · last ${recent.length}`}
             value={`${(avgLCancel * 100).toFixed(1)}%`}
             sub={lcancelD.label}
             subTone={lcancelD.tone}
@@ -216,10 +212,13 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
             show: { opacity: 1, y: 0, transition: { type: "spring", bounce: 0.4 } },
           }}
         >
-          <KPI label="Dmg / Opening" value={avgDmg.toFixed(1)} sub={dmgD.label} subTone={dmgD.tone} />
+          <KPI label={`Dmg / Opening · last ${recent.length}`} value={avgDmg.toFixed(1)} sub={dmgD.label} subTone={dmgD.tone} />
         </motion.div>
       </motion.div>
 
+      <p className="help-copy">Technique changes compare the latest 10 games with the preceding 10. pp means percentage points. Win rate excludes draws.</p>
+      <div className="review-next"><div><strong>Choose your next adjustment</strong><p>Review a game, capture one decision, then test it in practice.</p></div>
+        <button className="btn btn-primary" onClick={() => navigate("/performance")}>Find a review target</button></div>
       <RecentHighlightReel refreshKey={refreshKey} />
 
       <div className="dash-split">
@@ -236,7 +235,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <ResultDot result={g.result === "win" ? "win" : "loss"} aria-hidden />
+                <ResultDot result={g.result} aria-hidden />
               </motion.button>
             ))}
             <span style={{ marginLeft: 12, fontSize: 12, color: "var(--text-muted)" }}>
@@ -304,7 +303,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
             View all →
           </button>
         </div>
-        <DataTable>
+        <DataTable className="identity-table">
           <thead>
             <tr>
               <th></th>
@@ -349,7 +348,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                 style={{ cursor: "pointer", originX: 0 }}
               >
                 <td>
-                  <ResultDot result={g.result === "win" ? "win" : "loss"} />
+                  <ResultDot result={g.result} />
                 </td>
                 <td style={{ fontWeight: 600 }}>
                   {g.playerCharacter} <span style={{ color: "var(--text-muted)" }}>vs</span> {g.opponentCharacter}
@@ -377,6 +376,9 @@ function OracleInsightCard({ games }: { games: RecentGame[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const runningRef = useRef(false);
+  const [insightKey, setInsightKey] = useState("");
+  const [model, setModel] = useState("");
+  useEffect(() => { window.clippi.getCurrentModel().then(m => setModel(m.label)).catch(() => {}); }, []);
 
   const run = useCallback(async () => {
     if (games.length < 3 || runningRef.current) return;
@@ -388,6 +390,7 @@ function OracleInsightCard({ games }: { games: RecentGame[] }) {
       const summary = buildRecentSummary(games.slice(0, 5));
       const result = await window.clippi.analyzeTrends(summary);
       setInsight(result);
+      setInsightKey(games.slice(0, 5).map(g => g.id).join(","));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -407,6 +410,10 @@ function OracleInsightCard({ games }: { games: RecentGame[] }) {
 
   return (
     <Card title="MAGI Oracle" className="clippi-card">
+      <p className="help-copy">Based on the latest {Math.min(games.length, 5)} games{model ? " · " + model : ""}.</p>
+      {games.length < 3 && <p>Import at least 3 games to build a coaching summary.</p>}
+      {insight && insightKey !== gameKey && <p role="status">New games are available. Refresh this summary to include them.</p>}
+      {games.length >= 3 && <button className="btn" disabled={loading} onClick={run}>{error ? "Retry summary" : "Refresh summary"}</button>}
       {loading && (
         <div className="analyze-loading">
           <div className="spinner" />

@@ -25,6 +25,7 @@ export function getFileWatcher(): { close: () => void } | null {
 
 export function setFileWatcher(watcher: { close: () => void } | null): void {
   fileWatcher = watcher;
+  mainWindow?.webContents.send("watcher:status", watcher !== null);
 }
 
 let importListener: ((result: WatcherImportEvent) => void) | null = null;

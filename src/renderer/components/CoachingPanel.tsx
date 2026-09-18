@@ -1,5 +1,5 @@
+import { useFollowOutput } from "../hooks/useFollowOutput";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useReducedMotion } from "framer-motion";
 import { Compass } from "lucide-react";
 import { CoachingCards } from "./CoachingCards";
 import { makeTimestampComponents, injectTimestampLinks } from "../utils/timestampLinks";
@@ -27,8 +27,8 @@ export function CoachingPanel({ scope, id, title, preloadedText, replayPath, onT
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [queuePos, setQueuePos] = useState<number>(0);
-  const reduceMotion = useReducedMotion();
   const bodyRef = useRef<HTMLDivElement>(null);
+  const { unread, resume } = useFollowOutput(bodyRef, analysis);
 
   const runAnalysis = useCallback(async () => {
     if (preloadedText) return;
@@ -78,17 +78,7 @@ export function CoachingPanel({ scope, id, title, preloadedText, replayPath, onT
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, id]);
 
-  // Autoscroll the body as streaming chunks arrive
-  useEffect(() => {
-    if (!loading) return;
-    const el = bodyRef.current;
-    if (!el) return;
-    if (reduceMotion) {
-      el.scrollTop = el.scrollHeight;
-    } else {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    }
-  }, [analysis, loading, reduceMotion]);
+
 
   const components = replayPath ? makeTimestampComponents(replayPath, onTimestampSeek) : undefined;
   const text = replayPath ? injectTimestampLinks(analysis) : analysis;
@@ -105,8 +95,9 @@ export function CoachingPanel({ scope, id, title, preloadedText, replayPath, onT
         </div>
       </header>
 
+      {unread && <button className="btn" onClick={resume}>New response · Jump to latest</button>}
       <div ref={bodyRef} className="coaching-panel-body">
-        {error && <div className="coaching-error">{error}</div>}
+        {error && <div className="coaching-error" role="alert">{error}<button className="btn" onClick={runAnalysis}>Retry</button></div>}
 
         {!analysis && loading && (
           <div className="coaching-loading">

@@ -1,3 +1,7 @@
+import { useNavigate } from "react-router-dom";
+import { useDialog } from "../hooks/useDialog";
+import { clearReplayData } from "../hooks/cache";
+import { showNotice } from "../hooks/notice";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Zap, UserCircle } from "lucide-react";
@@ -104,6 +108,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 // ── Component ────────────────────────────────────────────────────────
 
 export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: CommandPaletteProps) {
+  const navigate = useNavigate();
+  const panelRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [opponents, setOpponents] = useState<PaletteOpponent[]>([]);
@@ -119,6 +125,7 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
     setQuery("");
     setSelectedIndex(0);
   }, [onOpenChange]);
+  useDialog(panelRef, isOpen, close, inputRef);
 
   // ── Focus input on open ──────────────────────────────────────────
 
@@ -138,6 +145,7 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
 
   useEffect(() => {
     if (!isOpen) return;
+    let cancelled = false;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -146,6 +154,7 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
       debounceRef.current = setTimeout(async () => {
         try {
           const results = await window.clippi.getOpponents(query);
+          if (cancelled) return;
           setOpponents(
             ((results ?? []) as OpponentSearchResult[]).slice(0, 8).map((opponent) => ({
               tag: opponent.opponentTag ?? "Unknown",
@@ -154,6 +163,7 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
             })),
           );
         } catch {
+          if (cancelled) return;
           setOpponents([]);
         }
         setOpponentSearchPending(false);
@@ -164,6 +174,7 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
     }
 
     return () => {
+      cancelled = true;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query, isOpen]);
@@ -315,7 +326,7 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
         icon: <ActionIcon />,
         action: () => {
           if (confirm("This will delete all imported game data. Are you sure?")) {
-            window.clippi.clearAllGames();
+            void clearReplayData().then(() => showNotice("Replay data cleared.")).catch(e => showNotice(`Could not clear replay data: ${e instanceof Error ? e.message : String(e)}`));
           }
           close();
         },
@@ -342,12 +353,11 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
         category: "opponent" as const,
         icon: <UserIcon />,
         action: () => {
-          // Navigate to sessions to find this opponent
-          navigateTo("sessions");
+          navigate(`/rivals?opponent=${encodeURIComponent(opp.code || opp.tag)}`);
           close();
         },
       })),
-    [opponents, navigateTo, close],
+    [opponents, navigate, close],
   );
 
   // ── Filter and sort by fuzzy score ───────────────────────────────
@@ -390,6 +400,8 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
     return groups;
   }, [filteredItems]);
 
+  const displayItems = useMemo(() => groupedItems.flatMap(group => group.items), [groupedItems]);
+
   // ── Reset selection when results change ──────────────────────────
 
   useEffect(() => {
@@ -400,6 +412,7 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (e.target !== inputRef.current) return;
       if (e.key === "Escape") {
         e.preventDefault();
         close();
@@ -408,24 +421,24 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((i) => (i + 1) % Math.max(filteredItems.length, 1));
+        setSelectedIndex((i) => (i + 1) % Math.max(displayItems.length, 1));
         return;
       }
 
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex((i) => (i - 1 + filteredItems.length) % Math.max(filteredItems.length, 1));
+        setSelectedIndex((i) => (i - 1 + displayItems.length) % Math.max(displayItems.length, 1));
         return;
       }
 
       if (e.key === "Enter") {
         e.preventDefault();
-        const item = filteredItems[selectedIndex];
+        const item = displayItems[selectedIndex];
         if (item) item.action();
         return;
       }
     },
-    [filteredItems, selectedIndex, close],
+    [displayItems, selectedIndex, close],
   );
 
   // ── Scroll selected item into view ───────────────────────────────
@@ -457,6 +470,7 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
           aria-label="Command palette"
         >
           <motion.div
+            ref={panelRef}
             className="cmd-panel"
             initial={{ opacity: 0, scale: 0.97, y: -16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -490,14 +504,17 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
                 placeholder="Type a command or search..."
                 spellCheck={false}
                 autoComplete="off"
+                role="combobox"
+                aria-expanded={true}
+                aria-controls="command-results"
                 aria-label="Search commands"
-                aria-activedescendant={filteredItems[selectedIndex]?.id}
+                aria-activedescendant={displayItems[selectedIndex]?.id}
               />
-              <kbd className="cmd-kbd">ESC</kbd>
+              <button type="button" className="btn btn-ghost" onClick={close} aria-label="Close command palette">Esc</button>
             </div>
 
             {/* ── Results ──────────────────────────────────── */}
-            <div className="cmd-results" ref={listRef} role="listbox">
+            <div id="command-results" aria-label="Commands" className="cmd-results" ref={listRef} role="listbox">
               {groupedItems.length === 0 && (
                 <div className="cmd-empty">
                   {opponentSearchPending ? (
@@ -525,6 +542,7 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
                         className={`cmd-item ${isSelected ? "cmd-item-selected" : ""}`}
                         data-selected={isSelected}
                         role="option"
+                        tabIndex={-1}
                         aria-selected={isSelected}
                         onClick={item.action}
                         onMouseEnter={() => setSelectedIndex(thisIndex)}

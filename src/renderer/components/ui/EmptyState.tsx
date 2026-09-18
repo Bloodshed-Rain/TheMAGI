@@ -6,7 +6,7 @@ interface EmptyStateProps {
   sub?: string;
   cta?: {
     label: string;
-    onClick: () => void;
+    onClick: () => void; disabled?: boolean;
   };
   /** Optional one-tap starter actions rendered as a row of chips (e.g. Oracle prompts). */
   chips?: { label: string; onClick: () => void }[];
@@ -28,7 +28,7 @@ export function EmptyState({ icon, title, sub, cta, chips }: EmptyStateProps) {
         </div>
       )}
       {cta && (
-        <button className="btn btn-primary" onClick={cta.onClick}>
+        <button className="btn btn-primary" onClick={cta.onClick} disabled={cta.disabled}>
           {cta.label}
         </button>
       )}

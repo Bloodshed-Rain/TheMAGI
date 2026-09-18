@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useDialog } from "../hooks/useDialog";
+import { showNotice } from "../hooks/notice";
+import { useRef, useState } from "react";
 import { THEMES, THEME_ORDER, applyTheme, getResolvedTheme, ColorMode } from "../themes";
 import { useGlobalStore, Density } from "../stores/useGlobalStore";
 import { LiquidAppearanceControls } from "./LiquidAppearanceControls";
@@ -7,6 +9,8 @@ const DENSITIES: Density[] = ["comfortable", "compact"];
 
 export function TweaksPanel() {
   const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialog(panelRef, open, () => setOpen(false));
   const colorMode = useGlobalStore((s) => s.colorMode);
   const setColorMode = useGlobalStore((s) => s.setColorMode);
   const density = useGlobalStore((s) => s.density);
@@ -15,12 +19,13 @@ export function TweaksPanel() {
   const onPickTheme = (id: ColorMode) => {
     setColorMode(id);
     applyTheme(getResolvedTheme(id, id));
-    window.clippi.saveConfig({ colorMode: id }).catch(() => {});
+    setOpen(false);
+    window.clippi.saveConfig({ colorMode: id }).catch(() => showNotice("Could not save appearance. Try again."));
   };
 
   const onPickDensity = (d: Density) => {
     setDensity(d);
-    window.clippi.saveConfig({ density: d }).catch(() => {});
+    window.clippi.saveConfig({ density: d }).catch(() => showNotice("Could not save appearance. Try again."));
   };
 
   if (!open) {
@@ -44,7 +49,7 @@ export function TweaksPanel() {
   }
 
   return (
-    <div className="tweaks-panel" role="dialog" aria-label="Tweaks">
+    <div ref={panelRef} aria-modal="true" tabIndex={-1} className="tweaks-panel" role="dialog" aria-label="Tweaks">
       <div className="tweaks-title">
         Tweaks
         <button className="tweaks-close" onClick={() => setOpen(false)} aria-label="Close tweaks">
@@ -58,6 +63,7 @@ export function TweaksPanel() {
           {THEME_ORDER.map((id) => (
             <button
               key={id}
+              aria-pressed={colorMode === id}
               className={`tweaks-chip ${colorMode === id ? "active" : ""}`}
               onClick={() => onPickTheme(id as ColorMode)}
             >
@@ -71,17 +77,19 @@ export function TweaksPanel() {
         <div className="tweaks-label">Density</div>
         <div className="tweaks-row">
           {DENSITIES.map((d) => (
-            <button key={d} className={`tweaks-chip ${density === d ? "active" : ""}`} onClick={() => onPickDensity(d)}>
+            <button aria-pressed={density === d} key={d} className={`tweaks-chip ${density === d ? "active" : ""}`} onClick={() => onPickDensity(d)}>
               {d}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="tweaks-group">
-        <div className="tweaks-label">Liquid Metal</div>
-        <LiquidAppearanceControls variant="tweaks" />
-      </div>
+      {colorMode === "liquid" && (
+        <div className="tweaks-group">
+          <div className="tweaks-label">Liquid Metal</div>
+          <LiquidAppearanceControls variant="tweaks" />
+        </div>
+      )}
     </div>
   );
 }

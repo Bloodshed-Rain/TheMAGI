@@ -246,10 +246,10 @@ export const usePerformanceHub = () => {
   });
 };
 
-export const useTrainingLog = (limit: number = 30) => {
+export const useTrainingLog = (limit: number = 30, offset: number = 0) => {
   return useQuery({
-    queryKey: ["trainingLog", limit],
-    queryFn: () => window.clippi.getTrainingLog(limit),
+    queryKey: ["trainingLog", limit, offset],
+    queryFn: () => window.clippi.getTrainingLog(limit, offset),
     gcTime: GC_10MIN,
   });
 };

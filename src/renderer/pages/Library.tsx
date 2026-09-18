@@ -1,4 +1,5 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useViewState } from "../hooks/useViewState";
+import { useDeferredValue, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLibraryGames } from "../hooks/queries";
 import { Card } from "../components/ui/Card";
@@ -16,16 +17,19 @@ const EVENT_SEARCH_SUGGESTIONS = ["Zero-to-Death", "Ken Combo", "Waveshine", "St
 export function Library({ refreshKey: _ }: { refreshKey: number }) {
   const navigate = useNavigate();
 
-  const [search, setSearch] = useState("");
-  const [char, setChar] = useState<LibraryFilters["char"]>("all");
-  const [stage, setStage] = useState<LibraryFilters["stage"]>("all");
-  const [result, setResult] = useState<LibraryFilters["result"]>("all");
-  const [page, setPage] = useState(0);
+  const [search, setSearch] = useViewState("library-search", "");
+  const [char, setChar] = useViewState<LibraryFilters["char"]>("library-char", "all");
+  const [stage, setStage] = useViewState<LibraryFilters["stage"]>("library-stage", "all");
+  const [result, setResult] = useViewState<LibraryFilters["result"]>("library-result", "all");
+  const [page, setPage] = useViewState("library-page", 0);
   const deferredSearch = useDeferredValue(search);
 
+  const filterKey = JSON.stringify([deferredSearch, char, stage, result]);
+  const previousFilters = useRef(filterKey);
   useEffect(() => {
-    setPage(0);
-  }, [deferredSearch, char, stage, result]);
+    if (previousFilters.current !== filterKey) setPage(0);
+    previousFilters.current = filterKey;
+  }, [filterKey, setPage]);
 
   const filters = useMemo(
     () => ({
@@ -47,13 +51,14 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
   const pageStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
   const pageEnd = page * PAGE_SIZE + games.length;
   const showingSearchMatches = deferredSearch.trim() !== "";
-  const columnCount = showingSearchMatches ? 10 : 9;
+  const [showMetrics, setShowMetrics] = useViewState("library-metrics", false);
+  const columnCount = 6 + (showingSearchMatches ? 1 : 0) + (showMetrics ? 3 : 0);
 
   useEffect(() => {
-    if (page > 0 && page >= pageCount) {
+    if (!isLoading && !isFetching && !isError && page > 0 && page >= pageCount) {
       setPage(pageCount - 1);
     }
-  }, [page, pageCount]);
+  }, [page, pageCount, isLoading, isFetching, isError, setPage]);
 
   const filtersActive = search.trim() !== "" || char !== "all" || stage !== "all" || result !== "all";
 
@@ -102,7 +107,7 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
         const decisive = filteredWins + filteredLosses;
         const filteredWR = decisive > 0 ? (filteredWins / decisive) * 100 : 0;
         return (
-          <div className="kpi-grid" style={{ marginBottom: 12 }}>
+          <div className="audit-summary-strip">
             <KPI label="Filtered" value={total} sub={isFetching ? "updating" : `${pageStart}-${pageEnd || 0} shown`} />
             <KPI label="Win Rate" value={`${filteredWR.toFixed(0)}%`} sub={`${filteredWins}W · ${filteredLosses}L`} />
             <KPI label="Unique Opponents" value={data?.uniqueOpponents ?? 0} />
@@ -126,6 +131,7 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
           <div>
             <div className="tweaks-label">Matchup</div>
             <select
+              aria-label="Matchup"
               value={char}
               onChange={(e) => setChar(e.target.value as LibraryFilters["char"])}
               className="library-filter-input"
@@ -141,6 +147,7 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
           <div>
             <div className="tweaks-label">Stage</div>
             <select
+              aria-label="Stage"
               value={stage}
               onChange={(e) => setStage(e.target.value as LibraryFilters["stage"])}
               className="library-filter-input"
@@ -204,12 +211,10 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
             </button>
           </div>
         </div>
+        <label className="audit-sample-note"><input type="checkbox" checked={showMetrics} onChange={event => setShowMetrics(event.target.checked)} /> Show technique metrics</label>
         <DataTable
-          colWidths={
-            showingSearchMatches
-              ? ["32px", undefined, undefined, undefined, "220px", "76px", "76px", "76px", "76px", undefined]
-              : ["32px", undefined, undefined, undefined, "76px", "76px", "76px", "76px", undefined]
-          }
+          className="identity-table library-table"
+
         >
           <thead>
             <tr>
@@ -219,9 +224,7 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
               <th>Stage</th>
               {showingSearchMatches && <th>Matching moments</th>}
               <th>Stocks</th>
-              <th>Neutral</th>
-              <th>L-Cancel</th>
-              <th>Dmg/Op</th>
+              {showMetrics && <><th>Neutral</th><th>L-Cancel</th><th>Dmg/Op</th></>}
               <th>Date</th>
             </tr>
           </thead>
@@ -234,13 +237,13 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                   </div>
                 </td>
               </tr>
-            ) : total === 0 && !filtersActive ? (
+            ) : isError ? <tr><td colSpan={columnCount}>Games unavailable. Use Retry above.</td></tr> : total === 0 && !filtersActive ? (
               <tr>
                 <td colSpan={columnCount}>
                   <EmptyState
                     title="No replays imported yet"
                     sub="Import a replay folder to start building your library."
-                    cta={{ label: "Open Settings", onClick: () => navigate("/settings") }}
+                    cta={{ label: "Open Settings", onClick: () => navigate("/settings?section=replays") }}
                   />
                 </td>
               </tr>
@@ -264,16 +267,6 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                   <tr
                     key={g.id}
                     onClick={() => navigate(`/game/${g.id}`)}
-                    onKeyDown={(e) => {
-                      if ((e.target as HTMLElement).closest("button")) return;
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate(`/game/${g.id}`);
-                      }
-                    }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`Open ${g.result} vs ${g.opponentTag} on ${g.stage}`}
                     style={{ cursor: "pointer" }}
                   >
                     <td>
@@ -283,7 +276,7 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                       {game.playerCharacter || "—"} <span style={{ color: "var(--text-muted)" }}>vs</span>{" "}
                       {g.opponentCharacter}
                     </td>
-                    <td style={{ color: "var(--text-secondary)" }}>{g.opponentTag}</td>
+                    <td><button className="table-open" onClick={(event) => { event.stopPropagation(); navigate(`/game/${g.id}`); }} aria-label={`Open ${g.result} game ${g.id} against ${g.opponentTag} on ${g.stage}`}>{g.opponentTag}</button></td>
                     <td style={{ color: "var(--text-secondary)" }}>{g.stage}</td>
                     {showingSearchMatches && (
                       <td>
@@ -319,6 +312,7 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                     <td className="mono">
                       {game.playerFinalStocks ?? "—"}-{game.opponentFinalStocks ?? "—"}
                     </td>
+{showMetrics && <>
                     <td className="mono">
                       {typeof game.neutralWinRate === "number" ? `${(game.neutralWinRate * 100).toFixed(1)}%` : "—"}
                     </td>
@@ -328,6 +322,7 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                     <td className="mono">
                       {typeof game.avgDamagePerOpening === "number" ? game.avgDamagePerOpening.toFixed(1) : "—"}
                     </td>
+</>}
                     <td className="mono" style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                       {game.playedAt
                         ? new Date(game.playedAt).toLocaleDateString(undefined, {

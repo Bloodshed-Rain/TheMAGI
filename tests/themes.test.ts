@@ -30,8 +30,8 @@ function contrastRatio(fg: [number, number, number], bg: [number, number, number
 }
 
 describe("themes", () => {
-  it("includes all six themes with stable ids", () => {
-    expect(Object.keys(THEMES).sort()).toEqual(["amber", "crt", "light", "liquid", "telemetry", "tournament"].sort());
+  it("includes the three distinct themes with stable ids", () => {
+    expect(Object.keys(THEMES).sort()).toEqual(["indigo", "liquid", "windows2000"].sort());
   });
 
   it("orders liquid first", () => {
@@ -49,9 +49,9 @@ describe("themes", () => {
     expect(new Set(backgroundImages).size).toBe(THEME_ORDER.length);
   });
 
-  it("non-liquid themes leave optional tokens undefined", () => {
-    expect(THEMES["telemetry"]!.surfaceBlur).toBeUndefined();
-    expect(THEMES["tournament"]!.radiusMd).toBeUndefined();
+  it("non-liquid themes leave liquid material tokens undefined", () => {
+    expect(THEMES["indigo"]!.surfaceBlur).toBeUndefined();
+    expect(THEMES["windows2000"]!.chromeGlint).toBeUndefined();
   });
 
   it("getResolvedTheme falls back to liquid for unknown ids", () => {
@@ -76,14 +76,14 @@ describe("themes", () => {
     } as unknown as Document;
 
     try {
-      applyTheme(THEMES["crt"]!);
+      applyTheme(THEMES["windows2000"]!);
     } finally {
       globalThis.document = originalDocument;
     }
 
-    expect(rootSetAttribute).toHaveBeenCalledWith("data-theme", "crt");
-    expect(bodySetAttribute).toHaveBeenCalledWith("data-theme", "crt");
-    expect(setProperty).toHaveBeenCalledWith("--app-bg-image", THEMES["crt"]!.appBackgroundImage);
+    expect(rootSetAttribute).toHaveBeenCalledWith("data-theme", "windows2000");
+    expect(bodySetAttribute).toHaveBeenCalledWith("data-theme", "windows2000");
+    expect(setProperty).toHaveBeenCalledWith("--app-bg-image", THEMES["windows2000"]!.appBackgroundImage);
   });
 });
 

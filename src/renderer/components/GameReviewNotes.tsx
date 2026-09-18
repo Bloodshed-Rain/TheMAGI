@@ -1,3 +1,5 @@
+import { LoadError } from "./ui/LoadError";
+import { useViewState } from "../hooks/useViewState";
 import { FormEvent, useState } from "react";
 import { ClipboardPenLine } from "lucide-react";
 import { useGameReviewNotes } from "../hooks/queries";
@@ -10,8 +12,8 @@ function dateTimeLabel(value: string): string {
 }
 
 export function GameReviewNotes({ gameId }: { gameId: number }) {
-  const { data: notes = [], isLoading, refetch } = useGameReviewNotes(gameId);
-  const [content, setContent] = useState("");
+  const { data: notes = [], isLoading, isError, refetch } = useGameReviewNotes(gameId);
+  const [content, setContent] = useViewState(`review-note-${gameId}`, "");
   const [author, setAuthor] = useState("Player");
   const [category, setCategory] = useState("review");
   const [saving, setSaving] = useState(false);
@@ -19,7 +21,7 @@ export function GameReviewNotes({ gameId }: { gameId: number }) {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!content.trim()) return;
+    if (saving || !content.trim()) return;
     setSaving(true);
     setError(null);
     try {
@@ -55,6 +57,7 @@ export function GameReviewNotes({ gameId }: { gameId: number }) {
           </label>
         </div>
         <textarea
+          aria-label="Review note"
           value={content}
           onChange={(event) => setContent(event.target.value)}
           placeholder="What happened, what was the better option, and what will you test next?"
@@ -69,7 +72,7 @@ export function GameReviewNotes({ gameId }: { gameId: number }) {
       </form>
       {isLoading ? (
         <div className="game-review-notes-loading">Loading notes…</div>
-      ) : notes.length ? (
+      ) : isError ? <LoadError message="Review notes could not load." retry={() => void refetch()} /> : notes.length ? (
         <div className="game-review-notes-list">
           {notes.map((note) => (
             <article key={note.id} className="game-review-note">

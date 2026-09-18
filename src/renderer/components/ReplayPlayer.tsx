@@ -1,4 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useDialog } from "../hooks/useDialog";
+import { showNotice } from "../hooks/notice";
+import { useEffect, useMemo, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ExternalLink, X } from "lucide-react";
 import { useEmbeddedReplaySession } from "../hooks/useEmbeddedReplaySession";
@@ -13,6 +15,8 @@ export function ReplayPlayer() {
   const startFrame = useReplayPlayerStore((state) => state.startFrame);
   const seekRevision = useReplayPlayerStore((state) => state.seekRevision);
   const closePlayer = useReplayPlayerStore((state) => state.closePlayer);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialog(panelRef, open, closePlayer);
 
   const seekRequest = useMemo(
     () => (replayPath ? { id: seekRevision, frame: startFrame ?? 0 } : undefined),
@@ -57,9 +61,9 @@ export function ReplayPlayer() {
   const onOpenInDolphin = async () => {
     if (!replayPath) return;
     try {
-      await window.clippi.openInDolphinAtFrame(replayPath, currentFrame);
+      if (!await window.clippi.openInDolphinAtFrame(replayPath, currentFrame)) throw new Error("Check the Dolphin path in Playback settings.");
     } catch (error) {
-      console.error("Dolphin launch failed:", error);
+      showNotice(`Dolphin could not open: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -68,6 +72,7 @@ export function ReplayPlayer() {
       {open && replayPath && (
         <div className="replay-player-backdrop">
           <motion.div
+            ref={panelRef} role="dialog" aria-modal="true" aria-label="Replay player" tabIndex={-1}
             className="replay-player-modal"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}

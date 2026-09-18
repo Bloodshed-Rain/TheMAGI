@@ -37,7 +37,13 @@ const api = {
     ipcRenderer.invoke("llm:setDrillCompletion", drillId, completed),
   deletePracticePlan: (planId: number) => ipcRenderer.invoke("llm:deletePracticePlan", planId),
   oracleListMessages: () => ipcRenderer.invoke("llm:oracleListMessages"),
-  oracleAsk: (text: string) => ipcRenderer.invoke("llm:oracleAsk", text),
+  oracleAsk: (text: string, requestId?: string) => ipcRenderer.invoke("llm:oracleAsk", text, requestId),
+  oracleCancel: (requestId: string) => ipcRenderer.invoke("llm:oracleCancel", requestId),
+  onOracleStream: (callback: (event: {requestId: string; chunk: string; status: string}) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: {requestId: string; chunk: string; status: string}) => callback(data);
+    ipcRenderer.on("oracle:stream", listener);
+    return () => ipcRenderer.removeListener("oracle:stream", listener);
+  },
   oracleClear: () => ipcRenderer.invoke("llm:oracleClear"),
 
   // LLM
@@ -82,7 +88,7 @@ const api = {
   getTrendSeriesBundle: (range: string, filterChar: string | null) =>
     ipcRenderer.invoke("stats:trendSeriesBundle", range, filterChar),
   getPerformanceHub: () => ipcRenderer.invoke("stats:performanceHub"),
-  getTrainingLog: (limit?: number) => ipcRenderer.invoke("stats:trainingLog", limit),
+  getTrainingLog: (limit?: number, offset?: number) => ipcRenderer.invoke("stats:trainingLog", limit, offset),
   createTrainingLog: (entry: unknown) => ipcRenderer.invoke("stats:trainingLog:create", entry),
   getGameReviewNotes: (gameId: number) => ipcRenderer.invoke("stats:gameReviewNotes", gameId),
   addGameReviewNote: (gameId: number, note: { content: string; author?: string; category?: string }) =>
@@ -131,6 +137,12 @@ const api = {
   startWatcher: (replayFolder: string, targetPlayer: string) =>
     ipcRenderer.invoke("watcher:start", replayFolder, targetPlayer),
   stopWatcher: () => ipcRenderer.invoke("watcher:stop"),
+  getWatcherStatus: () => ipcRenderer.invoke("watcher:status"),
+  onWatcherStatus: (callback: (active: boolean) => void) => {
+    const listener = (_event: unknown, active: boolean) => callback(active);
+    ipcRenderer.on("watcher:status", listener);
+    return () => ipcRenderer.removeListener("watcher:status", listener);
+  },
 
   // Cornerman — live between-games coaching
   cornermanStart: (replayFolder: string, targetPlayer: string) =>

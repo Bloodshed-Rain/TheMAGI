@@ -1,5 +1,7 @@
+import { useDialog } from "../hooks/useDialog";
+import { useFollowOutput } from "../hooks/useFollowOutput";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Compass, Play } from "lucide-react";
 import { CoachingCards } from "./CoachingCards";
 import { makeTimestampComponents, injectTimestampLinks } from "../utils/timestampLinks";
@@ -36,10 +38,10 @@ export function CoachingModal({
   const [queuePos, setQueuePos] = useState<number>(0);
   const openPlayer = useReplayPlayerStore((s) => s.openPlayer);
   const isReplayOpen = useReplayPlayerStore((s) => s.open);
-  const reduceMotion = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const { unread, resume } = useFollowOutput(bodyRef, analysis);
 
   const runAnalysis = useCallback(async () => {
     if (preloadedText) return;
@@ -88,40 +90,9 @@ export function CoachingModal({
     }
   }, [isOpen, analysis, loading, error, runAnalysis]);
 
-  // Close on Escape while open
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, onClose]);
+  useDialog(panelRef, isOpen, onClose, closeRef, !isReplayOpen);
 
-  // Move focus into the dialog on open; restore it to the trigger on close
-  useEffect(() => {
-    if (!isOpen) return;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    requestAnimationFrame(() => {
-      (closeRef.current ?? panelRef.current)?.focus();
-    });
-    return () => previouslyFocused?.focus?.();
-  }, [isOpen]);
 
-  // Autoscroll the body as streaming chunks arrive
-  useEffect(() => {
-    if (!loading) return;
-    const el = bodyRef.current;
-    if (!el) return;
-    if (reduceMotion) {
-      el.scrollTop = el.scrollHeight;
-    } else {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    }
-  }, [analysis, loading, reduceMotion]);
 
   if (!isOpen) return null;
 
@@ -159,7 +130,8 @@ export function CoachingModal({
           </button>
         </header>
 
-        <div ref={bodyRef} className="coaching-body custom-scrollbar">
+        {unread && <button className="btn" onClick={resume}>New response · Jump to latest</button>}
+      <div ref={bodyRef} className="coaching-body custom-scrollbar">
           {error && (
             <div className="coaching-error">
               <div>{error}</div>

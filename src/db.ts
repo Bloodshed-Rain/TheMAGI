@@ -684,6 +684,14 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 15,
+    description: "Preserve practice plan evidence and metric baseline",
+    up: (db) => {
+      const columns = db.pragma("table_info(practice_plans)") as { name: string }[];
+      if (!columns.some(column => column.name === "baseline_json")) db.exec("ALTER TABLE practice_plans ADD COLUMN baseline_json TEXT");
+    },
+  },
 ];
 
 /**
@@ -3941,11 +3949,11 @@ export function getSessionsByDay(daysBack: number = 90): DaySession[] {
       result,
       opponent_tag as opponentTag
     FROM games
-    WHERE date(played_at, 'localtime') >= date('now', 'localtime', '-' || ? || ' days')
+    WHERE (? = 0 OR date(played_at, 'localtime') >= date('now', 'localtime', '-' || ? || ' days'))
     ORDER BY played_at DESC
   `,
     )
-    .all(daysBack) as Array<{ date: string; id: number; result: string; opponentTag: string }>;
+    .all(daysBack, daysBack) as Array<{ date: string; id: number; result: string; opponentTag: string }>;
 
   const map = new Map<string, DaySession>();
   for (const r of rows) {
@@ -4390,7 +4398,7 @@ function optionalRating(value: number | null | undefined): number | null {
   return Math.max(1, Math.min(5, Math.round(value)));
 }
 
-export function listTrainingLogEntries(limit: number = 30): TrainingLogEntry[] {
+export function listTrainingLogEntries(limit: number = 30, offset: number = 0): TrainingLogEntry[] {
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 200));
   return getDb()
     .prepare(
@@ -4399,10 +4407,10 @@ export function listTrainingLogEntries(limit: number = 30): TrainingLogEntry[] {
              energy, confidence, notes, created_at as createdAt
       FROM training_log_entries
       ORDER BY logged_at DESC, id DESC
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `,
     )
-    .all(safeLimit) as TrainingLogEntry[];
+    .all(safeLimit, Number.isFinite(offset) ? Math.max(0, Math.floor(offset)) : 0) as TrainingLogEntry[];
 }
 
 export function createTrainingLogEntry(input: CreateTrainingLogEntry): TrainingLogEntry {
@@ -4478,6 +4486,7 @@ export function addGameReviewNote(
 // ── Practice plans ──────────────────────────────────────────────────
 
 export interface PracticePlan {
+  baselineJson?: string | null;
   id: number;
   name: string;
   weaknessSummary: string | null;
@@ -4496,12 +4505,13 @@ export function insertPracticePlan(
   name: string,
   weaknessSummary: string | null,
   drills: Array<{ name: string; target: string }>,
+  baselineJson: string | null = null,
 ): PracticePlan {
   const db = getDb();
   return db.transaction(() => {
     const planRow = db
-      .prepare("INSERT INTO practice_plans (name, weakness_summary) VALUES (?, ?) RETURNING id, created_at")
-      .get(name, weaknessSummary) as { id: number; created_at: string };
+      .prepare("INSERT INTO practice_plans (name, weakness_summary, baseline_json) VALUES (?, ?, ?) RETURNING id, created_at")
+      .get(name, weaknessSummary, baselineJson) as { id: number; created_at: string };
     const insertDrill = db.prepare(
       "INSERT INTO practice_drills (plan_id, name, target, sort_order) VALUES (?, ?, ?, ?) RETURNING id",
     );
@@ -4509,7 +4519,7 @@ export function insertPracticePlan(
       const row = insertDrill.get(planRow.id, d.name, d.target, i) as { id: number };
       return { id: row.id, name: d.name, target: d.target, completed: false, sortOrder: i };
     });
-    return { id: planRow.id, name, weaknessSummary, createdAt: planRow.created_at, drills: drillRows };
+    return { id: planRow.id, name, weaknessSummary, baselineJson, createdAt: planRow.created_at, drills: drillRows };
   })();
 }
 
@@ -4517,7 +4527,7 @@ export function listPracticePlans(): PracticePlan[] {
   const db = getDb();
   const plans = db
     .prepare(
-      "SELECT id, name, weakness_summary as weaknessSummary, created_at as createdAt FROM practice_plans ORDER BY created_at DESC",
+      "SELECT id, name, weakness_summary as weaknessSummary, baseline_json as baselineJson, created_at as createdAt FROM practice_plans ORDER BY created_at DESC",
     )
     .all() as Array<{ id: number; name: string; weaknessSummary: string | null; createdAt: string }>;
   if (plans.length === 0) return [];

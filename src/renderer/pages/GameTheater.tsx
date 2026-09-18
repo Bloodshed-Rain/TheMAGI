@@ -75,7 +75,7 @@ export function GameTheater() {
     closeGlobalPlayer();
   }, [closeGlobalPlayer]);
 
-  const { data, isLoading, error } = useGameDetail(gameId);
+  const { data, isLoading, error, refetch } = useGameDetail(gameId);
   const game = data as GameDetailShape | undefined | null;
   const { data: highlightData } = useGameHighlights(gameId);
   const { data: stockTimelineData } = useStockTimeline(game?.replayPath ?? null);
@@ -182,7 +182,8 @@ export function GameTheater() {
   if (error || !game) {
     return (
       <div className="theater-error">
-        <p>Game not found.</p>
+        <p role={error ? "alert" : undefined}>{error ? "This game could not load. Your replay may still be available." : "Game not found."}</p>
+        {error && <button className="btn" onClick={() => void refetch()}>Retry</button>}
         <button className="btn" onClick={handleBack}>
           Back
         </button>
@@ -220,7 +221,7 @@ export function GameTheater() {
             Back
           </button>
           <div className="game-theater-title-row">
-            <Badge variant={game.result === "win" ? "win" : "loss"}>{game.result === "win" ? "W" : "L"}</Badge>
+            <Badge variant={game.result === "win" ? "win" : game.result === "loss" ? "loss" : "neutral"}>{game.result === "win" ? "W" : game.result === "loss" ? "L" : "D"}</Badge>
             <h2 className="game-theater-heading">
               {game.playerCharacter || "—"} <span style={{ color: "var(--text-muted)" }}>vs</span>{" "}
               {game.opponentCharacter}

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { CoachingCards } from "../components/CoachingCards";
 import { CornermanLiveAlerts } from "../components/CornermanLiveAlerts";
@@ -7,6 +8,8 @@ import { useGlobalStore } from "../stores/useGlobalStore";
 import "../styles/rivals.css";
 
 export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
+  const navigate = useNavigate();
+  const [statusAttempt, setStatusAttempt] = useState(0);
   const [status, setStatus] = useState<CornermanStatus | null>(null);
   const [streaming, setStreaming] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -21,16 +24,16 @@ export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
     window.clippi
       .cornermanStatus()
       .then(setStatus)
-      .catch(() => {});
+      .catch(() => setError("Could not read session status. Retry before starting a session."));
     const offStream = window.clippi.onCornermanStream((chunk) => {
       setIsStreaming(true);
       setError(null);
       setStreaming((prev) => prev + chunk);
     });
-    const offCard = window.clippi.onCornermanCard((card) => {
+    const offCard = window.clippi.onCornermanCard((_card) => {
       setIsStreaming(false);
       setStreaming("");
-      useGlobalStore.getState().addCornermanCard(card);
+
     });
     const offUpdate = window.clippi.onCornermanSetUpdate((s) => setStatus(s));
     const offLiveEvent = window.clippi.onCornermanLiveEvent((event) => {
@@ -48,7 +51,7 @@ export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
       offLiveEvent();
       offError();
     };
-  }, []);
+  }, [statusAttempt]);
 
   const start = useCallback(async () => {
     setBusy(true);
@@ -102,8 +105,8 @@ export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
             End Corner Session
           </button>
         ) : (
-          <button className="btn btn-primary" onClick={start} disabled={busy}>
-            Start Corner Session
+          <button className="btn btn-primary" onClick={start} disabled={busy || !status}>
+            {busy ? "Starting…" : "Start Corner Session"}
           </button>
         )}
         <button className="btn" onClick={showPopup} title="Bring up the Cornerman popup window">
@@ -129,6 +132,9 @@ export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
       {error && (
         <div className="card sessions-error" role="alert">
           {error}
+          <button className="btn" onClick={() => { setError(null); setStatusAttempt(n => n + 1); }}>Retry status</button>
+          <button className="btn" onClick={() => navigate("/settings?section=replays")}>Replay settings</button>
+          <button className="btn" onClick={() => navigate("/settings?section=profile")}>Player settings</button>
         </div>
       )}
 

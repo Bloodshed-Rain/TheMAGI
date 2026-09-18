@@ -11,8 +11,9 @@ import {
   appendOracleExchange,
   clearOracleMessages,
   getRecentGames,
+  getPerformanceHub,
 } from "../../db.js";
-import { callLLM, MODELS, getActiveModelId, getModelLabel, type ProviderId } from "../../llm.js";
+import { callLLMStream, callLLM, MODELS, getActiveModelId, getModelLabel, type ProviderId } from "../../llm.js";
 import { llmQueue } from "../../llmQueue.js";
 import { SYSTEM_PROMPT_SESSION, SYSTEM_PROMPT_PRACTICE, SYSTEM_PROMPT_ORACLE } from "../../pipeline/prompt.js";
 import type { SafeHandleFn } from "../ipc.js";
@@ -224,9 +225,11 @@ export function registerLlmHandlers(safeHandle: SafeHandleFn): void {
   });
 
   safeHandle("llm:generatePracticePlan", async (_e, weaknessSummary: string) => {
+    const hub = getPerformanceHub();
+    const baselineJson = JSON.stringify({ capturedAt: new Date().toISOString(), sampleGames: hub.sample.currentGames, latestReplayId: getRecentGames(1)[0]?.id ?? null, evidenceReplayId: hub.reviewQueue[0]?.id ?? null, metrics: hub.metrics.filter(metric => metric.current !== null).map(metric => ({ key: metric.key, label: metric.label, value: metric.current })) });
     const llmConfig = resolveLLMConfig();
     const raw = await llmQueue.enqueue(() =>
-      callLLM({ systemPrompt: SYSTEM_PROMPT_PRACTICE, userPrompt: weaknessSummary, config: llmConfig }),
+      callLLM({ systemPrompt: SYSTEM_PROMPT_PRACTICE + " Each drill target must include concrete setup, actions, repetitions or duration, and a measurable success criterion. Do not claim a drill caused a future improvement.", userPrompt: weaknessSummary, config: llmConfig }),
     );
     let parsed: unknown;
     try {
@@ -260,7 +263,7 @@ export function registerLlmHandlers(safeHandle: SafeHandleFn): void {
       throw new Error("LLM response missing required fields (name, drills[]).");
     }
     const cleanSummary = weaknessSummary.trim().slice(0, 4000);
-    return insertPracticePlan(name, cleanSummary || null, drills);
+    return insertPracticePlan(name, cleanSummary || null, drills, baselineJson);
   });
 
   safeHandle("llm:listPracticePlans", () => listPracticePlans());
@@ -277,7 +280,12 @@ export function registerLlmHandlers(safeHandle: SafeHandleFn): void {
 
   safeHandle("llm:oracleListMessages", () => listOracleMessages());
 
-  safeHandle("llm:oracleAsk", async (_e, text: string) => {
+  const oracleRequests = new Map<string, AbortController>();
+  safeHandle("llm:oracleCancel", (event, requestId: string) => { oracleRequests.get(`${event.sender.id}:${requestId}`)?.abort(); return true; });
+  safeHandle("llm:oracleAsk", async (_e, text: string, requestId: string = "legacy") => {
+    if (typeof requestId !== "string" || requestId.length > 100) throw new Error("Invalid Oracle request.");
+    const requestKey = `${_e.sender.id}:${requestId}`;
+    if (oracleRequests.has(requestKey)) throw new Error("This question is already running.");
     const cleanText = text.trim().slice(0, 4000);
     if (!cleanText) throw new Error("Ask the Oracle a non-empty question.");
     const history = listOracleMessages();
@@ -288,13 +296,23 @@ export function registerLlmHandlers(safeHandle: SafeHandleFn): void {
     const context = buildOracleContext();
     const userPrompt = `${context}\n\n---\n\n${dialog}\n\nOracle:`;
     const llmConfig = resolveLLMConfig();
-    const response = await llmQueue.enqueue(() =>
-      callLLM({ systemPrompt: SYSTEM_PROMPT_ORACLE, userPrompt, config: llmConfig }),
-    );
-    return appendOracleExchange(cleanText, response);
+    const controller = new AbortController();
+      oracleRequests.set(requestKey, controller);
+      const send = (chunk: string, status: string) => { if (!_e.sender.isDestroyed()) _e.sender.send("oracle:stream", {requestId, chunk, status}); };
+      send("", "Queued for coaching");
+      try {
+        const response = await llmQueue.enqueue(() => {
+          controller.signal.throwIfAborted();
+          send("", "Reading your replay context");
+          return callLLMStream({ systemPrompt: SYSTEM_PROMPT_ORACLE, userPrompt, config: llmConfig, signal: controller.signal }, chunk => { if (!controller.signal.aborted) send(chunk, "Responding"); });
+        });
+        controller.signal.throwIfAborted();
+        return appendOracleExchange(cleanText, response);
+      } finally { oracleRequests.delete(requestKey); }
   });
 
   safeHandle("llm:oracleClear", () => {
+      if (oracleRequests.size) throw new Error("Stop the current response before clearing history.");
     clearOracleMessages();
     return true;
   });

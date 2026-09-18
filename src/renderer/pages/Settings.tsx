@@ -1,3 +1,6 @@
+import { useSearchParams } from "react-router-dom";
+import { useImportStore } from "../stores/useImportStore";
+import { clearReplayData, queryClient } from "../hooks/cache";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bell,
@@ -205,28 +208,22 @@ export function Settings({ onImport }: SettingsProps) {
   // Write-only key inputs — never populated from main process
   const [keyEdits, setKeyEdits] = useState<Partial<Record<ProviderId, string>>>({});
   const [saved, setSaved] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState<string | null>(null);
-  const [importErrors, setImportErrors] = useState<{ filePath: string; error: string }[]>([]);
-  const [showErrorDetails, setShowErrorDetails] = useState(false);
-  const [importProgress, setImportProgress] = useState<{
-    current: number;
-    total: number;
-    lastFile: string;
-    importedSoFar: number;
-    skippedSoFar: number;
-    errorsSoFar: number;
-    lastError?: string;
-    lastFileStatus: "imported" | "skipped" | "error";
-  } | null>(null);
-  const [watching, setWatching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [watcherBusy, setWatcherBusy] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const importing = useImportStore((state) => state.busy);
+  const watching = useGlobalStore((state) => state.watcherActive);
   const [dynamicModels, setDynamicModels] = useState<Record<string, FetchedModel[]> | null>(null);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [customModelInputs, setCustomModelInputs] = useState<Partial<Record<ProviderId, boolean>>>({});
   const [speechVoices, setSpeechVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voicePreviewStatus, setVoicePreviewStatus] = useState<string | null>(null);
   const voicePreviewAdapter = useRef<CornermanSpeechAdapter | null>(null);
-  const [activeSection, setActiveSection] = useState<SettingsSectionId>("profile");
+  const activeSection = (SETTINGS_SECTIONS.some(s => s.id === params.get("section")) ? params.get("section") : "profile") as SettingsSectionId;
+  const setActiveSection = (section: SettingsSectionId) => setParams({ section }, { replace: true });
   const setWatcherActive = useGlobalStore((state) => state.setWatcherActive);
   const colorMode = useGlobalStore((state) => state.colorMode);
   const setColorMode = useGlobalStore((state) => state.setColorMode);
@@ -254,12 +251,14 @@ export function Settings({ onImport }: SettingsProps) {
       try {
         const c = await window.clippi.loadConfig();
         if (c) setConfig(c);
+        setLoaded(true);
+        setStatus("");
       } catch (err) {
-        console.error("Failed to load config:", err);
+        setStatus(`Could not load settings: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     load();
-  }, []);
+  }, [loadAttempt]);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
@@ -294,45 +293,9 @@ export function Settings({ onImport }: SettingsProps) {
     fetchModels();
   }, [fetchModels]);
 
-  // Import progress events
-  useEffect(() => {
-    if (!importing) return;
-    const unsub = window.clippi.onImportProgress((progress) => {
-      setImportProgress(progress);
-      const parts = [`${progress.current}/${progress.total}`];
-      if (progress.importedSoFar > 0) parts.push(`${progress.importedSoFar} imported`);
-      if (progress.skippedSoFar > 0) parts.push(`${progress.skippedSoFar} skipped`);
-      if (progress.errorsSoFar > 0) parts.push(`${progress.errorsSoFar} failed`);
-      setImportStatus(parts.join(" — "));
-    });
-    return () => {
-      unsub();
-      setImportProgress(null);
-    };
-  }, [importing]);
-
-  // Watcher events
-  useEffect(() => {
-    if (!watching) return;
-    const unsubImported = window.clippi.onImported((result: unknown) => {
-      const r = result as { skipped: boolean; filePath: string };
-      if (!r.skipped) {
-        setImportStatus(`Auto-imported: ${r.filePath.split("/").pop()}`);
-        onImport();
-      }
-    });
-    const unsubWatcherError = window.clippi.onWatcherError((message) => {
-      setWatching(false);
-      setWatcherActive(false);
-      setImportStatus(`Watcher error: ${message}`);
-    });
-    return () => {
-      unsubImported();
-      unsubWatcherError();
-    };
-  }, [watching, onImport, setWatcherActive]);
-
   const handleSave = useCallback(async () => {
+    if (saving || !loaded) return;
+    setSaving(true); setSaved(false); setStatus("");
     try {
       // Build save payload: non-secret fields + only non-empty key edits.
       // Strip the redacted apiKeys map (booleans) so saveConfig never overwrites
@@ -342,6 +305,7 @@ export function Settings({ onImport }: SettingsProps) {
       // Don't clobber theme/density chosen via Tweaks/Appearance with the
       // stale values captured at mount — those persist through their own setters.
       delete payload.theme;
+      delete payload.density;
       delete payload.colorMode;
       delete payload.liquidCharacterVisibility;
       delete payload.liquidCardOpacity;
@@ -354,11 +318,14 @@ export function Settings({ onImport }: SettingsProps) {
       await window.clippi.saveConfig(payload);
       setKeyEdits({});
       setSaved(true);
+      setStatus("Settings saved.");
+      await queryClient.invalidateQueries({ queryKey: ["config"] });
       setTimeout(() => setSaved(false), 2000);
     } catch (err: unknown) {
-      setImportStatus(`Error saving: ${err instanceof Error ? err.message : String(err)}`);
+      setStatus(`Could not save settings: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, [config, keyEdits]);
+    finally { setSaving(false); }
+  }, [config, keyEdits, saving, loaded]);
 
   const setActiveProvider = (p: ProviderId) => setConfig({ ...config, activeProvider: p });
   const setProviderModel = (p: ProviderId, modelId: string | null) =>
@@ -373,12 +340,12 @@ export function Settings({ onImport }: SettingsProps) {
   const onPickTheme = (id: ColorMode) => {
     setColorMode(id);
     applyTheme(getResolvedTheme(id, id));
-    window.clippi.saveConfig({ colorMode: id }).catch(() => {});
+    window.clippi.saveConfig({ colorMode: id }).catch((error: unknown) => setStatus(`Could not save preference: ${error instanceof Error ? error.message : String(error)}`));
   };
 
   const onPickDensity = (d: Density) => {
     setDensity(d);
-    window.clippi.saveConfig({ density: d }).catch(() => {});
+    window.clippi.saveConfig({ density: d }).catch((error: unknown) => setStatus(`Could not save preference: ${error instanceof Error ? error.message : String(error)}`));
   };
 
   const previewCornermanVoice = () => {
@@ -407,89 +374,41 @@ export function Settings({ onImport }: SettingsProps) {
   };
 
   const handleBrowse = async () => {
-    const folder = await window.clippi.openFolder();
+    let folder: string | null;
+    try { folder = await window.clippi.openFolder(); } catch (error) { setStatus(`Could not choose folder: ${error instanceof Error ? error.message : String(error)}`); return; }
     if (folder) {
       setConfig({ ...config, replayFolder: folder });
       // Persist immediately so a user who imports without clicking Save keeps it.
-      window.clippi.saveConfig({ replayFolder: folder }).catch(() => {});
+      window.clippi.saveConfig({ replayFolder: folder }).catch((error: unknown) => setStatus(`Could not save preference: ${error instanceof Error ? error.message : String(error)}`));
     }
   };
 
   const handleImport = async () => {
-    if (!config.replayFolder || !config.targetPlayer) {
-      setImportStatus("Set replay folder and player tag first.");
-      return;
-    }
-    setImporting(true);
-    setImportProgress(null);
-    setImportErrors([]);
-    setShowErrorDetails(false);
-    setImportStatus("Scanning for replays...");
-    try {
-      const result = (await window.clippi.importFolder(
-        config.replayFolder,
-        config.connectCode || config.targetPlayer,
-      )) as {
-        imported: number;
-        skipped: number;
-        errors: number;
-        errorDetails: { filePath: string; error: string }[];
-        total: number;
-        unreadableDirs: number;
-      };
-      setImportProgress(null);
-
-      const parts: string[] = [];
-      parts.push(`${result.imported} imported`);
-      if (result.skipped > 0) parts.push(`${result.skipped} duplicates skipped`);
-      if (result.errors > 0) parts.push(`${result.errors} failed`);
-      parts.push(`${result.total} total files`);
-
-      let status = parts.join(", ") + ".";
-      if (result.unreadableDirs > 0) {
-        status += ` (${result.unreadableDirs} subdirectories were unreadable)`;
-      }
-      setImportStatus(status);
-
-      if (result.errorDetails && result.errorDetails.length > 0) {
-        setImportErrors(result.errorDetails);
-      }
-
-      onImport();
-      // Persist the folder/tag that produced a successful import so they survive
-      // even if the user never clicks Save. Fire-and-forget so a save failure
-      // doesn't get reported as an import failure.
-      window.clippi
-        .saveConfig({ replayFolder: config.replayFolder, targetPlayer: config.targetPlayer })
-        .catch(() => {});
-    } catch (err: unknown) {
-      setImportProgress(null);
-      setImportStatus(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-    setImporting(false);
+    const player = config.connectCode?.trim() || config.targetPlayer?.trim();
+    if (!player) { setStatus("Enter your connect code or player tag in Profile, then return to Replays."); setActiveSection("profile"); return; }
+    await useImportStore.getState().run(config.replayFolder ?? "", player);
   };
 
   const toggleWatcher = async () => {
+    if (watcherBusy) return;
+    setWatcherBusy(true);
     try {
       if (watching) {
         await window.clippi.stopWatcher();
-        setWatching(false);
         setWatcherActive(false);
-        setImportStatus("Watcher stopped.");
+        setStatus("Watcher stopped.");
       } else {
-        if (!config.replayFolder || !config.targetPlayer) {
-          setImportStatus("Set replay folder and player tag first.");
+        if (!config.replayFolder || !(config.connectCode?.trim() || config.targetPlayer?.trim())) {
+          setStatus("Set replay folder and player tag first.");
           return;
         }
-        await window.clippi.startWatcher(config.replayFolder, config.connectCode ?? config.targetPlayer);
-        setWatching(true);
+        await window.clippi.startWatcher(config.replayFolder, config.connectCode?.trim() || config.targetPlayer!.trim());
         setWatcherActive(true);
-        setImportStatus("Watching for new replays...");
+        setStatus("Watching for new replays...");
       }
     } catch (err: unknown) {
-      setWatcherActive(false);
-      setImportStatus(`Watcher error: ${err instanceof Error ? err.message : String(err)}`);
-    }
+      setStatus(`Watcher error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally { setWatcherBusy(false); }
   };
 
   const handleClearAll = async () => {
@@ -497,11 +416,11 @@ export function Settings({ onImport }: SettingsProps) {
       return;
     }
     try {
-      await window.clippi.clearAllGames();
-      setImportStatus("All games cleared.");
+      await clearReplayData();
+      setStatus("All games cleared.");
       onImport();
     } catch (err: unknown) {
-      setImportStatus(`Error clearing data: ${err instanceof Error ? err.message : String(err)}`);
+      setStatus(`Error clearing data: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -519,12 +438,15 @@ export function Settings({ onImport }: SettingsProps) {
           <h1>Settings</h1>
           <p className="settings-page-subtitle">Profile, replays, Cornerman, AI, and local data.</p>
         </div>
-        <button className="btn btn-primary settings-save-button" onClick={handleSave}>
+        <button className="btn btn-primary settings-save-button" onClick={handleSave} disabled={saving || !loaded}>
           <Save size={14} aria-hidden="true" />
-          {saved ? "Saved!" : "Save Settings"}
+          {saving ? "Saving…" : saved ? "Saved!" : "Save Settings"}
         </button>
       </div>
 
+      <p className="help-copy">Profile, playback, and coaching fields use Save Settings. Appearance choices save immediately.</p>
+      {status && <div className="operation-status" role="status">{status}</div>}
+      {!loaded && <button className="btn" onClick={() => setLoadAttempt(n => n + 1)}>Retry loading settings</button>}
       <div className="settings-shell">
         <nav className="settings-nav" aria-label="Settings sections">
           {SETTINGS_SECTIONS.map((section) => {
@@ -615,11 +537,15 @@ export function Settings({ onImport }: SettingsProps) {
                     ))}
                   </div>
                 </div>
-                <div className="settings-divider" />
-                <div className="settings-field" style={{ marginBottom: 0 }}>
-                  <label id="appearance-liquid-label">Liquid Metal</label>
-                  <LiquidAppearanceControls variant="settings" />
-                </div>
+                {colorMode === "liquid" && (
+                  <>
+                    <div className="settings-divider" />
+                    <div className="settings-field" style={{ marginBottom: 0 }}>
+                      <label id="appearance-liquid-label">Liquid Metal</label>
+                      <LiquidAppearanceControls variant="settings" />
+                    </div>
+                  </>
+                )}
               </Card>
             )}
 
@@ -972,6 +898,7 @@ export function Settings({ onImport }: SettingsProps) {
                       value={config.replayFolder ?? ""}
                       onChange={(e) => setConfig({ ...config, replayFolder: e.target.value || null })}
                       placeholder="/path/to/slippi/replays"
+                      aria-label="Replay folder"
                     />
                     <button className="btn" onClick={handleBrowse}>
                       Browse
@@ -982,60 +909,11 @@ export function Settings({ onImport }: SettingsProps) {
                   <button className="btn btn-primary" onClick={handleImport} disabled={importing}>
                     {importing ? "Importing..." : "Import All"}
                   </button>
-                  <button className={`btn ${watching ? "btn-danger" : ""}`} onClick={toggleWatcher}>
+                  <button className={`btn ${watching ? "btn-danger" : ""}`} onClick={toggleWatcher} disabled={watcherBusy}>
                     {watching ? "Stop Watching" : "Watch for New Games"}
                   </button>
                 </div>
-                {importing && (
-                  <p style={{ fontSize: 12, color: "var(--text-dim)", margin: "6px 0 0" }}>
-                    Large replay folders may take a few minutes to process.
-                  </p>
-                )}
-                {importProgress && importing && (
-                  <div style={{ marginTop: 8 }}>
-                    <div className="progress-track">
-                      <div
-                        className="progress-fill"
-                        style={{
-                          width: `${Math.round((importProgress.current / importProgress.total) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="settings-progress-caption">
-                      <span>{importProgress.lastFile}</span>
-                      <span>{Math.round((importProgress.current / importProgress.total) * 100)}%</span>
-                    </div>
-                  </div>
-                )}
-                {importStatus && (
-                  <p className={`import-status${importErrors.length > 0 ? " import-status--warn" : ""}`}>
-                    {importStatus}
-                  </p>
-                )}
-                {importErrors.length > 0 && !importing && (
-                  <div style={{ marginTop: 4 }}>
-                    <button
-                      className="btn"
-                      style={{ fontSize: 11, padding: "2px 8px" }}
-                      onClick={() => setShowErrorDetails((v) => !v)}
-                    >
-                      {showErrorDetails
-                        ? "Hide errors"
-                        : `Show ${importErrors.length} error${importErrors.length === 1 ? "" : "s"}`}
-                    </button>
-                    {showErrorDetails && (
-                      <div className="settings-error-list">
-                        {importErrors.map((e, i) => (
-                          <div key={i} style={{ marginBottom: 4, color: "var(--text-dim)" }}>
-                            <span style={{ color: "var(--red, #C60707)" }}>{e.filePath.split("/").pop()}</span>
-                            {" — "}
-                            {e.error}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+
               </Card>
             )}
 

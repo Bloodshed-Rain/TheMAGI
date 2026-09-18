@@ -1,3 +1,5 @@
+import { LoadError } from "../components/ui/LoadError";
+import { useViewState } from "../hooks/useViewState";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Markdown from "react-markdown";
@@ -34,6 +36,7 @@ function formatDate(iso: string): string {
 
 function DayCard({ day }: { day: Day }) {
   const navigate = useNavigate();
+  const [expanded, setExpanded] = useViewState(`session-expanded-${day.date}`, false);
   const [report, setReport] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -74,7 +77,7 @@ function DayCard({ day }: { day: Day }) {
       <div className="session-card-dots">
         {(() => {
           const games = day.gameResults ?? day.gameIds.map((id) => ({ id, result: "draw" }));
-          const shown = games.slice(0, MAX_INLINE_DOTS);
+          const shown = expanded ? games : games.slice(0, MAX_INLINE_DOTS);
           const overflow = games.length - shown.length;
           return (
             <>
@@ -86,7 +89,7 @@ function DayCard({ day }: { day: Day }) {
                     type="button"
                     className="result-dot-button"
                     onClick={() => navigate(`/game/${game.id}`)}
-                    aria-label={`Open ${result} game`}
+                    aria-label={`Open ${result} game ${game.id}`}
                     title={`Open ${result} game`}
                   >
                     <ResultDot result={result} aria-hidden />
@@ -94,8 +97,8 @@ function DayCard({ day }: { day: Day }) {
                 );
               })}
               {overflow > 0 && (
-                <span
-                  aria-label={`${overflow} more games`}
+                <button type="button" className="btn btn-ghost" onClick={() => setExpanded(true)}
+                  aria-label={`Show ${overflow} more games`}
                   style={{
                     fontSize: 11,
                     color: "var(--text-secondary)",
@@ -105,7 +108,7 @@ function DayCard({ day }: { day: Day }) {
                   }}
                 >
                   +{overflow}
-                </span>
+                </button>
               )}
             </>
           );
@@ -131,7 +134,8 @@ function DayCard({ day }: { day: Day }) {
 
 export function Sessions({ refreshKey: _ }: { refreshKey: number }) {
   const navigate = useNavigate();
-  const { data: days = [], isLoading, isError } = useSessionsByDay(90);
+  const [range, setRange] = useViewState("sessions-range", 90);
+  const { data: days = [], isLoading, isError, refetch } = useSessionsByDay(range);
 
   if (isLoading) {
     return (
@@ -143,18 +147,9 @@ export function Sessions({ refreshKey: _ }: { refreshKey: number }) {
   }
 
   if (isError) {
-    return <div className="sessions-error">Failed to load sessions. Please try again.</div>;
+    return <LoadError message="Sessions could not load." retry={() => void refetch()} />;
   }
 
-  if (days.length === 0) {
-    return (
-      <EmptyState
-        title="No session data yet"
-        sub="Sessions appear once you have games on at least one day."
-        cta={{ label: "Open Settings", onClick: () => navigate("/settings") }}
-      />
-    );
-  }
 
   return (
     <div>
@@ -165,6 +160,8 @@ export function Sessions({ refreshKey: _ }: { refreshKey: number }) {
         </div>
       </div>
 
+      <label>History <select value={range} onChange={e => setRange(Number(e.target.value))}><option value={30}>Last 30 days</option><option value={90}>Last 90 days</option><option value={365}>Last year</option><option value={0}>All time</option></select></label>
+      {days.length === 0 && <EmptyState title="No sessions in this period" sub="Choose a wider period or import replays." cta={{label:"Import replays",onClick:()=>navigate("/settings?section=replays")}} />}
       <div className="sessions-grid">
         {days.map((d) => (
           <DayCard key={d.date} day={d as Day} />

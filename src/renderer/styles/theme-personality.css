@@ -108,669 +108,1340 @@ body[data-theme="liquid"] .main-content::before {
   }
 }
 
-/* Telemetry: instrument-panel grid, cyan separators, technical plates. */
-body[data-theme="telemetry"] .app-layout::before {
-  opacity: 0.18;
-  mix-blend-mode: screen;
-}
-
-body[data-theme="telemetry"] .main-content::before {
-  background:
-    linear-gradient(90deg, rgba(34, 211, 238, 0.09) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(34, 211, 238, 0.055) 1px, transparent 1px),
-    linear-gradient(115deg, transparent 0 54%, rgba(34, 211, 238, 0.055) 54% 55%, transparent 55%),
-    linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(34, 211, 238, 0.04));
-  background-size:
-    72px 72px,
-    72px 72px,
-    100% 100%,
-    100% 100%;
-  opacity: 0.55;
-  animation: telemetryScan 18s linear infinite;
-}
-
-body[data-theme="telemetry"] .card,
-body[data-theme="telemetry"] .panel,
-body[data-theme="telemetry"] .settings-nav,
-body[data-theme="telemetry"] .game-list {
-  background: linear-gradient(180deg, rgba(34, 211, 238, 0.045), transparent 42%), rgba(8, 17, 31, 0.76);
-  border-color: rgba(34, 211, 238, 0.18);
-  box-shadow:
-    inset 3px 0 0 rgba(34, 211, 238, 0.22),
-    0 12px 30px rgba(0, 0, 0, 0.24);
-}
-
-body[data-theme="telemetry"] .card:hover {
-  background: linear-gradient(180deg, rgba(34, 211, 238, 0.08), transparent 46%), rgba(15, 30, 48, 0.88);
-  border-color: rgba(34, 211, 238, 0.32);
-}
-
-body[data-theme="telemetry"] .card-title,
-body[data-theme="telemetry"] .stat-label,
-body[data-theme="telemetry"] .nav-section-label,
-body[data-theme="telemetry"] .tweaks-label {
-  color: color-mix(in srgb, var(--accent) 68%, var(--text-muted));
-  letter-spacing: 0.16em;
-}
-
-body[data-theme="telemetry"] .data-table th {
-  background: linear-gradient(90deg, rgba(34, 211, 238, 0.12), rgba(34, 211, 238, 0.02));
-}
-
-@keyframes telemetryScan {
-  from {
-    background-position:
-      0 0,
-      0 0,
-      0 0,
-      0 0;
-  }
-  to {
-    background-position:
-      72px 0,
-      0 72px,
-      0 0,
-      0 0;
-  }
-}
-
-/* Tournament: black broadcast plates with bracket-like rules. */
-body[data-theme="tournament"] .app-layout::before {
-  opacity: 0.26;
-  mix-blend-mode: screen;
-}
-
-body[data-theme="tournament"] .main-content::before {
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 96px),
-    linear-gradient(180deg, transparent 0 43%, rgba(59, 130, 246, 0.08) 43% 45%, transparent 45%),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.08), transparent 36%, rgba(255, 255, 255, 0.025));
-  opacity: 0.48;
-  animation: none;
-}
-
-body[data-theme="tournament"] .card,
-body[data-theme="tournament"] .panel,
-body[data-theme="tournament"] .settings-nav,
-body[data-theme="tournament"] .game-list {
-  background: linear-gradient(180deg, rgba(15, 15, 15, 0.96), rgba(3, 3, 3, 0.96));
-  border-color: rgba(255, 255, 255, 0.13);
-  border-radius: 2px;
-  box-shadow:
-    inset 0 2px 0 rgba(59, 130, 246, 0.42),
-    0 14px 34px rgba(0, 0, 0, 0.52);
-}
-
-body[data-theme="tournament"] .card:hover {
-  background: linear-gradient(180deg, rgba(22, 22, 22, 0.98), rgba(8, 8, 8, 0.98));
-  border-color: rgba(59, 130, 246, 0.4);
-}
-
-body[data-theme="tournament"] .liquid-shell .nav-item.active {
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
-body[data-theme="tournament"] .btn-primary {
-  background: linear-gradient(180deg, #3b82f6, #1d4ed8);
-  border-color: #60a5fa;
-}
-
-body[data-theme="tournament"] .card-title,
-body[data-theme="tournament"] .data-table th,
-body[data-theme="tournament"] .nav-section-label {
-  color: #bfdbfe;
-}
-
-/* CRT: phosphor scanlines, glow, and terminal-like surfaces. */
-body[data-theme="crt"] .app-layout::before {
-  opacity: 0.16;
-  mix-blend-mode: screen;
-}
-
-body[data-theme="crt"] .main-content::before {
-  background:
-    repeating-linear-gradient(0deg, rgba(51, 255, 51, 0.1) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(90deg, rgba(51, 255, 51, 0.035) 0 1px, transparent 1px 80px),
-    linear-gradient(180deg, rgba(51, 255, 51, 0.045), transparent 44%);
-  opacity: 0.36;
-  animation: crtPulse 5.5s steps(2, end) infinite;
-}
-
-body[data-theme="crt"] .card,
-body[data-theme="crt"] .panel,
-body[data-theme="crt"] .settings-nav,
-body[data-theme="crt"] .game-list {
-  background: rgba(4, 16, 4, 0.82);
-  border-color: rgba(51, 255, 51, 0.2);
-  box-shadow:
-    inset 0 0 0 1px rgba(51, 255, 51, 0.06),
-    inset 0 0 28px rgba(51, 255, 51, 0.045),
-    0 0 22px rgba(51, 255, 51, 0.1);
-}
-
-body[data-theme="crt"] .card:hover {
-  background: rgba(8, 28, 8, 0.9);
-  border-color: rgba(51, 255, 51, 0.34);
-}
-
-body[data-theme="crt"] .card-title,
-body[data-theme="crt"] .stat-label,
-body[data-theme="crt"] .data-table th,
-body[data-theme="crt"] .btn,
-body[data-theme="crt"] .tab,
-body[data-theme="crt"] .nav-section-label {
-  text-shadow: 0 0 8px rgba(51, 255, 51, 0.45);
-}
-
-body[data-theme="crt"] .data-table tbody tr:nth-child(even) td {
-  background: rgba(51, 255, 51, 0.035);
-}
-
-@keyframes crtPulse {
-  0%,
-  100% {
-    opacity: 0.34;
-  }
-  50% {
-    opacity: 0.42;
-  }
-}
-
-/* Amber: warm ledger surfaces and brass dividers. */
-body[data-theme="amber"] .app-layout::before {
-  opacity: 0.19;
-  mix-blend-mode: screen;
-}
-
-body[data-theme="amber"] .main-content::before {
-  background:
-    repeating-linear-gradient(90deg, rgba(217, 165, 64, 0.04) 0 1px, transparent 1px 34px),
-    repeating-linear-gradient(0deg, rgba(217, 165, 64, 0.026) 0 1px, transparent 1px 28px),
-    linear-gradient(90deg, rgba(217, 165, 64, 0.07), transparent 36%, rgba(125, 186, 90, 0.04));
-  opacity: 0.48;
-  animation: none;
-}
-
-body[data-theme="amber"] .card,
-body[data-theme="amber"] .panel,
-body[data-theme="amber"] .settings-nav,
-body[data-theme="amber"] .game-list {
-  background: linear-gradient(180deg, rgba(57, 37, 15, 0.9), rgba(28, 18, 7, 0.94));
-  border-color: rgba(217, 175, 106, 0.2);
-  box-shadow:
-    inset 4px 0 0 rgba(217, 165, 64, 0.25),
-    inset 0 1px 0 rgba(255, 226, 170, 0.06),
-    0 14px 32px rgba(0, 0, 0, 0.32);
-}
-
-body[data-theme="amber"] .card:hover {
-  background: linear-gradient(180deg, rgba(70, 45, 17, 0.94), rgba(35, 22, 8, 0.96));
-  border-color: rgba(217, 175, 106, 0.34);
-}
-
-body[data-theme="amber"] .card-title,
-body[data-theme="amber"] .data-table th,
-body[data-theme="amber"] .nav-section-label {
-  color: #f2c36d;
-}
-
-body[data-theme="amber"] .btn-primary {
-  background: linear-gradient(180deg, #d9a540, #a86f1f);
-  border-color: #f2c36d;
-}
-
-/* Light: bright desk/blueprint feel with cleaner white surfaces. */
-body[data-theme="light"] .app-layout::before {
+/* GameCube Indigo: rounded molded plastic with controller-button accents. */
+body[data-theme="indigo"] .app-layout::before {
   opacity: 0.12;
+  mix-blend-mode: screen;
 }
 
-body[data-theme="light"] .main-content::before {
+body[data-theme="indigo"] .main-content::before {
   background:
-    linear-gradient(90deg, rgba(14, 165, 233, 0.085) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(14, 165, 233, 0.06) 1px, transparent 1px),
-    linear-gradient(135deg, transparent 0 68%, rgba(99, 102, 241, 0.055) 68% 69%, transparent 69%);
-  background-size:
-    44px 44px,
-    44px 44px,
-    100% 100%;
-  opacity: 0.5;
-  animation: none;
+    radial-gradient(circle at 86% 15%, rgba(242, 201, 76, 0.14) 0 22px, transparent 23px),
+    radial-gradient(circle at 81% 22%, rgba(239, 106, 122, 0.13) 0 14px, transparent 15px),
+    radial-gradient(circle at 11% 84%, rgba(121, 214, 163, 0.13) 0 38px, transparent 39px),
+    repeating-radial-gradient(circle at 92% 10%, transparent 0 42px, rgba(222, 216, 255, 0.035) 43px 45px),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), transparent 32%, rgba(8, 5, 25, 0.14));
+  background-size: 100% 100%;
+  opacity: 0.78;
+  animation: indigoDrift 22s ease-in-out infinite alternate;
 }
 
-body[data-theme="light"] .card,
-body[data-theme="light"] .panel,
-body[data-theme="light"] .settings-nav,
-body[data-theme="light"] .game-list {
-  background: rgba(255, 255, 255, 0.88);
-  border-color: rgba(15, 23, 42, 0.11);
-  border-radius: 8px;
+body[data-theme="indigo"] h1,
+body[data-theme="indigo"] h2,
+body[data-theme="indigo"] h3,
+body[data-theme="indigo"] .page-header h1 {
+  text-transform: none;
+  letter-spacing: 0.025em;
+}
+
+body[data-theme="indigo"] .page-header,
+body[data-theme="indigo"] .settings-section-head,
+body[data-theme="indigo"] .trends-hero-head {
+  position: relative;
+  overflow: hidden;
+  padding: 15px 74px 15px 20px;
+  border: 1px solid rgba(231, 226, 255, 0.26);
+  border-radius: 20px;
+  background: linear-gradient(165deg, rgba(100, 84, 163, 0.84), rgba(45, 37, 84, 0.9));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 14px 34px rgba(15, 23, 42, 0.08);
+    inset 0 3px 2px rgba(255, 255, 255, 0.14),
+    inset 0 -5px 8px rgba(10, 6, 28, 0.22),
+    0 12px 26px rgba(8, 5, 24, 0.3);
 }
 
-body[data-theme="light"] .card:hover {
-  background: #ffffff;
-  border-color: rgba(14, 165, 233, 0.26);
+body[data-theme="indigo"] .page-header::after,
+body[data-theme="indigo"] .settings-section-head::after,
+body[data-theme="indigo"] .trends-hero-head::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 22px;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: #79d6a3;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 16px 38px rgba(15, 23, 42, 0.1);
+    inset 0 3px 2px rgba(255, 255, 255, 0.32),
+    inset 0 -3px 4px rgba(17, 71, 45, 0.38),
+    -27px 9px 0 -4px #ef6a7a,
+    -43px -8px 0 -6px #f2c94c;
+  transform: translateY(-50%);
 }
 
-body[data-theme="light"] .data-table th {
-  background: rgba(14, 165, 233, 0.08);
-}
-
-body[data-theme="light"] .liquid-shell .sidebar {
-  box-shadow: 10px 0 28px rgba(15, 23, 42, 0.12);
-}
-
-/* Second personality pass: non-liquid themes get distinct materials and UI gestures. */
-
-body[data-theme="telemetry"] .page-header,
-body[data-theme="telemetry"] .settings-section-head,
-body[data-theme="telemetry"] .trends-hero-head {
-  padding-left: 14px;
-  border-left: 2px solid rgba(34, 211, 238, 0.62);
-  box-shadow: -8px 0 18px -16px rgba(34, 211, 238, 0.9);
-}
-
-body[data-theme="telemetry"] .liquid-shell .sidebar {
-  background:
-    linear-gradient(180deg, rgba(34, 211, 238, 0.055), transparent 34%),
-    linear-gradient(90deg, #071120 0%, #0c1727 100%);
-  border-right-color: rgba(34, 211, 238, 0.28);
-  box-shadow: inset -1px 0 0 rgba(34, 211, 238, 0.16);
-}
-
-body[data-theme="telemetry"] .liquid-shell .nav-item {
-  border: 1px solid transparent;
-  border-radius: 3px;
-  font-family: var(--font-mono);
-}
-
-body[data-theme="telemetry"] .liquid-shell .nav-item:hover,
-body[data-theme="telemetry"] .liquid-shell .nav-item.active {
-  border-color: rgba(34, 211, 238, 0.26);
-  background: linear-gradient(90deg, rgba(34, 211, 238, 0.13), transparent 78%), rgba(34, 211, 238, 0.035);
-  box-shadow: inset 2px 0 0 rgba(34, 211, 238, 0.62);
-}
-
-body[data-theme="telemetry"] .card,
-body[data-theme="telemetry"] .panel,
-body[data-theme="telemetry"] .settings-nav,
-body[data-theme="telemetry"] .game-list,
-body[data-theme="telemetry"] .provider-option {
-  border-radius: 3px;
-  background:
-    linear-gradient(90deg, rgba(34, 211, 238, 0.42) 0 18px, transparent 18px) left top / 70px 1px no-repeat,
-    linear-gradient(180deg, rgba(34, 211, 238, 0.28) 0 18px, transparent 18px) left top / 1px 70px no-repeat,
-    linear-gradient(270deg, rgba(34, 211, 238, 0.3) 0 14px, transparent 14px) right bottom / 58px 1px no-repeat,
-    linear-gradient(0deg, rgba(34, 211, 238, 0.2) 0 14px, transparent 14px) right bottom / 1px 58px no-repeat,
-    linear-gradient(180deg, rgba(34, 211, 238, 0.06), transparent 45%),
-    rgba(8, 17, 31, 0.82);
-}
-
-body[data-theme="telemetry"] .btn,
-body[data-theme="telemetry"] .tweaks-chip,
-body[data-theme="telemetry"] .settings-nav-button,
-body[data-theme="telemetry"] .library-filter-input,
-body[data-theme="telemetry"] .model-select,
-body[data-theme="telemetry"] .oracle-input,
-body[data-theme="telemetry"] .settings-field input {
-  border-radius: 3px;
-  background: rgba(8, 17, 31, 0.72);
-  border-color: rgba(34, 211, 238, 0.2);
-}
-
-body[data-theme="telemetry"] .btn-primary,
-body[data-theme="telemetry"] .tweaks-chip.active,
-body[data-theme="telemetry"] .tab.active {
-  background: linear-gradient(90deg, rgba(34, 211, 238, 0.98), rgba(56, 189, 248, 0.82)), var(--accent);
-  color: #03111d;
-  box-shadow: 0 0 18px rgba(34, 211, 238, 0.24);
-}
-
-body[data-theme="telemetry"] .data-table th {
-  border-bottom-color: rgba(34, 211, 238, 0.74);
-  box-shadow: inset 0 -1px 0 rgba(34, 211, 238, 0.28);
-}
-
-body[data-theme="telemetry"] .winrate-bar {
-  height: 5px;
-  border-radius: 1px;
-  background: rgba(34, 211, 238, 0.12);
-}
-
-body[data-theme="tournament"] .page-header,
-body[data-theme="tournament"] .settings-section-head,
-body[data-theme="tournament"] .trends-hero-head {
-  padding: 10px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-left: 4px solid var(--accent);
-  background:
-    repeating-linear-gradient(135deg, transparent 0 8px, rgba(255, 255, 255, 0.028) 8px 10px), rgba(2, 4, 8, 0.62);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.34);
-}
-
-body[data-theme="tournament"] .liquid-shell .sidebar {
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), transparent 28%), #030303;
-  border-right-color: rgba(255, 255, 255, 0.18);
-}
-
-body[data-theme="tournament"] .liquid-shell .nav-item {
-  border-radius: 0;
-  border: 1px solid transparent;
-  text-transform: uppercase;
+body[data-theme="indigo"] .page-header p {
+  color: #cfc7e4;
+  font-family: var(--font-sans);
+  text-transform: none;
   letter-spacing: 0.02em;
 }
 
-body[data-theme="tournament"] .liquid-shell .nav-item:hover,
-body[data-theme="tournament"] .liquid-shell .nav-item.active {
-  border-color: rgba(59, 130, 246, 0.34);
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.2), transparent 68%), rgba(255, 255, 255, 0.035);
-}
-
-body[data-theme="tournament"] .card,
-body[data-theme="tournament"] .panel,
-body[data-theme="tournament"] .settings-nav,
-body[data-theme="tournament"] .game-list,
-body[data-theme="tournament"] .provider-option {
+body[data-theme="indigo"] .liquid-shell .sidebar {
+  padding: 16px 12px;
+  border-right: 1px solid rgba(231, 226, 255, 0.24);
   background:
-    linear-gradient(90deg, var(--accent) 0 54px, transparent 54px) top left / 100% 3px no-repeat,
-    repeating-linear-gradient(135deg, transparent 0 10px, rgba(255, 255, 255, 0.035) 10px 12px),
-    linear-gradient(180deg, rgba(19, 19, 19, 0.98), rgba(2, 2, 2, 0.98));
-  border-radius: 0;
-  border-color: rgba(255, 255, 255, 0.16);
+    radial-gradient(circle at 24px 92%, rgba(121, 214, 163, 0.12) 0 26px, transparent 27px),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.07), transparent 28%),
+    linear-gradient(180deg, #32275f 0%, #211a43 56%, #17112f 100%);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
-    0 16px 38px rgba(0, 0, 0, 0.6);
+    inset -5px 0 10px rgba(8, 5, 24, 0.26),
+    inset 2px 0 1px rgba(255, 255, 255, 0.08),
+    10px 0 28px rgba(7, 4, 22, 0.22);
+  backdrop-filter: none;
 }
 
-body[data-theme="tournament"] .card-title,
-body[data-theme="tournament"] .stat-label,
-body[data-theme="tournament"] .nav-section-label,
-body[data-theme="tournament"] .tweaks-label {
-  color: #bfdbfe;
-  font-family: var(--font-display);
+body[data-theme="indigo"] .liquid-shell .brand {
+  min-height: 96px;
+}
+
+body[data-theme="indigo"] .liquid-shell .sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+body[data-theme="indigo"] .liquid-shell .sidebar::-webkit-scrollbar-track {
+  background: #211a43;
+}
+
+body[data-theme="indigo"] .liquid-shell .sidebar::-webkit-scrollbar-thumb {
+  border: 1px solid #211a43;
+  border-radius: 999px;
+  background: #66569d;
+}
+
+body[data-theme="indigo"] .magi-brand-logo {
+  filter: drop-shadow(0 5px 8px rgba(6, 3, 20, 0.55)) saturate(0.82) hue-rotate(228deg);
+}
+
+body[data-theme="indigo"] .liquid-shell .nav-section-label {
+  padding: 10px 12px 4px;
+  color: #bdb4d4;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
 }
 
-body[data-theme="tournament"] .btn,
-body[data-theme="tournament"] .tweaks-chip,
-body[data-theme="tournament"] .settings-nav-button,
-body[data-theme="tournament"] .library-filter-input,
-body[data-theme="tournament"] .model-select,
-body[data-theme="tournament"] .oracle-input,
-body[data-theme="tournament"] .settings-field input {
-  border-radius: 0;
-  background: #070707;
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
-body[data-theme="tournament"] .btn-primary,
-body[data-theme="tournament"] .tweaks-chip.active {
-  color: #ffffff;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 8px 18px rgba(59, 130, 246, 0.28);
-}
-
-body[data-theme="tournament"] .data-table th {
-  background: #050505;
-  border-bottom: 3px solid var(--accent);
-}
-
-body[data-theme="tournament"] .winrate-bar,
-body[data-theme="tournament"] .progress-track {
-  height: 6px;
-  border-radius: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-body[data-theme="crt"] .app-layout {
-  text-shadow: 0 0 6px rgba(51, 255, 51, 0.26);
-}
-
-body[data-theme="crt"] .page-header,
-body[data-theme="crt"] .settings-section-head,
-body[data-theme="crt"] .trends-hero-head {
-  padding: 8px 0 10px;
-  border-bottom: 1px dashed rgba(51, 255, 51, 0.32);
-  box-shadow: 0 1px 0 rgba(51, 255, 51, 0.1);
-}
-
-body[data-theme="crt"] .liquid-shell .sidebar {
-  background: repeating-linear-gradient(0deg, rgba(51, 255, 51, 0.045) 0 1px, transparent 1px 5px), #020702;
-  border-right-color: rgba(51, 255, 51, 0.24);
-  box-shadow:
-    inset -1px 0 0 rgba(51, 255, 51, 0.22),
-    inset 0 0 26px rgba(51, 255, 51, 0.035);
-}
-
-body[data-theme="crt"] .liquid-shell .nav-item {
-  border-radius: 2px;
-  font-family: var(--font-mono);
-}
-
-body[data-theme="crt"] .liquid-shell .nav-item:hover,
-body[data-theme="crt"] .liquid-shell .nav-item.active {
-  background: rgba(51, 255, 51, 0.105);
-  box-shadow:
-    inset 0 0 0 1px rgba(51, 255, 51, 0.24),
-    0 0 14px rgba(51, 255, 51, 0.1);
-}
-
-body[data-theme="crt"] .card,
-body[data-theme="crt"] .panel,
-body[data-theme="crt"] .settings-nav,
-body[data-theme="crt"] .game-list,
-body[data-theme="crt"] .provider-option {
-  background:
-    repeating-linear-gradient(0deg, rgba(51, 255, 51, 0.035) 0 1px, transparent 1px 4px),
-    radial-gradient(120% 120% at 50% 10%, rgba(51, 255, 51, 0.07), transparent 42%), rgba(3, 13, 3, 0.92);
-  border-color: rgba(51, 255, 51, 0.28);
-  border-radius: 4px;
-  box-shadow:
-    inset 0 0 0 1px rgba(51, 255, 51, 0.08),
-    inset 0 0 42px rgba(51, 255, 51, 0.05),
-    0 0 26px rgba(51, 255, 51, 0.11);
-}
-
-body[data-theme="crt"] .btn,
-body[data-theme="crt"] .tweaks-chip,
-body[data-theme="crt"] .settings-nav-button,
-body[data-theme="crt"] .library-filter-input,
-body[data-theme="crt"] .model-select,
-body[data-theme="crt"] .oracle-input,
-body[data-theme="crt"] .settings-field input {
-  background: rgba(0, 8, 0, 0.88);
-  border-color: rgba(51, 255, 51, 0.28);
-  box-shadow: inset 0 0 12px rgba(51, 255, 51, 0.045);
-  color: var(--text);
-}
-
-body[data-theme="crt"] .btn-primary,
-body[data-theme="crt"] .tweaks-chip.active {
-  background: rgba(51, 255, 51, 0.16);
-  color: #baffba;
-  box-shadow:
-    inset 0 0 18px rgba(51, 255, 51, 0.12),
-    0 0 18px rgba(51, 255, 51, 0.2);
-}
-
-body[data-theme="crt"] .card-title::before,
-body[data-theme="crt"] .settings-section-eyebrow::before {
-  content: "> ";
-  color: var(--accent);
-}
-
-body[data-theme="crt"] .winrate-bar {
-  height: 5px;
-  background: rgba(51, 255, 51, 0.12);
-  box-shadow: inset 0 0 12px rgba(51, 255, 51, 0.08);
-}
-
-body[data-theme="amber"] .page-header,
-body[data-theme="amber"] .settings-section-head,
-body[data-theme="amber"] .trends-hero-head {
-  padding: 12px 14px;
-  border: 1px solid rgba(217, 175, 106, 0.16);
-  border-left: 4px solid rgba(217, 165, 64, 0.7);
-  background: linear-gradient(90deg, rgba(217, 165, 64, 0.09), transparent 46%), rgba(42, 27, 11, 0.56);
-}
-
-body[data-theme="amber"] .liquid-shell .sidebar {
-  background:
-    repeating-linear-gradient(0deg, rgba(217, 165, 64, 0.028) 0 1px, transparent 1px 22px),
-    linear-gradient(180deg, #1b1006, #110804);
-  border-right-color: rgba(217, 165, 64, 0.25);
-  box-shadow: inset -4px 0 0 rgba(217, 165, 64, 0.08);
-}
-
-body[data-theme="amber"] .liquid-shell .nav-item {
-  border-radius: 3px;
+body[data-theme="indigo"] .liquid-shell .nav-item {
+  min-height: 36px;
+  margin: 1px 0;
+  padding: 7px 12px;
   border: 1px solid transparent;
+  border-radius: 18px;
+  color: #ded8f0;
+  font-weight: 700;
 }
 
-body[data-theme="amber"] .liquid-shell .nav-item:hover,
-body[data-theme="amber"] .liquid-shell .nav-item.active {
-  background: linear-gradient(90deg, rgba(217, 165, 64, 0.16), transparent 76%), rgba(125, 186, 90, 0.035);
-  border-color: rgba(217, 175, 106, 0.22);
-  box-shadow: inset 3px 0 0 rgba(217, 165, 64, 0.68);
-}
-
-body[data-theme="amber"] .card,
-body[data-theme="amber"] .panel,
-body[data-theme="amber"] .settings-nav,
-body[data-theme="amber"] .game-list,
-body[data-theme="amber"] .provider-option {
-  background:
-    linear-gradient(90deg, rgba(217, 165, 64, 0.22), transparent 28px) left top / 100% 100% no-repeat,
-    repeating-linear-gradient(0deg, rgba(245, 230, 200, 0.035) 0 1px, transparent 1px 24px),
-    linear-gradient(180deg, rgba(57, 37, 15, 0.92), rgba(24, 15, 6, 0.96));
-  border-color: rgba(217, 175, 106, 0.24);
-  border-radius: 5px;
-  box-shadow:
-    inset 5px 0 0 rgba(217, 165, 64, 0.28),
-    inset 0 1px 0 rgba(255, 226, 170, 0.08),
-    0 14px 32px rgba(0, 0, 0, 0.34);
-}
-
-body[data-theme="amber"] .card-title,
-body[data-theme="amber"] .stat-label,
-body[data-theme="amber"] .nav-section-label,
-body[data-theme="amber"] .tweaks-label {
-  color: #f2c36d;
-  font-family: var(--font-display);
-  letter-spacing: 0.14em;
-}
-
-body[data-theme="amber"] .btn,
-body[data-theme="amber"] .tweaks-chip,
-body[data-theme="amber"] .settings-nav-button,
-body[data-theme="amber"] .library-filter-input,
-body[data-theme="amber"] .model-select,
-body[data-theme="amber"] .oracle-input,
-body[data-theme="amber"] .settings-field input {
-  background: rgba(29, 18, 7, 0.86);
-  border-color: rgba(217, 175, 106, 0.22);
-}
-
-body[data-theme="amber"] .btn-primary,
-body[data-theme="amber"] .tweaks-chip.active {
-  color: #1a1006;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 236, 180, 0.22),
-    0 8px 20px rgba(217, 165, 64, 0.18);
-}
-
-body[data-theme="amber"] .data-table th {
-  background: linear-gradient(90deg, rgba(217, 165, 64, 0.15), rgba(125, 186, 90, 0.04)), rgba(35, 23, 9, 0.7);
-}
-
-body[data-theme="amber"] .winrate-bar {
-  height: 5px;
-  background: linear-gradient(90deg, rgba(217, 165, 64, 0.16), rgba(125, 186, 90, 0.08)), var(--surface-3);
-}
-
-body[data-theme="light"] .page-header,
-body[data-theme="light"] .settings-section-head,
-body[data-theme="light"] .trends-hero-head {
-  padding: 12px 14px;
-  border: 1px solid rgba(14, 165, 233, 0.12);
-  border-left: 4px solid rgba(14, 165, 233, 0.5);
-  border-radius: 8px;
-  background: linear-gradient(90deg, rgba(14, 165, 233, 0.08), transparent 48%), rgba(255, 255, 255, 0.74);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
-}
-
-body[data-theme="light"] .liquid-shell .sidebar {
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.09), transparent 28%), #0f172a;
-  border-right-color: rgba(14, 165, 233, 0.2);
-}
-
-body[data-theme="light"] .liquid-shell .nav-item {
-  border-radius: 8px;
-}
-
-body[data-theme="light"] .liquid-shell .nav-item:hover,
-body[data-theme="light"] .liquid-shell .nav-item.active {
-  background: linear-gradient(90deg, rgba(14, 165, 233, 0.18), rgba(99, 102, 241, 0.08)), rgba(255, 255, 255, 0.06);
-  color: #f8fafc;
-}
-
-body[data-theme="light"] .card,
-body[data-theme="light"] .panel,
-body[data-theme="light"] .settings-nav,
-body[data-theme="light"] .game-list,
-body[data-theme="light"] .provider-option {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)),
-    linear-gradient(90deg, rgba(14, 165, 233, 0.08) 0 1px, transparent 1px);
-  border-color: rgba(15, 23, 42, 0.1);
-  border-radius: 8px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9),
-    0 12px 28px rgba(15, 23, 42, 0.075);
-}
-
-body[data-theme="light"] .card-title,
-body[data-theme="light"] .stat-label,
-body[data-theme="light"] .nav-section-label,
-body[data-theme="light"] .tweaks-label {
-  color: #0369a1;
-  letter-spacing: 0.13em;
-}
-
-body[data-theme="light"] .btn,
-body[data-theme="light"] .tweaks-chip,
-body[data-theme="light"] .settings-nav-button,
-body[data-theme="light"] .library-filter-input,
-body[data-theme="light"] .model-select,
-body[data-theme="light"] .oracle-input,
-body[data-theme="light"] .settings-field input {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(15, 23, 42, 0.12);
-  border-radius: 7px;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
-}
-
-body[data-theme="light"] .btn-primary,
-body[data-theme="light"] .tweaks-chip.active {
-  background: linear-gradient(180deg, #0ea5e9, #0284c7);
+body[data-theme="indigo"] .liquid-shell .nav-item:hover {
+  border-color: rgba(222, 216, 255, 0.2);
+  background: linear-gradient(165deg, #493d7d, #32285e);
   color: #ffffff;
-  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.22);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.13),
+    inset 0 -3px 5px rgba(8, 5, 24, 0.25);
 }
 
-body[data-theme="light"] .data-table th {
-  color: #0369a1;
-  border-bottom-color: rgba(14, 165, 233, 0.45);
+body[data-theme="indigo"] .liquid-shell .nav-item.active {
+  border-color: rgba(154, 235, 186, 0.48);
+  color: #ffffff;
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.16),
+    inset 0 -4px 6px rgba(8, 5, 24, 0.28),
+    0 0 0 2px rgba(121, 214, 163, 0.08);
 }
 
-body[data-theme="light"] .winrate-bar {
-  height: 6px;
-  background: rgba(14, 165, 233, 0.1);
+body[data-theme="indigo"] .liquid-shell .nav-item.active .nav-icon {
+  color: #9aebba;
+}
+
+body[data-theme="indigo"] .sidebar-search-hint,
+body[data-theme="indigo"] .cmd-kbd {
+  border-color: rgba(222, 216, 255, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(165deg, #40356f, #2a2250);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -3px 4px rgba(8, 5, 24, 0.22);
+}
+
+body[data-theme="indigo"] .card,
+body[data-theme="indigo"] .panel,
+body[data-theme="indigo"] .settings-nav,
+body[data-theme="indigo"] .game-list,
+body[data-theme="indigo"] .provider-option,
+body[data-theme="indigo"] .tweaks-panel {
+  border: 1px solid rgba(231, 226, 255, 0.24);
+  border-radius: 18px;
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.09), transparent 24%),
+    linear-gradient(165deg, rgba(70, 58, 124, 0.96), rgba(39, 31, 75, 0.97));
+  box-shadow:
+    inset 0 3px 2px rgba(255, 255, 255, 0.12),
+    inset 0 -5px 8px rgba(8, 5, 24, 0.26),
+    0 12px 28px rgba(8, 5, 24, 0.34);
+  backdrop-filter: none;
+}
+
+body[data-theme="indigo"] .card:hover {
+  border-color: rgba(154, 235, 186, 0.34);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.12), transparent 26%),
+    linear-gradient(165deg, rgba(79, 66, 139, 0.98), rgba(45, 36, 84, 0.98));
+  box-shadow:
+    inset 0 3px 2px rgba(255, 255, 255, 0.14),
+    inset 0 -5px 8px rgba(8, 5, 24, 0.28),
+    0 16px 34px rgba(8, 5, 24, 0.4);
+  transform: translateY(-2px);
+}
+
+body[data-theme="indigo"] .card-title,
+body[data-theme="indigo"] .stat-label,
+body[data-theme="indigo"] .tweaks-label {
+  color: #d8d0eb;
+  font-family: var(--font-sans);
+  font-weight: 800;
+  text-transform: none;
+  letter-spacing: 0.035em;
+}
+
+body[data-theme="indigo"] .card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+body[data-theme="indigo"] .card-title::before {
+  content: "A";
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  border-radius: 50%;
+  background: #79d6a3;
+  color: #173c2a;
+  font-size: 9px;
+  font-weight: 900;
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 3px rgba(16, 77, 48, 0.35);
+}
+
+body[data-theme="indigo"] .btn,
+body[data-theme="indigo"] .tweaks-chip,
+body[data-theme="indigo"] .settings-nav-button,
+body[data-theme="indigo"] .tab,
+body[data-theme="indigo"] .library-filter-input,
+body[data-theme="indigo"] .model-select,
+body[data-theme="indigo"] .oracle-input,
+body[data-theme="indigo"] .settings-field input,
+body[data-theme="indigo"] .settings-field select,
+body[data-theme="indigo"] textarea {
+  border: 1px solid rgba(231, 226, 255, 0.24);
+  border-radius: 12px;
+  background: linear-gradient(165deg, #4b3f7f, #30275a);
+  color: #fbf9ff;
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -3px 5px rgba(8, 5, 24, 0.25);
+  font-family: var(--font-sans);
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+body[data-theme="indigo"] .btn:hover,
+body[data-theme="indigo"] .tweaks-chip:hover,
+body[data-theme="indigo"] .settings-nav-button:hover {
+  border-color: rgba(154, 235, 186, 0.46);
+  background: linear-gradient(165deg, #594b92, #392f69);
+}
+
+body[data-theme="indigo"] .btn-primary,
+body[data-theme="indigo"] .tweaks-chip.active,
+body[data-theme="indigo"] .settings-nav-button-active {
+  border-color: #b2f2ca;
+  background: linear-gradient(165deg, #a0edbd, #58bd85);
+  color: #152f24;
+  box-shadow:
+    inset 0 3px 2px rgba(255, 255, 255, 0.34),
+    inset 0 -4px 5px rgba(18, 92, 56, 0.25),
+    0 5px 12px rgba(7, 4, 22, 0.24);
+}
+
+body[data-theme="indigo"] .btn-danger {
+  border-color: #ff9daa;
+  background: linear-gradient(165deg, #f98b98, #c9475a);
+  color: #30080f;
+}
+
+body[data-theme="indigo"] .tab-bar {
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid rgba(231, 226, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(21, 16, 47, 0.34);
+}
+
+body[data-theme="indigo"] .tab {
+  border-color: transparent;
+  border-radius: 11px;
+}
+
+body[data-theme="indigo"] .tab.active {
+  border-color: rgba(154, 235, 186, 0.52);
+  background: #443875;
+  color: #9aebba;
+}
+
+body[data-theme="indigo"] .data-table th {
+  border-bottom: 3px solid #79d6a3;
+  background: rgba(24, 18, 53, 0.38);
+  color: #ded8f0;
+  font-family: var(--font-sans);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+body[data-theme="indigo"] .data-table tbody tr:nth-child(even) td {
+  background: rgba(222, 216, 255, 0.045);
+}
+
+body[data-theme="indigo"] .winrate-bar,
+body[data-theme="indigo"] .progress-track {
+  height: 9px;
+  border: 1px solid rgba(231, 226, 255, 0.24);
+  border-radius: 999px;
+  background: #211a43;
+  box-shadow: inset 0 2px 4px rgba(7, 4, 22, 0.42);
+}
+
+body[data-theme="indigo"] .tweaks-toggle-btn {
+  width: 48px;
+  height: 48px;
+  border: 2px solid rgba(231, 226, 255, 0.28);
+  border-radius: 50%;
+  background: linear-gradient(165deg, #a0edbd, #58bd85);
+  color: #173c2a;
+  box-shadow:
+    inset 0 4px 2px rgba(255, 255, 255, 0.32),
+    inset 0 -5px 7px rgba(18, 92, 56, 0.28),
+    0 10px 24px rgba(7, 4, 22, 0.38);
+}
+
+body[data-theme="indigo"] .main-content::-webkit-scrollbar {
+  width: 9px;
+}
+
+body[data-theme="indigo"] .main-content::-webkit-scrollbar-thumb {
+  border: 2px solid #211a43;
+  border-radius: 999px;
+  background: #66569d;
+}
+
+@keyframes indigoDrift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 14px;
+  }
+}
+
+/* Windows 2000: teal desktop, square windows, bevels, and navy title bars. */
+body[data-theme="windows2000"] {
+  color: #000000;
+  image-rendering: pixelated;
+}
+
+body[data-theme="windows2000"] .app-layout::before {
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+}
+
+body[data-theme="windows2000"] .main-content::before {
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.022) 25%, transparent 25% 75%, rgba(0, 0, 0, 0.022) 75%),
+    linear-gradient(45deg, rgba(0, 0, 0, 0.018) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.018) 75%);
+  background-position:
+    0 0,
+    2px 2px;
+  background-size: 4px 4px;
+  opacity: 1;
+  animation: none;
+}
+
+body[data-theme="windows2000"] h1,
+body[data-theme="windows2000"] h2,
+body[data-theme="windows2000"] h3,
+body[data-theme="windows2000"] .page-header h1 {
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+body[data-theme="windows2000"] .liquid-shell {
+  grid-template-columns: 228px 1fr;
+}
+
+body[data-theme="windows2000"] .liquid-shell .sidebar {
+  padding: 18px 8px 8px;
+  border: 0;
+  border-right: 2px solid #404040;
+  background: #d4d0c8;
+  color: #000000;
+  box-shadow:
+    inset 1px 0 0 #ffffff,
+    inset -1px 0 0 #808080,
+    2px 0 0 rgba(0, 0, 0, 0.2);
+  backdrop-filter: none;
+}
+
+body[data-theme="windows2000"] .magi-brand-logo {
+  filter: none;
+}
+
+body[data-theme="windows2000"] .liquid-shell .nav-section-label {
+  padding: 12px 6px 4px;
+  color: #404040;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+body[data-theme="windows2000"] .liquid-shell .nav-item {
+  min-height: 32px;
+  margin: 1px 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+body[data-theme="windows2000"] .liquid-shell .nav-item:hover {
+  border-top-color: #ffffff;
+  border-left-color: #ffffff;
+  border-right-color: #404040;
+  border-bottom-color: #404040;
+  background: #e4e0d8;
+  color: #000000;
+}
+
+body[data-theme="windows2000"] .liquid-shell .nav-item.active {
+  border: 1px dotted #ffffff;
+  background: #000080;
+  color: #ffffff;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+body[data-theme="windows2000"] .liquid-shell .nav-item.active .nav-icon,
+body[data-theme="windows2000"] .liquid-shell .nav-item.active .nav-badge {
+  color: #ffffff;
+}
+
+body[data-theme="windows2000"] .liquid-shell .nav-item .nav-badge {
+  border-radius: 0;
+  background: #ffffff;
+  color: #000000;
+}
+
+body[data-theme="windows2000"] .sidebar-footer {
+  padding: 8px 4px;
+  border-top: 2px groove #ffffff;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+body[data-theme="windows2000"] .sidebar-search-hint,
+body[data-theme="windows2000"] .cmd-kbd {
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  background: #d4d0c8;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  box-shadow: none;
+}
+
+body[data-theme="windows2000"] .page-header,
+body[data-theme="windows2000"] .settings-section-head,
+body[data-theme="windows2000"] .trends-hero-head {
+  margin-bottom: 12px;
+  padding: 5px 7px;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  background: linear-gradient(90deg, #000080, #1084d0);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.24);
+}
+
+body[data-theme="windows2000"] .page-header h1,
+body[data-theme="windows2000"] .settings-section-head h1,
+body[data-theme="windows2000"] .settings-section-head h2,
+body[data-theme="windows2000"] .trends-hero-head h1,
+body[data-theme="windows2000"] .trends-hero-head h2 {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow: 1px 1px #000000;
+}
+
+body[data-theme="windows2000"] .page-header p,
+body[data-theme="windows2000"] .settings-section-head p,
+body[data-theme="windows2000"] .trends-hero-head p,
+body[data-theme="windows2000"] .settings-section-eyebrow {
+  margin-top: 2px;
+  color: #ffffff;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+body[data-theme="windows2000"] .card,
+body[data-theme="windows2000"] .panel,
+body[data-theme="windows2000"] .settings-nav,
+body[data-theme="windows2000"] .game-list,
+body[data-theme="windows2000"] .provider-option,
+body[data-theme="windows2000"] .tweaks-panel {
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  background: #d4d0c8;
+  color: #000000;
+  box-shadow:
+    inset 1px 1px 0 #dfdfdf,
+    inset -1px -1px 0 #808080,
+    3px 3px 0 rgba(0, 0, 0, 0.25);
+  backdrop-filter: none;
+}
+
+body[data-theme="windows2000"] .card {
+  padding: 28px 10px 10px;
+}
+
+body[data-theme="windows2000"] .card:hover {
+  border-color: #ffffff #404040 #404040 #ffffff;
+  background: #d4d0c8;
+  box-shadow:
+    inset 1px 1px 0 #dfdfdf,
+    inset -1px -1px 0 #808080,
+    3px 3px 0 rgba(0, 0, 0, 0.25);
+  transform: none;
+}
+
+body[data-theme="windows2000"] .card-title {
+  margin: -24px -6px 10px;
+  padding: 4px 5px;
+  overflow: hidden;
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #ffffff;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: none;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1px #000000;
+  white-space: nowrap;
+}
+
+body[data-theme="windows2000"] .stat-label,
+body[data-theme="windows2000"] .tweaks-label {
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+body[data-theme="windows2000"] .stat-value {
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 22px;
+  color: #000000;
+}
+
+body[data-theme="windows2000"] .btn,
+body[data-theme="windows2000"] .tweaks-chip,
+body[data-theme="windows2000"] .settings-nav-button,
+body[data-theme="windows2000"] .tab,
+body[data-theme="windows2000"] .tweaks-close,
+body[data-theme="windows2000"] .tweaks-toggle-btn {
+  min-height: 25px;
+  padding: 4px 10px;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  background: #d4d0c8;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: none;
+}
+
+body[data-theme="windows2000"] .btn:hover,
+body[data-theme="windows2000"] .tweaks-chip:hover,
+body[data-theme="windows2000"] .settings-nav-button:hover,
+body[data-theme="windows2000"] .tab:hover {
+  border-color: #ffffff #404040 #404040 #ffffff;
+  background: #e4e0d8;
+  color: #000000;
+  box-shadow: none;
+}
+
+body[data-theme="windows2000"] .btn:active,
+body[data-theme="windows2000"] .tweaks-chip:active,
+body[data-theme="windows2000"] .settings-nav-button:active,
+body[data-theme="windows2000"] .tab:active {
+  padding: 5px 9px 3px 11px;
+  border-color: #404040 #ffffff #ffffff #404040;
+  background: #c8c4bc;
+  transform: none;
+}
+
+body[data-theme="windows2000"] .btn-primary {
+  border-color: #000000;
+  background: #d4d0c8;
+  color: #000000;
+  box-shadow: inset 0 0 0 1px #ffffff;
+  font-weight: 700;
+}
+
+body[data-theme="windows2000"] .btn-primary::before {
+  display: none;
+}
+
+body[data-theme="windows2000"] .tweaks-chip.active,
+body[data-theme="windows2000"] .settings-nav-button-active {
+  border-color: #000080;
+  background: #000080;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px #ffffff;
+}
+
+body[data-theme="windows2000"] .btn-danger {
+  border-color: #ffffff #404040 #404040 #ffffff;
+  background: #d4d0c8;
+  color: #c00000;
+}
+
+body[data-theme="windows2000"] input,
+body[data-theme="windows2000"] select,
+body[data-theme="windows2000"] textarea,
+body[data-theme="windows2000"] .library-filter-input,
+body[data-theme="windows2000"] .model-select,
+body[data-theme="windows2000"] .oracle-input,
+body[data-theme="windows2000"] .settings-field input,
+body[data-theme="windows2000"] .settings-field select {
+  border: 2px solid;
+  border-color: #404040 #ffffff #ffffff #404040;
+  border-radius: 0;
+  background: #ffffff;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  box-shadow: inset 1px 1px 0 #808080;
+}
+
+body[data-theme="windows2000"] input:focus,
+body[data-theme="windows2000"] select:focus,
+body[data-theme="windows2000"] textarea:focus {
+  outline: 1px dotted #000000;
+  outline-offset: -4px;
+}
+
+body[data-theme="windows2000"] .tab-bar {
+  display: flex;
+  gap: 2px;
+  padding: 3px 3px 0;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  background: #d4d0c8;
+}
+
+body[data-theme="windows2000"] .tab {
+  margin-bottom: -2px;
+  border-bottom-color: #d4d0c8;
+}
+
+body[data-theme="windows2000"] .tab.active {
+  position: relative;
+  top: -2px;
+  border-color: #ffffff #404040 #d4d0c8 #ffffff;
+  background: #d4d0c8;
+  color: #000000;
+}
+
+body[data-theme="windows2000"] .data-table-wrap {
+  border: 2px solid;
+  border-color: #404040 #ffffff #ffffff #404040;
+  background: #ffffff;
+}
+
+body[data-theme="windows2000"] .data-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #ffffff;
+  color: #000000;
+}
+
+body[data-theme="windows2000"] .data-table th {
+  padding: 5px 7px;
+  border: 1px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  background: #d4d0c8;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+body[data-theme="windows2000"] .data-table td,
+body[data-theme="windows2000"] .data-table tbody tr:nth-child(even) td,
+body[data-theme="windows2000"] .data-table tbody tr:nth-child(odd) td {
+  border-bottom: 1px solid #d4d0c8;
+  background: #ffffff;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+body[data-theme="windows2000"] .data-table tbody tr:hover td {
+  background: #000080;
+  color: #ffffff;
+}
+
+body[data-theme="windows2000"] .game-list {
+  padding: 2px;
+}
+
+body[data-theme="windows2000"] .game-card,
+body[data-theme="windows2000"] .game-card:hover,
+body[data-theme="windows2000"] .game-card.expanded {
+  border-bottom: 1px solid #808080;
+  border-left-width: 4px;
+  border-radius: 0;
+  background: #ffffff;
+  color: #000000;
+  transform: none;
+}
+
+body[data-theme="windows2000"] .winrate-bar,
+body[data-theme="windows2000"] .progress-track {
+  height: 16px;
+  padding: 2px;
+  border: 2px solid;
+  border-color: #404040 #ffffff #ffffff #404040;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: inset 1px 1px 0 #808080;
+}
+
+body[data-theme="windows2000"] .tweaks-panel {
+  padding: 28px 8px 8px;
+}
+
+body[data-theme="windows2000"] .tweaks-title {
+  margin: -24px -4px 10px;
+  padding: 4px 5px;
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #ffffff;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+  text-shadow: 1px 1px #000000;
+}
+
+body[data-theme="windows2000"] .tweaks-close {
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0 3px;
+  line-height: 14px;
+}
+
+body[data-theme="windows2000"] .tweaks-toggle-btn {
+  width: 38px;
+  height: 34px;
+  padding: 4px;
+}
+
+body[data-theme="windows2000"] .main-content::-webkit-scrollbar {
+  width: 16px;
+}
+
+body[data-theme="windows2000"] .main-content::-webkit-scrollbar-track {
+  border-left: 1px solid #808080;
+  background: repeating-conic-gradient(#d4d0c8 0 25%, #ffffff 0 50%) 0 / 2px 2px;
+}
+
+body[data-theme="windows2000"] .main-content::-webkit-scrollbar-thumb {
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  background: #d4d0c8;
+}
+
+/* Windows 2000 desktop shell: routes become taskbar windows instead of sidebar pages. */
+body[data-theme="windows2000"] .windows2000-shell {
+  position: relative;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #008080;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+}
+
+body[data-theme="windows2000"] .windows2000-shell::before {
+  inset: 0 0 36px;
+  opacity: 0.025;
+  background-position: center;
+  background-size: min(820px, 60vw) auto;
+}
+
+body[data-theme="windows2000"] .windows-desktop-shortcut {
+  position: absolute;
+  top: 20px;
+  left: 18px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  width: 76px;
+  padding: 5px 3px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #ffffff;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 1px 1px #000000;
+  cursor: default;
+}
+
+body[data-theme="windows2000"] .windows-desktop-shortcut:focus,
+body[data-theme="windows2000"] .windows-desktop-shortcut:hover {
+  border: 1px dotted #ffffff;
+  background: rgba(0, 0, 128, 0.32);
+  outline: 0;
+}
+
+body[data-theme="windows2000"] .windows-desktop-shortcut img {
+  width: 52px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.7));
+}
+
+body[data-theme="windows2000"] .windows-app-window {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  bottom: 50px;
+  left: 108px;
+  z-index: 10;
+  display: grid;
+  grid-template-rows: 23px 22px minmax(0, 1fr) 22px;
+  width: auto;
+  max-width: none;
+  height: auto;
+  padding: 3px;
+  overflow: hidden;
+  border: 2px solid;
+  border-color: #ffffff #101010 #101010 #ffffff;
+  border-radius: 0;
+  background: #d4d0c8;
+  box-shadow:
+    inset 1px 1px 0 #dfdfdf,
+    inset -1px -1px 0 #808080,
+    4px 4px 0 rgba(0, 0, 0, 0.28);
+  transform-origin: bottom left;
+}
+
+body[data-theme="windows2000"] .windows-app-window.is-maximized {
+  inset: 0 0 36px;
+  border-width: 1px;
+  box-shadow: none;
+}
+
+body[data-theme="windows2000"] .windows-app-window::before {
+  display: none;
+}
+
+body[data-theme="windows2000"] .windows-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 2px 2px 2px 4px;
+  background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-shadow: 1px 1px #000000;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+body[data-theme="windows2000"] .windows-titlebar-copy {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+}
+
+body[data-theme="windows2000"] .windows-titlebar-copy img {
+  width: 18px;
+  height: 15px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+body[data-theme="windows2000"] .windows-titlebar-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-theme="windows2000"] .windows-caption-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+body[data-theme="windows2000"] .windows-caption-buttons button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 17px;
+  min-width: 18px;
+  min-height: 17px;
+  padding: 0;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  background: #d4d0c8;
+  color: #000000;
+  font-family: "Arial Black", Tahoma, sans-serif;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 11px;
+  text-shadow: none;
+}
+
+body[data-theme="windows2000"] .windows-caption-buttons button:active {
+  border-color: #404040 #ffffff #ffffff #404040;
+  background: #c8c4bc;
+}
+
+body[data-theme="windows2000"] .windows-caption-buttons button span {
+  position: relative;
+  top: -1px;
+}
+
+body[data-theme="windows2000"] .windows-caption-buttons button:first-child span {
+  top: -3px;
+}
+
+body[data-theme="windows2000"] .windows-menu-strip {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 2px 8px 3px;
+  border-bottom: 1px solid #808080;
+  background: #d4d0c8;
+  color: #000000;
+  font-size: 11px;
+}
+
+body[data-theme="windows2000"] .windows-menu-strip span::first-letter {
+  text-decoration: underline;
+}
+
+body[data-theme="windows2000"] .windows-window-content {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px 16px 32px;
+  overflow: auto;
+  border: 2px solid;
+  border-color: #808080 #ffffff #ffffff #808080;
+  background: #d4d0c8;
+}
+
+body[data-theme="windows2000"] .windows-window-content::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+body[data-theme="windows2000"] .windows-window-content::-webkit-scrollbar-track {
+  border-left: 1px solid #808080;
+  background: repeating-conic-gradient(#d4d0c8 0 25%, #ffffff 0 50%) 0 / 2px 2px;
+}
+
+body[data-theme="windows2000"] .windows-window-content::-webkit-scrollbar-thumb {
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  background: #d4d0c8;
+}
+
+body[data-theme="windows2000"] .windows-window-content .page-header,
+body[data-theme="windows2000"] .windows-window-content .settings-section-head,
+body[data-theme="windows2000"] .windows-window-content .trends-hero-head {
+  padding: 3px 2px 7px;
+  border: 0;
+  border-bottom: 2px groove #ffffff;
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-theme="windows2000"] .windows-window-content .page-header h1,
+body[data-theme="windows2000"] .windows-window-content .settings-section-head h1,
+body[data-theme="windows2000"] .windows-window-content .settings-section-head h2,
+body[data-theme="windows2000"] .windows-window-content .trends-hero-head h1,
+body[data-theme="windows2000"] .windows-window-content .trends-hero-head h2 {
+  color: #000000;
+  font-size: 16px;
+  text-shadow: none;
+}
+
+body[data-theme="windows2000"] .windows-window-content .page-header p,
+body[data-theme="windows2000"] .windows-window-content .settings-section-head p,
+body[data-theme="windows2000"] .windows-window-content .trends-hero-head p,
+body[data-theme="windows2000"] .windows-window-content .settings-section-eyebrow {
+  color: #404040;
+  text-shadow: none;
+}
+
+body[data-theme="windows2000"] .windows-statusbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 82px;
+  gap: 2px;
+  padding-top: 3px;
+  background: #d4d0c8;
+  color: #000000;
+  font-size: 10px;
+}
+
+body[data-theme="windows2000"] .windows-statusbar span {
+  min-width: 0;
+  padding: 2px 5px;
+  overflow: hidden;
+  border: 1px solid;
+  border-color: #808080 #ffffff #ffffff #808080;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-theme="windows2000"] .windows-taskbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 36px;
+  padding: 3px 3px 2px;
+  border-top: 2px solid #ffffff;
+  background: #d4d0c8;
+  box-shadow: 0 -1px 0 #808080;
+  -webkit-app-region: no-drag;
+}
+
+body[data-theme="windows2000"] .windows-start-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  height: 29px;
+  padding: 2px 7px 2px 5px;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  background: #d4d0c8;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+}
+
+body[data-theme="windows2000"] .windows-start-button.active,
+body[data-theme="windows2000"] .windows-start-button:active {
+  padding: 3px 6px 1px 6px;
+  border-color: #404040 #ffffff #ffffff #404040;
+  background: #c8c4bc;
+}
+
+body[data-theme="windows2000"] .windows-flag {
+  display: grid;
+  grid-template-columns: repeat(2, 7px);
+  grid-template-rows: repeat(2, 6px);
+  gap: 1px;
+  transform: skewY(-6deg);
+}
+
+body[data-theme="windows2000"] .windows-flag i:nth-child(1) {
+  background: #ef1b23;
+}
+
+body[data-theme="windows2000"] .windows-flag i:nth-child(2) {
+  background: #38a638;
+}
+
+body[data-theme="windows2000"] .windows-flag i:nth-child(3) {
+  background: #245bd6;
+}
+
+body[data-theme="windows2000"] .windows-flag i:nth-child(4) {
+  background: #f5d328;
+}
+
+body[data-theme="windows2000"] .windows-taskbar-divider {
+  align-self: stretch;
+  width: 4px;
+  margin: 1px 1px;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #ffffff;
+}
+
+body[data-theme="windows2000"] .windows-task-list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+body[data-theme="windows2000"] .windows-task-list .windows-task-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 132px;
+  width: auto;
+  min-width: 52px;
+  max-width: 156px;
+  height: 28px;
+  min-height: 28px;
+  margin: 0;
+  padding: 3px 6px;
+  overflow: hidden;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  border-radius: 0;
+  background: #d4d0c8;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+body[data-theme="windows2000"] .windows-task-list .windows-task-button:hover {
+  border-color: #ffffff #404040 #404040 #ffffff;
+  background: #e4e0d8;
+  color: #000000;
+}
+
+body[data-theme="windows2000"] .windows-task-list .windows-task-button.active:not(.is-minimized) {
+  padding: 4px 5px 2px 7px;
+  border-color: #404040 #ffffff #ffffff #404040;
+  background:
+    repeating-conic-gradient(rgba(0, 0, 0, 0.08) 0 25%, transparent 0 50%) 0 / 2px 2px,
+    #d4d0c8;
+  color: #000000;
+  font-weight: 700;
+}
+
+body[data-theme="windows2000"] .windows-task-list .windows-task-button.is-minimized {
+  border-color: #ffffff #404040 #404040 #ffffff;
+  background: #d4d0c8;
+  color: #000000;
+  font-weight: 400;
+}
+
+body[data-theme="windows2000"] .windows-task-button .nav-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: #000080;
+  opacity: 1;
+}
+
+body[data-theme="windows2000"] .windows-task-button .nav-label {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: inherit;
+  font-weight: inherit;
+  text-overflow: ellipsis;
+}
+
+body[data-theme="windows2000"] .windows-task-button .nav-badge {
+  display: none;
+}
+
+body[data-theme="windows2000"] .windows-system-tray {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 76px;
+  height: 27px;
+  padding: 2px 6px;
+  border: 2px solid;
+  border-color: #808080 #ffffff #ffffff #808080;
+  color: #000000;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+body[data-theme="windows2000"] .windows-tray-status {
+  width: 8px;
+  height: 8px;
+  border: 1px solid #404040;
+  border-radius: 50%;
+  background: #808080;
+}
+
+body[data-theme="windows2000"] .windows-tray-status.is-active {
+  background: #00a000;
+  box-shadow: 0 0 0 1px #ffffff;
+}
+
+body[data-theme="windows2000"] .windows-start-menu {
+  position: fixed;
+  bottom: 35px;
+  left: 2px;
+  z-index: 1190;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  width: 270px;
+  max-height: min(590px, calc(100vh - 42px));
+  padding: 2px;
+  overflow: hidden;
+  border: 2px solid;
+  border-color: #ffffff #404040 #404040 #ffffff;
+  background: #d4d0c8;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25);
+}
+
+body[data-theme="windows2000"] .windows-start-rail {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 4px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #000080, #1084d0);
+  color: #ffffff;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  text-shadow: 1px 1px #000000;
+  transform: rotate(180deg);
+  writing-mode: vertical-rl;
+}
+
+body[data-theme="windows2000"] .windows-start-items {
+  min-height: 0;
+  padding: 2px;
+  overflow-y: auto;
+}
+
+body[data-theme="windows2000"] .windows-start-items button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 35px;
+  padding: 5px 8px;
+  border: 0;
+  background: transparent;
+  color: #000000;
+  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  text-align: left;
+}
+
+body[data-theme="windows2000"] .windows-start-items button:hover,
+body[data-theme="windows2000"] .windows-start-items button:focus-visible {
+  outline: 0;
+  background: #000080;
+  color: #ffffff;
+}
+
+body[data-theme="windows2000"] .windows-start-items button svg {
+  flex: 0 0 auto;
+}
+
+body[data-theme="windows2000"] .windows-start-separator {
+  height: 2px;
+  margin: 3px 4px;
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #ffffff;
+}
+
+body[data-theme="windows2000"] .windows-start-search-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  color: #000080;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+body[data-theme="windows2000"] .windows-start-items button:hover .windows-start-search-icon {
+  color: #ffffff;
+}
+
+body[data-theme="windows2000"] .tweaks-toggle-btn {
+  display: none;
+}
+
+body[data-theme="windows2000"] .tweaks-panel {
+  right: 8px;
+  bottom: 44px;
+  z-index: 1181;
+}
+
+@media (max-width: 900px) {
+  body[data-theme="windows2000"] .windows-app-window {
+    top: 8px;
+    right: 8px;
+    bottom: 44px;
+    left: 8px;
+  }
+
+  body[data-theme="windows2000"] .windows-desktop-shortcut {
+    display: none;
+  }
+
+  body[data-theme="windows2000"] .windows-system-tray {
+    flex-basis: 62px;
+    padding-inline: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="indigo"] .main-content::before {
+    animation: none;
+  }
 }

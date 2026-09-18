@@ -1,0 +1,54 @@
+/* Shared readable states and compact layouts across all themes. */
+[hidden] { display: none !important; }
+:root { --accent-contrast: #0a0f0c; }
+[data-theme="windows2000"] { --accent-contrast: #fff; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+.operation-status { padding: 12px 16px; border: 1px solid var(--border); background: var(--card-bg, var(--bg)); color: var(--text); margin-bottom: 16px; border-radius: 8px; overflow-wrap: anywhere; }
+.operation-status progress { display: block; width: 100%; margin-top: 8px; }
+.operation-status details { margin-top: 8px; }
+.operation-status button { margin-left: 12px; }
+.audit-pagination, .review-next { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 16px 0; }
+.review-next { padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg, var(--bg)); }
+.review-next p { margin: 4px 0 0; }
+.audit-sample-note, .help-copy { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.audit-summary-strip { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 16px; }
+.audit-summary-strip .kpi { padding: 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; min-height: 0; overflow: visible; border-radius: 0; }
+.audit-summary-strip .kpi::before, .audit-summary-strip .kpi::after { display: none; }
+.audit-summary-strip .kpi-value { font-size: 22px !important; line-height: 1.2; margin: 4px 0; }
+.audit-summary-strip .kpi-label, .audit-summary-strip .kpi-sub { font-size: 12px !important; }
+.data-table.identity-table { table-layout: auto; min-width: 620px; }
+.data-table.identity-table th, .data-table.identity-table td { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
+.data-table.identity-table th:nth-child(2), .data-table.identity-table td:nth-child(2) { min-width: 130px; }
+.data-table.identity-table th:nth-child(3), .data-table.identity-table td:nth-child(3) { min-width: 120px; }
+.data-table.library-table { min-width: 600px; }
+.table-open { padding: 0; border: 0; color: var(--accent); background: transparent; cursor: pointer; font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.audit-data-scroll { overflow: auto; max-height: 320px; margin: 12px 0; }
+.audit-data-scroll table { width: 100%; border-collapse: collapse; text-align: left; }
+.audit-data-scroll th, .audit-data-scroll td { padding: 8px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.practice-evidence { margin-bottom: 12px; line-height: 1.5; }
+.practice-evidence summary { cursor: pointer; font-weight: 600; }
+.practice-drill-row { margin: 12px 0; align-items: start; }
+.practice-drill-row > div > div:last-child { font-size: 13px !important; line-height: 1.5; color: var(--text-secondary) !important; }
+.oracle-page { height: calc(100vh - 80px); min-height: 380px; display: flex; flex-direction: column; }
+.oracle-chat-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.oracle-chat-card .oracle-scroll { min-height: 0; flex: 1; }
+.oracle-chat-card .oracle-input { resize: vertical; min-height: 64px; max-height: 180px; font: inherit; }
+.oracle-chat-card > p { margin: 0; }
+.oracle-input-row { align-items: end; }
+.oracle-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.rivals-filter-button-active { color: var(--accent-contrast); }
+.tweaks-panel { max-height: calc(100vh - 48px); overflow-y: auto; }
+@media (max-width: 1050px) {
+  body .liquid-shell .main-content:not(.windows-app-window) { padding: 24px; }
+  .kpi-value { font-size: 32px; }
+  .kpi { padding: 14px; }
+  .page-header { margin-bottom: 20px; }
+}
+@media (max-height: 760px) {
+  body .sidebar .nav-item { height: 32px; }
+  body .sidebar .nav-section-label { margin-top: 8px; margin-bottom: 4px; }
+  body .liquid-shell .sidebar .brand { height: 80px; min-height: 80px; }
+  .sidebar-footer { padding-top: 8px; }
+}

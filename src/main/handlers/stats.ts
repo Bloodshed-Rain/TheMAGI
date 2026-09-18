@@ -63,7 +63,7 @@ export function registerStatsHandlers(safeHandle: SafeHandleFn): void {
     getTrendSeriesBundle(range, filterChar),
   );
   safeHandle("stats:performanceHub", () => getPerformanceHub());
-  safeHandle("stats:trainingLog", (_e, limit?: number) => listTrainingLogEntries(limit));
+  safeHandle("stats:trainingLog", (_e, limit?: number, offset?: number) => listTrainingLogEntries(limit, offset));
   safeHandle("stats:trainingLog:create", (_e, entry: Parameters<typeof createTrainingLogEntry>[0]) =>
     createTrainingLogEntry(entry),
   );
