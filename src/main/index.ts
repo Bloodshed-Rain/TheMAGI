@@ -33,6 +33,7 @@ import { setupIPC } from "./ipc";
 import { destroyOverlayWindow } from "./overlayWindow";
 import { resolveLLMConfig } from "./handlers/analysis";
 import { shutdownEmbeddedReplay } from "./handlers/embeddedReplay";
+import { shutdownExternalDolphin } from "./handlers/dolphin";
 
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
@@ -253,6 +254,7 @@ app.on("window-all-closed", () => {
     watcher.close();
   }
   shutdownEmbeddedReplay();
+  shutdownExternalDolphin();
   llmQueue.clear();
   parsePool.terminate();
   closeDb();

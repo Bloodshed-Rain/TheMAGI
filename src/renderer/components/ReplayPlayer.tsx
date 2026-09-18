@@ -19,7 +19,7 @@ export function ReplayPlayer() {
     [replayPath, seekRevision, startFrame],
   );
 
-  const { stageRef, status, errorMessage, isPaused, currentFrame, seekRelative, togglePause, restart } =
+  const { stageRef, status, errorMessage, isPaused, currentFrame, isExternal, seekRelative, togglePause, restart } =
     useEmbeddedReplaySession({
       enabled: open,
       replayPath,
@@ -37,6 +37,7 @@ export function ReplayPlayer() {
         closePlayer();
         return;
       }
+      if (isExternal || status === "fallback") return;
       if (target?.closest("button, a, [role='button'], [role='slider']")) return;
       if (event.key === " ") {
         event.preventDefault();
@@ -51,7 +52,7 @@ export function ReplayPlayer() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closePlayer, open, seekRelative, togglePause]);
+  }, [closePlayer, isExternal, open, seekRelative, status, togglePause]);
 
   const onOpenInDolphin = async () => {
     if (!replayPath) return;
@@ -97,7 +98,7 @@ export function ReplayPlayer() {
               )}
               {status === "error" && (
                 <div className="replay-player-error">
-                  <div>{errorMessage ?? "Embed failed"}</div>
+                  <div>{errorMessage ?? "Could not open Slippi Dolphin"}</div>
                   <button className="replay-player-dolphin" type="button" onClick={onOpenInDolphin}>
                     <ExternalLink size={13} />
                     Open in Dolphin instead
@@ -106,21 +107,25 @@ export function ReplayPlayer() {
               )}
               {status === "fallback" && (
                 <div className="replay-player-error">
-                  <div>{errorMessage ?? "Embedded playback unavailable on this OS"}</div>
-                  <div style={{ fontSize: 11, marginTop: 4 }}>Opened externally in Dolphin.</div>
+                  <div>Playing in Slippi Dolphin (external)</div>
+                  <div style={{ fontSize: 11, marginTop: 4 }}>
+                    Embedded playback is Windows-only. Use Open Externally to relaunch at the current frame.
+                  </div>
                 </div>
               )}
             </div>
 
             <div className="replay-player-footer">
-              <ReplayTransportControls
-                status={status}
-                isPaused={isPaused}
-                onTogglePause={() => void togglePause()}
-                onSeekRelative={(seconds) => void seekRelative(seconds)}
-                onRestart={() => void restart()}
-                showCloseHint
-              />
+              {!isExternal && (
+                <ReplayTransportControls
+                  status={status}
+                  isPaused={isPaused}
+                  onTogglePause={() => void togglePause()}
+                  onSeekRelative={(seconds) => void seekRelative(seconds)}
+                  onRestart={() => void restart()}
+                  showCloseHint
+                />
+              )}
 
               <div className="replay-player-footer-right">
                 <button className="replay-player-dolphin" type="button" onClick={onOpenInDolphin}>
