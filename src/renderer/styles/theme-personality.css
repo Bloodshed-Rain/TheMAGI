@@ -954,7 +954,11 @@ body[data-theme="windows2000"] .windows-app-window {
   left: 108px;
   z-index: 10;
   display: grid;
-  grid-template-rows: 23px 22px minmax(0, 1fr) 22px;
+  /* 3 chrome rows match LiquidShell: titlebar, content, statusbar.
+     A leftover 22px menu-strip track (no .windows-menu-strip in JSX)
+     previously assigned .windows-window-content to 22px and blew the
+     statusbar to 1fr — Settings (and every page) looked collapsed. */
+  grid-template-rows: 23px minmax(0, 1fr) 22px;
   width: auto;
   max-width: none;
   height: auto;
@@ -1410,6 +1414,24 @@ body[data-theme="windows2000"] .windows-start-search-icon {
 
 body[data-theme="windows2000"] .windows-start-items button:hover .windows-start-search-icon {
   color: #ffffff;
+}
+
+/* Settings: keep section nav readable on navy active state; avoid teal desktop punching through status. */
+body[data-theme="windows2000"] .settings-nav-button-active .settings-nav-copy small {
+  color: #ffffff;
+}
+body[data-theme="windows2000"] .settings-nav-button-active .settings-nav-icon {
+  border-color: #ffffff;
+  background: #000080;
+  color: #ffffff;
+}
+body[data-theme="windows2000"] .operation-status {
+  border: 2px solid;
+  border-color: #808080 #ffffff #ffffff #808080;
+  border-radius: 0;
+  background: #ffffff;
+  color: #000000;
+  box-shadow: inset 1px 1px 0 #808080;
 }
 
 body[data-theme="windows2000"] .tweaks-toggle-btn {
