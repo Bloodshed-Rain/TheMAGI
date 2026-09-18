@@ -38,6 +38,8 @@ export function useEmbeddedReplaySession({
 
   const stageRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string | null>(null);
+  const statusRef = useRef<ReplayPlaybackStatus>("opening");
+  const replayPathRef = useRef(replayPath);
   const currentFrameRef = useRef(currentFrame);
   const latestRequestRef = useRef(seekRequest);
   const appliedRequestIdRef = useRef<number | null>(null);
@@ -46,6 +48,8 @@ export function useEmbeddedReplaySession({
 
   latestRequestRef.current = seekRequest;
   currentFrameRef.current = currentFrame;
+  statusRef.current = status;
+  replayPathRef.current = replayPath;
 
   const setFrame = useCallback(
     (frame: number) => {
@@ -116,9 +120,22 @@ export function useEmbeddedReplaySession({
         }
 
         if (!result.embedded) {
-          setStatus("fallback");
-          setErrorMessage(result.reason ?? "Embedded playback unavailable on this OS");
-          await window.clippi.openInDolphinAtFrame(replayPath, initialFrame).catch(() => {});
+          // Non-Windows (and any OS without embed): honest external Playback path
+          try {
+            await window.clippi.openInDolphinAtFrame(replayPath, initialFrame);
+            if (cancelled) return;
+            setStatus("fallback");
+            setErrorMessage(null);
+            appliedRequestIdRef.current = request?.id ?? null;
+          } catch (launchError) {
+            if (cancelled) return;
+            setStatus("error");
+            setErrorMessage(
+              launchError instanceof Error
+                ? launchError.message
+                : String(launchError) || "Failed to open Slippi Dolphin. Check Settings.",
+            );
+          }
           return;
         }
 
@@ -197,9 +214,25 @@ export function useEmbeddedReplaySession({
 
   const seek = useCallback(
     async (frame: number, endFrame?: number): Promise<boolean> => {
+      const nextFrame = setFrame(frame);
+      const path = replayPathRef.current;
+
+      // External Playback mode: relaunch Dolphin at frame (v1 — no live session)
+      if (statusRef.current === "fallback") {
+        if (!path) return false;
+        setErrorMessage(null);
+        try {
+          await window.clippi.openInDolphinAtFrame(path, nextFrame);
+          return true;
+        } catch (error) {
+          setStatus("error");
+          setErrorMessage(error instanceof Error ? error.message : String(error));
+          return false;
+        }
+      }
+
       const id = sessionIdRef.current;
       if (!id) return false;
-      const nextFrame = setFrame(frame);
       const nextEndFrame = endFrame == null ? undefined : clampReplayFrame(endFrame, durationFrames);
       const sequence = ++seekSequenceRef.current;
       setStatus("seeking");
@@ -231,6 +264,11 @@ export function useEmbeddedReplaySession({
   useEffect(() => {
     if (!seekRequest || seekRequest.id === appliedRequestIdRef.current) return;
     if (!sessionId) {
+      if (enabled && replayPath && status === "fallback") {
+        appliedRequestIdRef.current = seekRequest.id;
+        void seek(seekRequest.frame);
+        return;
+      }
       if (enabled && replayPath && (status === "ended" || status === "error")) {
         appliedRequestIdRef.current = seekRequest.id;
         reopenFrameRef.current = seekRequest.frame;
@@ -257,6 +295,7 @@ export function useEmbeddedReplaySession({
   );
 
   const restart = useCallback(() => {
+    if (statusRef.current === "fallback") return seek(0);
     if (sessionIdRef.current) return seek(0);
     if (!enabled || !replayPath) return Promise.resolve(false);
     reopenFrameRef.current = 0;
@@ -265,6 +304,8 @@ export function useEmbeddedReplaySession({
     return Promise.resolve(true);
   }, [enabled, replayPath, seek, setFrame]);
 
+  const isExternal = status === "fallback";
+
   return {
     stageRef,
     sessionId,
@@ -272,6 +313,7 @@ export function useEmbeddedReplaySession({
     errorMessage,
     isPaused,
     currentFrame,
+    isExternal,
     seek,
     seekRelative,
     togglePause,

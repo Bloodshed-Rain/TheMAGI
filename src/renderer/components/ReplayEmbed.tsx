@@ -33,13 +33,23 @@ export function ReplayEmbed({
   const [loopEnabled, setLoopEnabled] = useState(false);
   const loopSeekPendingRef = useRef(false);
 
-  const { stageRef, status, errorMessage, isPaused, currentFrame, seek, seekRelative, togglePause, restart } =
-    useEmbeddedReplaySession({
-      enabled: true,
-      replayPath,
-      seekRequest,
-      durationFrames,
-    });
+  const {
+    stageRef,
+    status,
+    errorMessage,
+    isPaused,
+    currentFrame,
+    isExternal,
+    seek,
+    seekRelative,
+    togglePause,
+    restart,
+  } = useEmbeddedReplaySession({
+    enabled: true,
+    replayPath,
+    seekRequest,
+    durationFrames,
+  });
 
   useEffect(() => {
     if (!seekRequest?.endFrame) return;
@@ -69,6 +79,8 @@ export function ReplayEmbed({
         return;
       }
       if (event.key === "Escape" && onCloseRequest) onCloseRequest();
+      // Embed-only hotkeys — external Playback has no live session
+      if (isExternal || status === "fallback") return;
       if (target?.closest("button, a, [role='button'], [role='slider']")) return;
       if (event.key === " ") {
         event.preventDefault();
@@ -83,7 +95,7 @@ export function ReplayEmbed({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onCloseRequest, seekRelative, togglePause]);
+  }, [isExternal, onCloseRequest, seekRelative, status, togglePause]);
 
   const onMarker = (marker: ReplayReviewMarker) => {
     const clip = buildReplayReviewClip(marker.frame, durationFrames);
@@ -130,7 +142,7 @@ export function ReplayEmbed({
         )}
         {status === "error" && (
           <div className="replay-player-error">
-            <div>{errorMessage ?? "Embed failed"}</div>
+            <div>{errorMessage ?? "Could not open Slippi Dolphin"}</div>
             <button className="replay-player-dolphin" type="button" onClick={onOpenInDolphin}>
               <ExternalLink size={13} />
               Open in Dolphin instead
@@ -139,8 +151,10 @@ export function ReplayEmbed({
         )}
         {status === "fallback" && (
           <div className="replay-player-error">
-            <div>{errorMessage ?? "Embedded playback unavailable on this OS"}</div>
-            <div style={{ fontSize: 11, marginTop: 4 }}>Opened externally in Dolphin.</div>
+            <div>Playing in Slippi Dolphin (external)</div>
+            <div style={{ fontSize: 11, marginTop: 4 }}>
+              Embedded playback is Windows-only. Click a marker or scrub to open at that frame.
+            </div>
           </div>
         )}
       </div>
@@ -155,15 +169,17 @@ export function ReplayEmbed({
       />
 
       <div className="replay-player-footer">
-        <ReplayTransportControls
-          status={status}
-          isPaused={isPaused}
-          onTogglePause={() => void togglePause()}
-          onSeekRelative={(seconds) => void seekRelative(seconds)}
-          onRestart={onRestart}
-          loopEnabled={loopEnabled}
-          onToggleLoop={() => setLoopEnabled((current) => !current)}
-        />
+        {!isExternal && (
+          <ReplayTransportControls
+            status={status}
+            isPaused={isPaused}
+            onTogglePause={() => void togglePause()}
+            onSeekRelative={(seconds) => void seekRelative(seconds)}
+            onRestart={onRestart}
+            loopEnabled={loopEnabled}
+            onToggleLoop={() => setLoopEnabled((current) => !current)}
+          />
+        )}
 
         <div className="replay-player-footer-right">
           {activeClip && (
