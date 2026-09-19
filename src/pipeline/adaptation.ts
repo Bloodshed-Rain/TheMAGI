@@ -65,8 +65,7 @@ function matchScore(
 export function findPlayerIdx(gameSummary: GameSummary, playerIdentifier: string): 0 | 1 {
   const id = playerIdentifier.trim();
   if (!id) {
-    console.warn("[findPlayerIdx] Empty player identifier — defaulting to player 0");
-    return 0;
+    throw new Error("Target player not found in replay: empty player identifier");
   }
 
   const idLower = id.toLowerCase();
@@ -74,7 +73,8 @@ export function findPlayerIdx(gameSummary: GameSummary, playerIdentifier: string
   const p1 = gameSummary.players[1];
   const isConnectCode = id.includes("#");
 
-  // Score both players and pick the better match
+  // Score both players and pick the better match. No silent port-0 fallback:
+  // a miss must surface so UI / import can mark the game unmatched.
   const score0 = matchScore(p0, id, idLower, isConnectCode);
   const score1 = matchScore(p1, id, idLower, isConnectCode);
 
@@ -83,18 +83,11 @@ export function findPlayerIdx(gameSummary: GameSummary, playerIdentifier: string
     return 1;
   }
 
-  // No match from scoring — try fallback: prefer non-empty player
-  const p0Empty = isEmptyTag(p0.tag) && !p0.connectCode;
-  const p1Empty = isEmptyTag(p1.tag) && !p1.connectCode;
-  if (!p0Empty && p1Empty) return 0;
-  if (!p1Empty && p0Empty) return 1;
-
-  console.error(
-    `[findPlayerIdx] MATCH FAILED for "${id}" — ` +
-      `p0="${p0.tag}" (${p0.connectCode || "no code"}), ` +
-      `p1="${p1.tag}" (${p1.connectCode || "no code"}). Defaulting to player 0.`,
-  );
-  return 0;
+  const detail =
+    `p0="${p0.tag}" (${p0.connectCode || "no code"}), ` +
+    `p1="${p1.tag}" (${p1.connectCode || "no code"})`;
+  console.error(`[findPlayerIdx] MATCH FAILED for "${id}" — ${detail}`);
+  throw new Error(`Target player not found in replay: "${id}" (${detail})`);
 }
 
 function getGrabFrequency(player: PlayerSummary): number {
@@ -111,7 +104,7 @@ export function computeAdaptationSignals(
   if (gameResults.length < 2) return [];
 
   // Extract per-game values for each metric across the full set
-  type MetricExtractor = (player: PlayerSummary, insights: DerivedInsights) => number;
+  type MetricExtractor = (player: PlayerSummary, insights: DerivedInsights) => number | null;
 
   const metricDefs: {
     metric: string;
@@ -133,19 +126,24 @@ export function computeAdaptationSignals(
     { metric: "survival DI score", extract: (p) => p.diQuality.survivalDIScore, higherIsBetter: true },
   ];
 
-  // Build trajectory (per-game values) for each metric
-  const metrics = metricDefs.map(({ metric, extract, higherIsBetter }) => {
+  // Build trajectory (per-game values) for each metric.
+  // Withhold metrics that are null for any game (e.g. vacuous L-cancel 0/0).
+  const metrics = metricDefs.flatMap(({ metric, extract, higherIsBetter }) => {
     const trajectory = gameResults.map((gr) => {
       const idx = findPlayerIdx(gr.gameSummary, playerTag);
       return extract(gr.gameSummary.players[idx], gr.derivedInsights[idx]);
     });
-    return {
-      metric,
-      game1Value: trajectory[0]!,
-      lastGameValue: trajectory[trajectory.length - 1]!,
-      higherIsBetter,
-      trajectory,
-    };
+    if (trajectory.some((v) => v == null)) return [];
+    const nums = trajectory as number[];
+    return [
+      {
+        metric,
+        game1Value: nums[0]!,
+        lastGameValue: nums[nums.length - 1]!,
+        higherIsBetter,
+        trajectory: nums,
+      },
+    ];
   });
 
   const THRESHOLD = 0.03; // 3% change threshold for "stable"
