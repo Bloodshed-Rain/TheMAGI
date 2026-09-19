@@ -25,12 +25,10 @@ describe("truthfulness: truncated replay dedupe", () => {
     expect(a.length).toBeGreaterThan(b.length);
     expect(isTruncatedOrDuplicateRaw(a, b)).toBe(true);
 
-    // Full-file hashes differ — hash-only dedupe would miss this and double-count a win.
     const h1 = crypto.createHash("sha256").update(a).digest("hex");
     const h2 = crypto.createHash("sha256").update(b).digest("hex");
     expect(h1).not.toBe(h2);
 
-    // Prefix fingerprints match — the importer candidate key.
     expect(rawPrefixFingerprint(a)).toBe(rawPrefixFingerprint(b));
   });
 });
