@@ -68,4 +68,10 @@ describe("importer", () => {
     expect(IMPORTER_SOURCE).toContain("sessionId !== null && importedCount === 0");
     expect(IMPORTER_SOURCE).toContain('DELETE FROM sessions WHERE id = ?');
   });
+
+  it("skips truncated-prefix duplicates before aggregates (content rule)", () => {
+    expect(IMPORTER_SOURCE).toContain("findTruncationDuplicate");
+    expect(IMPORTER_SOURCE).toContain("rawPrefixFingerprint");
+    expect(IMPORTER_SOURCE).toContain("isTruncatedOrDuplicateRaw");
+  });
 });

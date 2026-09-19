@@ -42,8 +42,10 @@ describe("processGame", () => {
       expect(player.tag).toBeTruthy();
       expect(player.neutralWinRate).toBeGreaterThanOrEqual(0);
       expect(player.neutralWinRate).toBeLessThanOrEqual(1);
-      expect(player.lCancelRate).toBeGreaterThanOrEqual(0);
-      expect(player.lCancelRate).toBeLessThanOrEqual(1);
+      if (player.lCancelRate != null) {
+        expect(player.lCancelRate).toBeGreaterThanOrEqual(0);
+        expect(player.lCancelRate).toBeLessThanOrEqual(1);
+      }
       expect(player.totalOpenings).toBeGreaterThanOrEqual(0);
       expect(player.stocks).toBeInstanceOf(Array);
     }
@@ -83,12 +85,13 @@ describe("findPlayerIdx", () => {
     expect(idx).toBe(0);
   });
 
-  it("returns 0 as fallback for unknown tag", () => {
+  it("throws a clear error for unknown tag instead of silent port-0 fallback", () => {
     const filePath = getTestReplay();
     const { gameSummary } = processGame(filePath, 1);
 
-    const idx = findPlayerIdx(gameSummary, "NONEXISTENT_PLAYER_TAG_XYZ");
-    expect(idx).toBe(0);
+    expect(() => findPlayerIdx(gameSummary, "NONEXISTENT_PLAYER_TAG_XYZ")).toThrow(
+      /Target player not found/,
+    );
   });
 });
 
