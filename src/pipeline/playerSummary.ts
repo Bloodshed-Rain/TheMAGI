@@ -1,1 +1,1 @@
-PLACEHOLDER_LOAD_FROM_FILE
+@file:///tmp/ps_to_push.ts
