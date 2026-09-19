@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import path from "path";
 import fs from "fs";
-import { processGame, findPlayerIdx, computeAdaptationSignals, assembleUserPrompt } from "../src/pipeline";
+import { processGame, findPlayerIdx, requirePlayerIdx, PlayerMatchError, computeAdaptationSignals, assembleUserPrompt } from "../src/pipeline";
 
 const TEST_REPLAYS_DIR = path.resolve(__dirname, "fixtures");
 
@@ -89,6 +89,12 @@ describe("findPlayerIdx", () => {
 
     const idx = findPlayerIdx(gameSummary, "NONEXISTENT_PLAYER_TAG_XYZ");
     expect(idx).toBe(0);
+  });
+
+  it("requirePlayerIdx fails closed instead of defaulting to slot 0", () => {
+    const filePath = getTestReplay();
+    const { gameSummary } = processGame(filePath, 1);
+    expect(() => requirePlayerIdx(gameSummary, "NONEXISTENT_PLAYER_TAG_XYZ")).toThrow(PlayerMatchError);
   });
 });
 

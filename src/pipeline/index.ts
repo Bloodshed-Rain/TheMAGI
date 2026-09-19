@@ -2,6 +2,16 @@
 // Imports from "../pipeline" or "./pipeline" resolve here.
 
 export { processGame } from "./processGame.js";
+export { analyzeGame, assertAnalysisOk, isDegenerateAnalysis, analysisStatusFromOutcome } from "./analyzeGame.js";
+export type { AnalyzeGameOutcome, AnalyzeGameOk, AnalyzeGameErr, AnalyzedGame } from "./analyzeGame.js";
+export {
+  ANALYSIS_STATUSES,
+  isSuccessfulAnalysisStatus,
+  analysisStatusLabel,
+  analysisStatusDetail,
+} from "./analysisStatus.js";
+export type { AnalysisStatus } from "./analysisStatus.js";
+export { requirePlayerIdx, PlayerMatchError } from "./adaptation.js";
 export { buildDerivedInsights } from "./derivedInsights.js";
 export { computeAdaptationSignals, findPlayerIdx } from "./adaptation.js";
 export { classifyGameResult } from "./helpers.js";

@@ -35,9 +35,12 @@ interface GameDetailShape {
   result: "win" | "loss";
   playerFinalStocks: number;
   opponentFinalStocks: number;
-  neutralWinRate?: number;
-  lCancelRate?: number;
-  conversionRate?: number;
+  analysisStatus?: string;
+  analysisError?: string | null;
+  statsAvailable?: boolean;
+  neutralWinRate?: number | null;
+  lCancelRate?: number | null;
+  conversionRate?: number | null;
   avgDamagePerOpening?: number;
   openingsPerKill?: number;
   recoverySuccessRate?: number;

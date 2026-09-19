@@ -4,12 +4,12 @@ import type Database from "better-sqlite3";
 import { loadConfig } from "./config";
 import { getActiveModelId } from "./llm";
 import {
-  findPlayerIdx,
+  requirePlayerIdx,
   classifyGameResult,
+  isDegenerateAnalysis,
   type GameSummary,
   type DerivedInsights,
   type GameHighlight,
-  type PlayerSummary,
 } from "./pipeline";
 import {
   insertGame,
@@ -76,46 +76,10 @@ function hashFile(filePath: string): string {
 export type AnalysisGenerator = (filePath: string) => Promise<AnalysisGeneratorResult>;
 
 let _generateAnalysis: AnalysisGenerator = async (filePath: string) => {
-  return {
-    analysisText: `[Placeholder analysis for ${filePath}] — Wire up with setAnalysisGenerator().`,
-    gameResult: {
-      gameSummary: {
-        gameNumber: 1,
-        stage: "Unknown",
-        duration: 0,
-        result: { winner: "Unknown", endMethod: "unknown", finalStocks: [0, 0], finalPercents: [0, 0] },
-        players: [
-          { tag: "Unknown", connectCode: "", character: "Unknown" } as PlayerSummary,
-          { tag: "Unknown", connectCode: "", character: "Unknown" } as PlayerSummary,
-        ],
-      },
-      derivedInsights: [
-        {
-          afterKnockdown: { options: [], entropy: 0 },
-          afterLedgeGrab: { options: [], entropy: 0 },
-          afterShieldPressure: { options: [], entropy: 0 },
-          performanceByStock: [],
-          bestConversion: { moves: [], totalDamage: 0, startPercent: 0, endedInKill: false, timestamp: "0:00" },
-          worstMissedPunish: null,
-          keyMoments: [],
-          adaptationSignals: [],
-        },
-        {
-          afterKnockdown: { options: [], entropy: 0 },
-          afterLedgeGrab: { options: [], entropy: 0 },
-          afterShieldPressure: { options: [], entropy: 0 },
-          performanceByStock: [],
-          bestConversion: { moves: [], totalDamage: 0, startPercent: 0, endedInKill: false, timestamp: "0:00" },
-          worstMissedPunish: null,
-          keyMoments: [],
-          adaptationSignals: [],
-        },
-      ] as [DerivedInsights, DerivedInsights],
-      highlights: [[], []] as [GameHighlight[], GameHighlight[]],
-      startAt: null,
-    },
-    targetPlayer: "Unknown",
-  };
+  // Fail closed: never invent zero-filled stats that look like a real analysis.
+  throw new Error(
+    `Analysis generator is not configured — refusing to invent stats for ${filePath}. Call setAnalysisGenerator() at startup.`,
+  );
 };
 
 /**
@@ -145,7 +109,10 @@ export function buildInsertGameParams(
   sessionId: number | null,
 ): InsertGameParams {
   const { gameSummary, startAt } = gameResult;
-  const playerIdx = findPlayerIdx(gameSummary, targetPlayer);
+  if (isDegenerateAnalysis(gameResult)) {
+    throw new Error("Refusing to persist degenerate / placeholder game analysis");
+  }
+  const playerIdx = requirePlayerIdx(gameSummary, targetPlayer);
   const opponentIdx = playerIdx === 0 ? 1 : 0;
 
   const player = gameSummary.players[playerIdx];
@@ -173,6 +140,7 @@ export function buildInsertGameParams(
     opponentFinalStocks: gameSummary.result.finalStocks[opponentIdx],
     opponentFinalPercent: gameSummary.result.finalPercents[opponentIdx],
     gameNumber: gameSummary.gameNumber,
+    analysisStatus: "ok",
   };
 }
 
@@ -182,7 +150,7 @@ export function buildInsertGameStatsParams(
   targetPlayer: string,
 ): InsertGameStatsParams {
   const { gameSummary, derivedInsights } = gameResult;
-  const playerIdx = findPlayerIdx(gameSummary, targetPlayer);
+  const playerIdx = requirePlayerIdx(gameSummary, targetPlayer);
   const player = gameSummary.players[playerIdx];
   const insights = derivedInsights[playerIdx];
 
@@ -309,7 +277,7 @@ export async function processReplay(
     insertGameStats(statsParams);
 
     // Store character-specific signature stats
-    const playerIdx = findPlayerIdx(gameResult.gameSummary, targetPlayer);
+    const playerIdx = requirePlayerIdx(gameResult.gameSummary, targetPlayer);
     const player = gameResult.gameSummary.players[playerIdx];
     if (player.signatureStats) {
       insertSignatureStats(gameId, JSON.stringify(player.signatureStats));

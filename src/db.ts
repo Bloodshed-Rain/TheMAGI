@@ -57,6 +57,8 @@ const SCHEMA = `
     opponent_final_stocks INTEGER NOT NULL,
     opponent_final_percent INTEGER NOT NULL,
     game_number INTEGER NOT NULL DEFAULT 1,
+    analysis_status TEXT NOT NULL DEFAULT 'ok' CHECK (analysis_status IN ('ok', 'failed', 'unavailable')),
+    analysis_error TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -684,6 +686,24 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 15,
+    description: "Fail-closed analysis_status on games — never treat failed analysis as real stats",
+    up: (db) => {
+      const columns = db.pragma("table_info(games)") as { name: string }[];
+      if (!columns.some((c) => c.name === "analysis_status")) {
+        db.exec(
+          "ALTER TABLE games ADD COLUMN analysis_status TEXT NOT NULL DEFAULT 'ok' CHECK (analysis_status IN ('ok', 'failed', 'unavailable'))",
+        );
+      }
+      if (!columns.some((c) => c.name === "analysis_error")) {
+        db.exec("ALTER TABLE games ADD COLUMN analysis_error TEXT");
+      }
+      db.exec(
+        "CREATE INDEX IF NOT EXISTS idx_games_analysis_status ON games(analysis_status)",
+      );
+    },
+  },
 ];
 
 /**
@@ -790,6 +810,30 @@ export function replayExists(hash: string): boolean {
   return row !== undefined;
 }
 
+/** True only when a successful analysis (with real stats) already exists for this hash. */
+export function successfulReplayExists(hash: string): boolean {
+  const row = getDb()
+    .prepare("SELECT 1 FROM games WHERE replay_hash = ? AND analysis_status = 'ok'")
+    .get(hash);
+  return row !== undefined;
+}
+
+/**
+ * Remove a prior fail-closed row so a re-import can replace it with real stats.
+ * No-op when the hash is already ok or missing.
+ */
+export function deleteFailedGameByHash(hash: string): boolean {
+  const row = getDb()
+    .prepare("SELECT id, analysis_status as analysisStatus FROM games WHERE replay_hash = ?")
+    .get(hash) as { id: number; analysisStatus: string } | undefined;
+  if (!row || row.analysisStatus === "ok") return false;
+  // game_stats / child tables cascade or are absent for failed rows
+  getDb().prepare("DELETE FROM games WHERE id = ?").run(row.id);
+  return true;
+}
+
+export type AnalysisStatus = "ok" | "failed" | "unavailable";
+
 export interface InsertGameParams {
   sessionId: number | null;
   replayPath: string;
@@ -810,9 +854,15 @@ export interface InsertGameParams {
   opponentFinalStocks: number;
   opponentFinalPercent: number;
   gameNumber: number;
+  /** Defaults to 'ok'. Failed / unavailable rows must not carry success-shaped game_stats. */
+  analysisStatus?: AnalysisStatus;
+  analysisError?: string | null;
 }
 
 export function insertGame(params: InsertGameParams): number {
+  const analysisStatus: AnalysisStatus = params.analysisStatus ?? "ok";
+  const analysisError = params.analysisError ?? null;
+
   const stmt = getDb().prepare(`
     INSERT INTO games (
       session_id, replay_path, replay_hash, played_at,
@@ -822,7 +872,8 @@ export function insertGame(params: InsertGameParams): number {
       result, end_method,
       player_final_stocks, player_final_percent,
       opponent_final_stocks, opponent_final_percent,
-      game_number
+      game_number,
+      analysis_status, analysis_error
     ) VALUES (
       ?, ?, ?, ?,
       ?, ?,
@@ -831,7 +882,8 @@ export function insertGame(params: InsertGameParams): number {
       ?, ?,
       ?, ?,
       ?, ?,
-      ?
+      ?,
+      ?, ?
     )
   `);
 
@@ -855,9 +907,52 @@ export function insertGame(params: InsertGameParams): number {
     params.opponentFinalStocks,
     params.opponentFinalPercent,
     params.gameNumber,
+    analysisStatus,
+    analysisError,
   );
 
   return Number(result.lastInsertRowid);
+}
+
+/**
+ * Persist a fail-closed game row with NO game_stats.
+ * Used when Slippi analysis fails or the target player cannot be matched —
+ * so Magi never stores zeros that look like real L-cancel / conversion rates.
+ */
+export function insertFailedGameAnalysis(params: {
+  sessionId?: number | null;
+  replayPath: string;
+  replayHash: string;
+  playedAt?: string | null;
+  analysisStatus?: Exclude<AnalysisStatus, "ok">;
+  analysisError: string;
+  playerTag?: string | null;
+}): number {
+  const status = params.analysisStatus ?? "failed";
+  const err = params.analysisError.length > 500 ? params.analysisError.slice(0, 497) + "..." : params.analysisError;
+  return insertGame({
+    sessionId: params.sessionId ?? null,
+    replayPath: params.replayPath,
+    replayHash: params.replayHash,
+    playedAt: params.playedAt ?? null,
+    stage: "Unknown",
+    durationSeconds: 0,
+    playerCharacter: "Unknown",
+    opponentCharacter: "Unknown",
+    playerTag: params.playerTag?.trim() || "Unknown",
+    playerConnectCode: null,
+    opponentTag: "Unknown",
+    opponentConnectCode: null,
+    result: "draw",
+    endMethod: "unknown",
+    playerFinalStocks: 0,
+    playerFinalPercent: 0,
+    opponentFinalStocks: 0,
+    opponentFinalPercent: 0,
+    gameNumber: 1,
+    analysisStatus: status,
+    analysisError: err,
+  });
 }
 
 export interface InsertGameStatsParams {
@@ -1589,43 +1684,47 @@ export interface GameDetail {
   playerFinalPercent: number;
   opponentFinalStocks: number;
   opponentFinalPercent: number;
-  // game_stats
-  neutralWins: number;
-  neutralLosses: number;
-  neutralWinRate: number;
-  counterHits: number;
-  openingsPerKill: number;
-  totalOpenings: number;
-  totalConversions: number;
-  conversionRate: number;
-  avgDamagePerOpening: number;
-  killConversions: number;
-  lCancelRate: number;
-  wavedashCount: number;
-  dashDanceFrames: number;
-  avgStagePositionX: number;
-  timeOnPlatform: number;
-  timeInAir: number;
-  timeAtLedge: number;
-  totalDamageTaken: number;
-  totalDamageDealt: number;
-  avgDeathPercent: number;
-  recoveryAttempts: number;
-  recoverySuccessRate: number;
-  ledgeEntropy: number;
-  knockdownEntropy: number;
-  shieldPressureEntropy: number;
-  powerShieldCount: number;
-  edgeguardAttempts: number;
-  edgeguardSuccessRate: number;
-  shieldPressureSequences: number;
-  shieldPressureAvgDamage: number;
-  shieldBreaks: number;
-  shieldPokeRate: number;
-  diSurvivalScore: number;
-  diComboScore: number;
-  diAvgComboLengthReceived: number;
-  diAvgComboLengthDealt: number;
+  analysisStatus: AnalysisStatus;
+  analysisError: string | null;
+  /** True when analysis_status is ok AND game_stats row exists */
+  statsAvailable: boolean;
+  // game_stats — null/undefined when analysis failed or unavailable
+  neutralWins: number | null;
+  neutralLosses: number | null;
+  neutralWinRate: number | null;
+  counterHits: number | null;
+  openingsPerKill: number | null;
+  totalOpenings: number | null;
+  totalConversions: number | null;
+  conversionRate: number | null;
+  avgDamagePerOpening: number | null;
+  killConversions: number | null;
+  lCancelRate: number | null;
+  wavedashCount: number | null;
+  dashDanceFrames: number | null;
+  avgStagePositionX: number | null;
+  timeOnPlatform: number | null;
+  timeInAir: number | null;
+  timeAtLedge: number | null;
+  totalDamageTaken: number | null;
+  totalDamageDealt: number | null;
+  avgDeathPercent: number | null;
+  recoveryAttempts: number | null;
+  recoverySuccessRate: number | null;
+  ledgeEntropy: number | null;
+  knockdownEntropy: number | null;
+  shieldPressureEntropy: number | null;
+  powerShieldCount: number | null;
+  edgeguardAttempts: number | null;
+  edgeguardSuccessRate: number | null;
+  shieldPressureSequences: number | null;
+  shieldPressureAvgDamage: number | null;
+  shieldBreaks: number | null;
+  shieldPokeRate: number | null;
+  diSurvivalScore: number | null;
+  diComboScore: number | null;
+  diAvgComboLengthReceived: number | null;
+  diAvgComboLengthDealt: number | null;
   // signature stats
   signatureJson: string | null;
   // coaching
@@ -1660,6 +1759,9 @@ export function getGameDetail(gameId: number): GameDetail | undefined {
       g.player_final_percent as playerFinalPercent,
       g.opponent_final_stocks as opponentFinalStocks,
       g.opponent_final_percent as opponentFinalPercent,
+      g.analysis_status as analysisStatus,
+      g.analysis_error as analysisError,
+      CASE WHEN g.analysis_status = 'ok' AND gs.game_id IS NOT NULL THEN 1 ELSE 0 END as statsAvailable,
       gs.neutral_wins as neutralWins,
       gs.neutral_losses as neutralLosses,
       gs.neutral_win_rate as neutralWinRate,
@@ -1698,7 +1800,7 @@ export function getGameDetail(gameId: number): GameDetail | undefined {
       gs.di_avg_combo_length_dealt as diAvgComboLengthDealt,
       css.signature_json as signatureJson
     FROM games g
-    JOIN game_stats gs ON gs.game_id = g.id
+    LEFT JOIN game_stats gs ON gs.game_id = g.id
     LEFT JOIN character_signature_stats css ON css.game_id = g.id
     WHERE g.id = ?
   `,
@@ -1719,7 +1821,14 @@ export function getGameDetail(gameId: number): GameDetail | undefined {
     )
     .all(gameId) as GameCoachingEntry[];
 
-  return { ...row, coachingAnalyses: analyses };
+  const statsFlag = (row as { statsAvailable?: number }).statsAvailable;
+  return {
+    ...row,
+    statsAvailable: Boolean(statsFlag),
+    analysisStatus: (row as { analysisStatus?: AnalysisStatus }).analysisStatus ?? "ok",
+    analysisError: (row as { analysisError?: string | null }).analysisError ?? null,
+    coachingAnalyses: analyses,
+  };
 }
 
 /** Row shape returned by the deep insights SQL query */
@@ -1777,7 +1886,7 @@ export function getDeepInsightsData(): DeepInsightsData {
       CASE WHEN g.result = 'win' THEN 1 ELSE 0 END as is_win
     FROM game_stats gs
     JOIN games g ON gs.game_id = g.id
-    WHERE g.result IN ('win', 'loss')
+    WHERE g.analysis_status = 'ok' AND g.result IN ('win', 'loss')
   `,
     )
     .all() as DeepInsightsRow[];
@@ -2063,10 +2172,15 @@ export function getOverallRecord(): { wins: number; losses: number; totalGames: 
       SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses,
       COUNT(*) as totalGames
     FROM games
+    WHERE analysis_status = 'ok'
   `,
     )
-    .get() as { wins: number; losses: number; totalGames: number };
-  return row;
+    .get() as { wins: number | null; losses: number | null; totalGames: number };
+  return {
+    wins: row.wins ?? 0,
+    losses: row.losses ?? 0,
+    totalGames: row.totalGames ?? 0,
+  };
 }
 
 // ── Dashboard highlights ────────────────────────────────────────────
@@ -2258,25 +2372,29 @@ export interface RecentGame {
   opponentFinalStocks: number;
   opponentFinalPercent: number;
   durationSeconds: number;
-  neutralWinRate: number;
-  lCancelRate: number;
-  openingsPerKill: number;
-  avgDamagePerOpening: number;
-  conversionRate: number;
-  avgDeathPercent: number;
-  powerShieldCount: number;
-  edgeguardAttempts: number;
-  edgeguardSuccessRate: number;
-  recoverySuccessRate: number;
-  totalDamageDealt: number;
-  totalDamageTaken: number;
-  wavedashCount: number;
-  dashDanceFrames: number;
+  analysisStatus: AnalysisStatus;
+  analysisError: string | null;
+  statsAvailable: boolean;
+  /** Null when analysis failed / unavailable — UI must show empty/error, not 0%. */
+  neutralWinRate: number | null;
+  lCancelRate: number | null;
+  openingsPerKill: number | null;
+  avgDamagePerOpening: number | null;
+  conversionRate: number | null;
+  avgDeathPercent: number | null;
+  powerShieldCount: number | null;
+  edgeguardAttempts: number | null;
+  edgeguardSuccessRate: number | null;
+  recoverySuccessRate: number | null;
+  totalDamageDealt: number | null;
+  totalDamageTaken: number | null;
+  wavedashCount: number | null;
+  dashDanceFrames: number | null;
   killMove: string | null;
 }
 
 export function getRecentGames(limit: number = 100): RecentGame[] {
-  return getDb()
+  const rows = getDb()
     .prepare(
       `
     SELECT
@@ -2292,6 +2410,9 @@ export function getRecentGames(limit: number = 100): RecentGame[] {
       g.opponent_final_stocks as opponentFinalStocks,
       g.opponent_final_percent as opponentFinalPercent,
       g.duration_seconds as durationSeconds,
+      g.analysis_status as analysisStatus,
+      g.analysis_error as analysisError,
+      CASE WHEN g.analysis_status = 'ok' AND gs.game_id IS NOT NULL THEN 1 ELSE 0 END as statsAvailableFlag,
       gs.neutral_win_rate as neutralWinRate,
       gs.l_cancel_rate as lCancelRate,
       gs.openings_per_kill as openingsPerKill,
@@ -2312,12 +2433,19 @@ export function getRecentGames(limit: number = 100): RecentGame[] {
          ORDER BY h.damage DESC
          LIMIT 1) as killMove
     FROM games g
-    JOIN game_stats gs ON gs.game_id = g.id
+    LEFT JOIN game_stats gs ON gs.game_id = g.id
     ORDER BY g.played_at DESC
     LIMIT ?
   `,
     )
-    .all(limit) as RecentGame[];
+    .all(limit) as Array<Omit<RecentGame, "statsAvailable"> & { statsAvailableFlag: number }>;
+
+  return rows.map(({ statsAvailableFlag, ...rest }) => ({
+    ...rest,
+    analysisStatus: rest.analysisStatus ?? "ok",
+    analysisError: rest.analysisError ?? null,
+    statsAvailable: Boolean(statsAvailableFlag),
+  }));
 }
 
 export interface LibraryGameFilters {
@@ -2508,10 +2636,10 @@ export function getLibraryGames(filters: LibraryGameFilters = {}): LibraryGamesP
       `
     SELECT
       COUNT(*) as total,
-      SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) as wins,
-      SUM(CASE WHEN g.result = 'loss' THEN 1 ELSE 0 END) as losses,
-      COUNT(DISTINCT COALESCE(g.opponent_connect_code, g.opponent_tag)) as uniqueOpponents,
-      COUNT(DISTINCT g.player_character) as charactersPlayed
+      SUM(CASE WHEN g.analysis_status = 'ok' AND g.result = 'win' THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN g.analysis_status = 'ok' AND g.result = 'loss' THEN 1 ELSE 0 END) as losses,
+      COUNT(DISTINCT CASE WHEN g.analysis_status = 'ok' THEN COALESCE(g.opponent_connect_code, g.opponent_tag) END) as uniqueOpponents,
+      COUNT(DISTINCT CASE WHEN g.analysis_status = 'ok' THEN g.player_character END) as charactersPlayed
     FROM games g
     ${where}
   `,
@@ -2524,7 +2652,7 @@ export function getLibraryGames(filters: LibraryGameFilters = {}): LibraryGamesP
     charactersPlayed: number;
   };
 
-  const games = db
+  const gameRows = db
     .prepare(
       `
     SELECT
@@ -2540,6 +2668,9 @@ export function getLibraryGames(filters: LibraryGameFilters = {}): LibraryGamesP
       g.opponent_final_stocks as opponentFinalStocks,
       g.opponent_final_percent as opponentFinalPercent,
       g.duration_seconds as durationSeconds,
+      g.analysis_status as analysisStatus,
+      g.analysis_error as analysisError,
+      CASE WHEN g.analysis_status = 'ok' AND gs.game_id IS NOT NULL THEN 1 ELSE 0 END as statsAvailableFlag,
       gs.neutral_win_rate as neutralWinRate,
       gs.l_cancel_rate as lCancelRate,
       gs.openings_per_kill as openingsPerKill,
@@ -2560,13 +2691,20 @@ export function getLibraryGames(filters: LibraryGameFilters = {}): LibraryGamesP
          ORDER BY h.damage DESC
          LIMIT 1) as killMove
     FROM games g
-    JOIN game_stats gs ON gs.game_id = g.id
+    LEFT JOIN game_stats gs ON gs.game_id = g.id
     ${where}
     ORDER BY g.played_at DESC
     LIMIT ? OFFSET ?
   `,
     )
-    .all(...params, limit, offset) as RecentGame[];
+    .all(...params, limit, offset) as Array<Omit<RecentGame, "statsAvailable"> & { statsAvailableFlag: number }>;
+
+  const games: RecentGame[] = gameRows.map(({ statsAvailableFlag, ...rest }) => ({
+    ...rest,
+    analysisStatus: rest.analysisStatus ?? "ok",
+    analysisError: rest.analysisError ?? null,
+    statsAvailable: Boolean(statsAvailableFlag),
+  }));
 
   const searchMatches = getLibrarySearchMatches(
     games.map((game) => game.id),

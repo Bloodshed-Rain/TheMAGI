@@ -55,6 +55,18 @@ describe("database schema", () => {
     expect(schema).toContain("CHECK (result IN ('win', 'loss', 'draw'))");
   });
 
+  it("has fail-closed analysis_status check on games", () => {
+    expect(schema).toContain("analysis_status TEXT NOT NULL DEFAULT 'ok'");
+    expect(schema).toContain("CHECK (analysis_status IN ('ok', 'failed', 'unavailable'))");
+  });
+
+  it("defines migration for analysis_status", () => {
+    expect(DB_SOURCE).toContain('version: 15');
+    expect(DB_SOURCE).toContain("Fail-closed analysis_status");
+    expect(DB_SOURCE).toContain("insertFailedGameAnalysis");
+    expect(DB_SOURCE).toContain("successfulReplayExists");
+  });
+
   it("has foreign key references", () => {
     expect(schema).toContain("REFERENCES sessions(id)");
     expect(schema).toContain("REFERENCES games(id)");
@@ -77,6 +89,8 @@ describe("database schema", () => {
       "opponent_final_stocks",
       "opponent_final_percent",
       "game_number",
+      "analysis_status",
+      "analysis_error",
     ];
     for (const col of requiredColumns) {
       expect(schema).toContain(col);
@@ -275,7 +289,10 @@ describe("win-rate correctness", () => {
 
   it("library summary exposes losses separately from draws", () => {
     expect(DB_SOURCE).toMatch(
-      /SUM\(CASE WHEN g\.result = 'loss' THEN 1 ELSE 0 END\) as losses,\s*\n\s*COUNT\(DISTINCT COALESCE/,
+      /SUM\(CASE WHEN g\.analysis_status = 'ok' AND g\.result = 'loss' THEN 1 ELSE 0 END\) as losses/,
+    );
+    expect(DB_SOURCE).toMatch(
+      /SUM\(CASE WHEN g\.analysis_status = 'ok' AND g\.result = 'win' THEN 1 ELSE 0 END\) as wins/,
     );
   });
 });
