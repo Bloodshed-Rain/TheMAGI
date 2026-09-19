@@ -8,7 +8,7 @@ import {
   type PlayerType,
 } from "@slippi/slippi-js/node";
 
-// ── Helpers ───────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────
 
 export const FPS = 60;
 
@@ -40,6 +40,12 @@ export function getMoveName(id: number): string {
 
 export function ratio(count: number, total: number): number {
   if (total === 0) return 0;
+  return Math.round((count / total) * 10000) / 10000;
+}
+
+/** Like ratio(), but returns null when there were no attempts (vacuous 0% is a lie). */
+export function ratioOrNull(count: number, total: number): number | null {
+  if (total === 0) return null;
   return Math.round((count / total) * 10000) / 10000;
 }
 
