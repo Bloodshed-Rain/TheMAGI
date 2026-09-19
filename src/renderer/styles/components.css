@@ -4836,3 +4836,37 @@ body[data-theme="liquid"] .tweaks-chip.active {
   font-family: inherit;
   font-size: 13px;
 }
+
+
+/* Fail-closed analysis empty / error states */
+.analysis-unavailable {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--loss, #c44) 45%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--loss, #c44) 12%, transparent);
+  color: var(--text, inherit);
+}
+.analysis-unavailable strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+}
+.analysis-unavailable p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted, #aaa);
+  line-height: 1.4;
+}
+.analysis-status-chip {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  background: color-mix(in srgb, var(--loss, #c44) 18%, transparent);
+  color: var(--loss, #c44);
+}

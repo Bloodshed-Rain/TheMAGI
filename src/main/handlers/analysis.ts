@@ -15,12 +15,16 @@ import {
   getDeepInsightsData,
   insertGame,
   insertGameStats,
+  insertFailedGameAnalysis,
   insertSignatureStats,
   insertHighlights,
+  successfulReplayExists,
+  deleteFailedGameByHash,
 } from "../../db.js";
 import {
   computeAdaptationSignals,
   findPlayerIdx,
+  PlayerMatchError,
   assembleUserPrompt,
   SYSTEM_PROMPT,
   assembleAggregatePrompt,
@@ -159,19 +163,39 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       if (existing) {
         gameIds.push(existing.id);
       } else {
-        const gameParams = buildInsertGameParams(gameResult, targetTag, filePath, fileHash, null);
-        const gameId = insertGame(gameParams);
-        insertGameStats(buildInsertGameStatsParams(gameId, gameResult, targetTag));
-        const playerIdx = findPlayerIdx(gameResult.gameSummary, targetTag);
-        const player = gameResult.gameSummary.players[playerIdx];
-        if (player.signatureStats) {
-          insertSignatureStats(gameId, JSON.stringify(player.signatureStats));
+        try {
+          deleteFailedGameByHash(fileHash);
+          const gameParams = buildInsertGameParams(gameResult, targetTag, filePath, fileHash, null);
+          const gameId = insertGame(gameParams);
+          insertGameStats(buildInsertGameStatsParams(gameId, gameResult, targetTag));
+          const playerIdx = findPlayerIdx(gameResult.gameSummary, targetTag);
+          const player = gameResult.gameSummary.players[playerIdx];
+          if (player.signatureStats) {
+            insertSignatureStats(gameId, JSON.stringify(player.signatureStats));
+          }
+          const playerHighlights = gameResult.highlights[playerIdx];
+          if (playerHighlights && playerHighlights.length > 0) {
+            insertHighlights(gameId, playerHighlights);
+          }
+          gameIds.push(gameId);
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : String(err);
+          const status = err instanceof PlayerMatchError ? "unavailable" : "failed";
+          if (!successfulReplayExists(fileHash)) {
+            deleteFailedGameByHash(fileHash);
+            const failedId = insertFailedGameAnalysis({
+              replayPath: filePath,
+              replayHash: fileHash,
+              playedAt: gameResult.startAt,
+              analysisStatus: status,
+              analysisError: reason,
+              playerTag: targetTag,
+            });
+            gameIds.push(failedId);
+          }
+          // Do not invent success-shaped stats; coaching text may still be returned.
+          console.warn(`[analyze:run] persist fail-closed (${status}):`, reason);
         }
-        const playerHighlights = gameResult.highlights[playerIdx];
-        if (playerHighlights && playerHighlights.length > 0) {
-          insertHighlights(gameId, playerHighlights);
-        }
-        gameIds.push(gameId);
       }
     }
 

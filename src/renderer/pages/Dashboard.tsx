@@ -21,10 +21,12 @@ interface RecentGame {
   result: "win" | "loss" | "draw";
   playerFinalStocks: number;
   opponentFinalStocks: number;
-  neutralWinRate: number;
-  lCancelRate: number;
-  conversionRate: number;
-  avgDamagePerOpening: number;
+  analysisStatus?: string;
+  statsAvailable?: boolean;
+  neutralWinRate: number | null;
+  lCancelRate: number | null;
+  conversionRate: number | null;
+  avgDamagePerOpening: number | null;
   replayPath: string;
 }
 
@@ -42,15 +44,19 @@ function fmtDmgDelta(d: number): { label: string; tone: "good" | "bad" | "neutra
 }
 
 function buildRecentSummary(games: RecentGame[]): string {
-  const wins = games.filter((g) => g.result === "win").length;
-  const losses = games.filter((g) => g.result === "loss").length;
-  const avg = (fn: (g: RecentGame) => number) => games.reduce((s, g) => s + fn(g), 0) / games.length;
+  const usable = games.filter(
+    (g) => g.statsAvailable !== false && (g.analysisStatus == null || g.analysisStatus === "ok") && typeof g.neutralWinRate === "number",
+  );
+  const wins = usable.filter((g) => g.result === "win").length;
+  const losses = usable.filter((g) => g.result === "loss").length;
+  const avg = (fn: (g: RecentGame) => number) =>
+    usable.length ? usable.reduce((s, g) => s + fn(g), 0) / usable.length : 0;
   return [
-    `Last ${games.length} games: ${wins}W-${losses}L`,
-    `- Neutral ${(avg((g) => g.neutralWinRate) * 100).toFixed(1)}%`,
-    `- L-Cancel ${(avg((g) => g.lCancelRate) * 100).toFixed(1)}%`,
-    `- Conversion ${(avg((g) => g.conversionRate) * 100).toFixed(1)}%`,
-    `- Dmg/Op ${avg((g) => g.avgDamagePerOpening).toFixed(1)}`,
+    `Last ${usable.length} analyzed games: ${wins}W-${losses}L`,
+    `- Neutral ${(avg((g) => g.neutralWinRate ?? 0) * 100).toFixed(1)}%`,
+    `- L-Cancel ${(avg((g) => g.lCancelRate ?? 0) * 100).toFixed(1)}%`,
+    `- Conversion ${(avg((g) => g.conversionRate ?? 0) * 100).toFixed(1)}%`,
+    `- Dmg/Op ${avg((g) => g.avgDamagePerOpening ?? 0).toFixed(1)}`,
     "",
     games
       .map(
@@ -97,17 +103,21 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
   }, [navigate, refetch, refetchRecord, refetchHighlights]);
 
   const recent = useMemo(() => (games as unknown as RecentGame[]).slice(0, 20), [games]);
+  const usableRecent = recent.filter(
+    (g) => g.statsAvailable !== false && (g.analysisStatus == null || g.analysisStatus === "ok") && typeof g.neutralWinRate === "number",
+  );
+
   const last10 = recent.slice(0, 10);
   const avgNeutral = useMemo(
-    () => (recent.length ? recent.reduce((s, g) => s + g.neutralWinRate, 0) / recent.length : 0),
+    () => (usableRecent.length ? usableRecent.reduce((s, g) => s + (g.neutralWinRate ?? 0), 0) / usableRecent.length : 0),
     [recent],
   );
   const avgLCancel = useMemo(
-    () => (recent.length ? recent.reduce((s, g) => s + g.lCancelRate, 0) / recent.length : 0),
+    () => (usableRecent.length ? usableRecent.reduce((s, g) => s + (g.lCancelRate ?? 0), 0) / usableRecent.length : 0),
     [recent],
   );
   const avgDmg = useMemo(
-    () => (recent.length ? recent.reduce((s, g) => s + g.avgDamagePerOpening, 0) / recent.length : 0),
+    () => (usableRecent.length ? usableRecent.reduce((s, g) => s + (g.avgDamagePerOpening ?? 0), 0) / usableRecent.length : 0),
     [recent],
   );
 
@@ -254,7 +264,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                 <span className="dash-spark-value mono">{(avgNeutral * 100).toFixed(1)}%</span>
               </div>
               <Sparkline
-                values={recent.map((g) => g.neutralWinRate).reverse()}
+                values={usableRecent.map((g) => g.neutralWinRate ?? 0).reverse()}
                 color="var(--accent)"
                 kind="chart"
                 height={90}
@@ -267,7 +277,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                 <span className="dash-spark-value mono">{(avgLCancel * 100).toFixed(1)}%</span>
               </div>
               <Sparkline
-                values={recent.map((g) => g.lCancelRate).reverse()}
+                values={usableRecent.map((g) => g.lCancelRate ?? 0).reverse()}
                 color="var(--win)"
                 kind="chart"
                 height={90}
@@ -278,11 +288,11 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
               <div className="dash-spark-head">
                 <span className="dash-spark-label">Conversion</span>
                 <span className="dash-spark-value mono">
-                  {((recent.reduce((s, g) => s + g.conversionRate, 0) / Math.max(recent.length, 1)) * 100).toFixed(1)}%
+                  {((usableRecent.reduce((s, g) => s + (g.conversionRate ?? 0), 0) / Math.max(usableRecent.length, 1)) * 100).toFixed(1)}%
                 </span>
               </div>
               <Sparkline
-                values={recent.map((g) => g.conversionRate).reverse()}
+                values={usableRecent.map((g) => g.conversionRate ?? 0).reverse()}
                 color="var(--caution)"
                 kind="chart"
                 height={90}
@@ -359,9 +369,21 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                 <td className="mono">
                   {g.playerFinalStocks}-{g.opponentFinalStocks}
                 </td>
-                <td className="mono">{(g.neutralWinRate * 100).toFixed(1)}%</td>
-                <td className="mono">{(g.lCancelRate * 100).toFixed(0)}%</td>
-                <td className="mono">{g.avgDamagePerOpening.toFixed(1)}</td>
+                <td className="mono">
+                  {g.statsAvailable === false || (g.analysisStatus && g.analysisStatus !== "ok") || g.neutralWinRate == null
+                    ? "—"
+                    : `${(g.neutralWinRate * 100).toFixed(1)}%`}
+                </td>
+                <td className="mono">
+                  {g.statsAvailable === false || (g.analysisStatus && g.analysisStatus !== "ok") || g.lCancelRate == null
+                    ? "—"
+                    : `${(g.lCancelRate * 100).toFixed(0)}%`}
+                </td>
+                <td className="mono">
+                  {g.statsAvailable === false || (g.analysisStatus && g.analysisStatus !== "ok") || g.avgDamagePerOpening == null
+                    ? "—"
+                    : g.avgDamagePerOpening.toFixed(1)}
+                </td>
                 <td style={{ color: "var(--text-muted)" }}>›</td>
               </motion.tr>
             ))}

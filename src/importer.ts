@@ -4,6 +4,8 @@ import path from "path";
 
 import {
   findPlayerIdx,
+  requirePlayerIdx,
+  PlayerMatchError,
   classifyGameResult,
   computeAdaptationSignals,
   assembleUserPrompt,
@@ -19,8 +21,11 @@ import { parsePool } from "./parsePool";
 import {
   getDb,
   replayExists,
+  successfulReplayExists,
+  deleteFailedGameByHash,
   insertGame,
   insertGameStats,
+  insertFailedGameAnalysis,
   insertCoachingAnalysis,
   insertSignatureStats,
   insertHighlights,
@@ -237,10 +242,12 @@ async function importReplayInner(
 ): Promise<ImportResult> {
   const hash = await hashFile(absolutePath);
 
-  // Dedup check
-  if (replayExists(hash)) {
+  // Dedup check — only skip successful analyses. Failed/unavailable rows
+  // are replaced so Magi can recover without inventing stats.
+  if (successfulReplayExists(hash)) {
     return { filePath: absolutePath, hash, skipped: true };
   }
+  deleteFailedGameByHash(hash);
 
   // Parse the game via pool
   const gameResult = await parsePool.parse(absolutePath, gameNumber);
@@ -253,7 +260,23 @@ async function importReplayInner(
     targetTag = gameSummary.players.find((p) => p.tag.toLowerCase() !== "unknown")?.tag ?? gameSummary.players[0].tag;
   }
 
-  const playerIdx = findPlayerIdx(gameSummary, targetTag);
+  // Fail closed on persist: never attribute opponent stats as the user's.
+  let playerIdx: 0 | 1;
+  try {
+    playerIdx = requirePlayerIdx(gameSummary, targetTag);
+  } catch (err) {
+    const reason = err instanceof PlayerMatchError ? err.message : String(err);
+    insertFailedGameAnalysis({
+      sessionId,
+      replayPath: absolutePath,
+      replayHash: hash,
+      playedAt: startAt,
+      analysisStatus: "unavailable",
+      analysisError: reason,
+      playerTag: targetTag,
+    });
+    throw err;
+  }
   const opponentIdx = playerIdx === 0 ? 1 : 0;
 
   const player = gameSummary.players[playerIdx];
@@ -415,7 +438,8 @@ function classifyError(err: unknown): string {
   if (msg.includes("is not a valid")) return "Not a valid Slippi replay";
   if (msg.includes("ENOMEM") || msg.includes("out of memory")) return "Out of memory";
   if (msg.includes("Cannot read") || msg.includes("undefined")) return "Corrupt or incomplete replay";
-  if (msg.includes("target player")) return "Target player not found in replay";
+  if (msg.includes("target player") || msg.includes("not found in replay") || msg.includes("refusing to attribute"))
+    return "Target player not found in replay";
 
   // Truncate long messages
   return msg.length > 120 ? msg.slice(0, 117) + "..." : msg;
@@ -484,7 +508,7 @@ export async function importReplays(
         continue;
       }
 
-      if (seenHashes.has(hash) || replayExists(hash)) {
+      if (seenHashes.has(hash) || successfulReplayExists(hash)) {
         skippedCount++;
         finalResults.push({ filePath: fp, hash, skipped: true });
         completedCount++;
@@ -531,7 +555,26 @@ export async function importReplays(
     // Insert into DB in a single transaction
     const dbBatch = getDb().transaction(() => {
       for (const res of parseResults) {
-        if (!res.success) continue;
+        if (!res.success) {
+          const item = res.item!;
+          const errorMsg = classifyError(res.error);
+          try {
+            if (!successfulReplayExists(item.hash)) {
+              deleteFailedGameByHash(item.hash);
+              insertFailedGameAnalysis({
+                sessionId,
+                replayPath: item.filePath,
+                replayHash: item.hash,
+                analysisStatus: "failed",
+                analysisError: errorMsg,
+                playerTag: targetPlayer,
+              });
+            }
+          } catch (persistErr) {
+            console.warn("[importReplays] failed to persist analysis-failed row:", persistErr);
+          }
+          continue;
+        }
         const { item } = res;
         const gameResult = res.result!;
         const { gameSummary, derivedInsights, startAt } = gameResult;
@@ -542,7 +585,25 @@ export async function importReplays(
             gameSummary.players.find((p) => p.tag.toLowerCase() !== "unknown")?.tag ?? gameSummary.players[0].tag;
         }
 
-        const playerIdx = findPlayerIdx(gameSummary, targetTag);
+        let playerIdx: 0 | 1;
+        try {
+          playerIdx = requirePlayerIdx(gameSummary, targetTag);
+        } catch (err) {
+          const reason = err instanceof PlayerMatchError ? err.message : String(err);
+          if (!successfulReplayExists(item.hash)) {
+            deleteFailedGameByHash(item.hash);
+            insertFailedGameAnalysis({
+              sessionId,
+              replayPath: item.filePath,
+              replayHash: item.hash,
+              playedAt: startAt,
+              analysisStatus: "unavailable",
+              analysisError: reason,
+              playerTag: targetTag,
+            });
+          }
+          continue;
+        }
         const opponentIdx = playerIdx === 0 ? 1 : 0;
         const player = gameSummary.players[playerIdx];
         const opponent = gameSummary.players[opponentIdx];
@@ -657,11 +718,15 @@ export async function importReplays(
 
     dbBatch();
 
-    // Update progress and error counts
+    // Update progress and error counts.
+    // Parse success alone is not enough — player-match / persist failures leave
+    // no gameId (or only an analysis-failed row without stats).
     for (const res of parseResults) {
       const fileName = path.basename(res.item.filePath);
       completedCount++;
-      if (res.success) {
+      const idx = res.item.gameNumber - 1;
+      const persistedOk = res.success && finalResults[idx]?.gameId !== undefined;
+      if (persistedOk) {
         importedCount++;
         onProgress?.({
           current: completedCount,
@@ -673,7 +738,9 @@ export async function importReplays(
           lastFileStatus: "imported",
         });
       } else {
-        const errorMsg = classifyError(res.error);
+        const errorMsg = res.success
+          ? "Stats unavailable — could not attribute replay to target player"
+          : classifyError(res.error);
         errorCount++;
         if (errorDetails.length < MAX_ERROR_DETAILS) {
           errorDetails.push({ filePath: res.item.filePath, error: errorMsg });

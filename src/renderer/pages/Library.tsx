@@ -1,3 +1,4 @@
+import { analysisStatusLabel } from "../utils/analysisStatus";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLibraryGames } from "../hooks/queries";
@@ -255,8 +256,11 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                   playerCharacter?: string;
                   playerFinalStocks?: number;
                   opponentFinalStocks?: number;
-                  neutralWinRate?: number;
-                  lCancelRate?: number;
+                  analysisStatus?: string;
+                  analysisError?: string | null;
+                  statsAvailable?: boolean;
+                  neutralWinRate?: number | null;
+                  lCancelRate?: number | null;
                   avgDamagePerOpening?: number;
                   playedAt?: string;
                 };
@@ -283,7 +287,14 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                       {game.playerCharacter || "—"} <span style={{ color: "var(--text-muted)" }}>vs</span>{" "}
                       {g.opponentCharacter}
                     </td>
-                    <td style={{ color: "var(--text-secondary)" }}>{g.opponentTag}</td>
+                    <td style={{ color: "var(--text-secondary)" }}>
+                      {g.opponentTag}
+                      {(game.statsAvailable === false || (game.analysisStatus && game.analysisStatus !== "ok")) && (
+                        <span className="analysis-status-chip" title={game.analysisError ?? undefined}>
+                          {analysisStatusLabel(game.analysisStatus)}
+                        </span>
+                      )}
+                    </td>
                     <td style={{ color: "var(--text-secondary)" }}>{g.stage}</td>
                     {showingSearchMatches && (
                       <td>
@@ -320,13 +331,25 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
                       {game.playerFinalStocks ?? "—"}-{game.opponentFinalStocks ?? "—"}
                     </td>
                     <td className="mono">
-                      {typeof game.neutralWinRate === "number" ? `${(game.neutralWinRate * 100).toFixed(1)}%` : "—"}
+                      {game.statsAvailable === false || (game.analysisStatus && game.analysisStatus !== "ok")
+                        ? "—"
+                        : typeof game.neutralWinRate === "number"
+                          ? `${(game.neutralWinRate * 100).toFixed(1)}%`
+                          : "—"}
                     </td>
                     <td className="mono">
-                      {typeof game.lCancelRate === "number" ? `${(game.lCancelRate * 100).toFixed(0)}%` : "—"}
+                      {game.statsAvailable === false || (game.analysisStatus && game.analysisStatus !== "ok")
+                        ? "—"
+                        : typeof game.lCancelRate === "number"
+                          ? `${(game.lCancelRate * 100).toFixed(0)}%`
+                          : "—"}
                     </td>
                     <td className="mono">
-                      {typeof game.avgDamagePerOpening === "number" ? game.avgDamagePerOpening.toFixed(1) : "—"}
+                      {game.statsAvailable === false || (game.analysisStatus && game.analysisStatus !== "ok")
+                        ? "—"
+                        : typeof game.avgDamagePerOpening === "number"
+                          ? game.avgDamagePerOpening.toFixed(1)
+                          : "—"}
                     </td>
                     <td className="mono" style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                       {game.playedAt

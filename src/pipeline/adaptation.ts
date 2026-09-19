@@ -97,6 +97,45 @@ export function findPlayerIdx(gameSummary: GameSummary, playerIdentifier: string
   return 0;
 }
 
+/** Thrown when the configured target player cannot be matched in a replay. */
+export class PlayerMatchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PlayerMatchError";
+  }
+}
+
+/**
+ * Fail-closed player resolution for persist paths.
+ * Unlike findPlayerIdx (which falls back to slot 0 for soft matching in
+ * adaptation / prompts), this throws so Magi never stores the opponent's
+ * L-cancel / W/L / conversions as the user's stats.
+ */
+export function requirePlayerIdx(gameSummary: GameSummary, playerIdentifier: string): 0 | 1 {
+  const id = playerIdentifier.trim();
+  if (!id) {
+    throw new PlayerMatchError("No target player configured — refusing to attribute stats");
+  }
+
+  const idLower = id.toLowerCase();
+  const p0 = gameSummary.players[0];
+  const p1 = gameSummary.players[1];
+  const isConnectCode = id.includes("#");
+
+  const score0 = matchScore(p0, id, idLower, isConnectCode);
+  const score1 = matchScore(p1, id, idLower, isConnectCode);
+
+  if (score0 > 0 || score1 > 0) {
+    return score0 >= score1 ? 0 : 1;
+  }
+
+  throw new PlayerMatchError(
+    `Target player "${id}" not found in replay ` +
+      `(p0="${p0.tag}" / ${p0.connectCode || "no code"}, ` +
+      `p1="${p1.tag}" / ${p1.connectCode || "no code"})`,
+  );
+}
+
 function getGrabFrequency(player: PlayerSummary): number {
   const grab = player.moveUsage.find((m) => m.move === "grab");
   const totalMoves = player.moveUsage.reduce((s, m) => s + m.count, 0);

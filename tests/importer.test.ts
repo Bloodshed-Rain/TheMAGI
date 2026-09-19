@@ -54,7 +54,7 @@ describe("importer", () => {
 
   it("deduplicates hashes within one batch before the database transaction", () => {
     expect(IMPORTER_SOURCE).toContain("const seenHashes = new Set<string>()");
-    expect(IMPORTER_SOURCE).toContain("seenHashes.has(hash) || replayExists(hash)");
+    expect(IMPORTER_SOURCE).toContain("seenHashes.has(hash) || successfulReplayExists(hash)");
   });
 
   it("reports completed progress and counts only persisted games as imported", () => {
@@ -67,5 +67,22 @@ describe("importer", () => {
     expect(IMPORTER_SOURCE).toContain("if (toParse.length > 0)");
     expect(IMPORTER_SOURCE).toContain("sessionId !== null && importedCount === 0");
     expect(IMPORTER_SOURCE).toContain('DELETE FROM sessions WHERE id = ?');
+  });
+});
+
+
+describe("importer fail-closed analysis", () => {
+  it("persists failed analysis rows without inventing success-shaped stats helpers", () => {
+    expect(IMPORTER_SOURCE).toContain("insertFailedGameAnalysis");
+    expect(IMPORTER_SOURCE).toContain("requirePlayerIdx");
+    expect(IMPORTER_SOURCE).toContain("successfulReplayExists");
+    expect(IMPORTER_SOURCE).toContain("deleteFailedGameByHash");
+    expect(IMPORTER_SOURCE).toContain('analysisStatus: "failed"');
+    expect(IMPORTER_SOURCE).toContain('analysisStatus: "unavailable"');
+  });
+
+  it("does not count player-match failures as successful imports", () => {
+    expect(IMPORTER_SOURCE).toContain("persistedOk");
+    expect(IMPORTER_SOURCE).toContain("finalResults[idx]?.gameId !== undefined");
   });
 });

@@ -1,13 +1,16 @@
 /**
  * Worker thread for CPU-intensive slippi-js parsing.
  *
- * Runs processGame() off the main thread so the Electron UI stays responsive
- * during bulk imports. Listens for messages so the worker can be reused
+ * Runs analyzeGame() off the main thread so the Electron UI stays responsive
+ * during bulk imports. Listen for messages so the worker can be reused
  * across multiple parse jobs without respawning.
+ *
+ * Fail-closed: never posts success-shaped fake stats. Degenerate / thrown
+ * analysis is reported as status "failed" with a reason.
  */
 
 import { parentPort } from "worker_threads";
-import { processGame } from "./pipeline";
+import { analyzeGame, type AnalyzedGame } from "./pipeline";
 
 interface WorkerInput {
   filePath: string;
@@ -17,25 +20,28 @@ interface WorkerInput {
 interface WorkerOutput {
   success: boolean;
   filePath: string;
-  result?: ReturnType<typeof processGame>;
+  result?: AnalyzedGame;
   error?: string;
+  analysisStatus?: "ok" | "failed" | "unavailable";
 }
 
 if (parentPort) {
   parentPort.on("message", (input: WorkerInput) => {
-    try {
-      const result = processGame(input.filePath, input.gameNumber);
+    const outcome = analyzeGame(input.filePath, input.gameNumber);
+    if (outcome.status === "ok") {
       const output: WorkerOutput = {
         success: true,
         filePath: input.filePath,
-        result,
+        result: outcome.result,
+        analysisStatus: "ok",
       };
       parentPort!.postMessage(output);
-    } catch (err) {
+    } else {
       const output: WorkerOutput = {
         success: false,
         filePath: input.filePath,
-        error: err instanceof Error ? err.message : String(err),
+        error: outcome.reason,
+        analysisStatus: outcome.status,
       };
       parentPort!.postMessage(output);
     }
