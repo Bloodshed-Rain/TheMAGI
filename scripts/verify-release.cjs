@@ -17,6 +17,10 @@ assert.ok(read("docs/USER_GUIDE.md").includes(`source version **${version}**`), 
 assert.ok(read("site/index.html").includes(`feature tour reflects MAGI ${version}.`), "Website tour version differs");
 assert.ok(read("CHANGELOG.md").startsWith(`# Release notes\n\n## ${version} —`), "Current changelog entry differs");
 const tag = process.env.GITHUB_REF_TYPE === "tag" ? process.env.GITHUB_REF_NAME : null;
-if (tag) assert.equal(tag, `v${version}`, "Release tag differs from package.json");
+if (tag) {
+  assert.equal(tag, `v${version}`, "Release tag differs from package.json");
+  assert.ok(!read("CHANGELOG.md").startsWith(`# Release notes\n\n## ${version} — Unreleased`), "Release is still marked unreleased");
+  assert.ok(read(`docs/releases/${tag}.md`).startsWith(`# MAGI ${version}\n`), "Release notes are missing or have the wrong version");
+}
 
 console.log(`Source version metadata agrees on ${version}. Packaged artifacts have not been checked.`);

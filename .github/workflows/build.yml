@@ -103,6 +103,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify packaged versions and removed popup code
+        run: node scripts/verify-artifacts.cjs release
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -113,7 +116,7 @@ jobs:
             release/*.dmg
             release/*.blockmap
             release/latest*.yml
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   release:
     needs: build
@@ -121,6 +124,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -129,6 +135,10 @@ jobs:
 
       - name: List artifacts
         run: find artifacts -type f | head -20
+
+      - name: Generate download checksums
+        working-directory: artifacts
+        run: sha256sum *.exe *.dmg *.AppImage > SHA256SUMS.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -139,26 +149,9 @@ jobs:
             artifacts/**/*.dmg
             artifacts/**/*.blockmap
             artifacts/**/latest*.yml
+            artifacts/SHA256SUMS.txt
           draft: false
           generate_release_notes: false
-          body: |
-            ## MAGI ${{ github.ref_name }}
-
-            Local-first Melee replay analysis, Windows Play Mode, and optional AI coaching.
-
-            See the [changelog](https://github.com/Bloodshed-Rain/TheMAGI/blob/${{ github.ref_name }}/CHANGELOG.md) for changes in this version.
-
-            ### Downloads
-            - **Windows x64:** installer (`MAGI-Setup-*.exe`) or portable (`MAGI-*.exe`)
-            - **macOS:** `.dmg` disk image; choose the asset for your architecture
-            - **Linux x64:** `.AppImage` (make executable with `chmod +x`)
-
-            ### Getting Started
-            1. Open MAGI and follow the setup wizard for your player identity and replay folder. Existing users can reopen it from Settings.
-            2. Import Slippi replays, then explore Dashboard, Library, Characters, Sessions, Trends, and Performance Lab.
-            3. On Windows, configure Netplay Dolphin and your own Melee game image in Settings → Play Mode settings. Game Theater uses Playback Dolphin separately.
-            4. For optional coaching, choose a provider and model in Settings → AI. Parsing, stats, notes, and game hosting do not require AI.
-
-            Native Play Mode hosting and embedded replay playback are Windows-only. macOS and Linux use external Dolphin playback. MAGI includes neither Slippi Dolphin nor a Melee game image. Hosted AI availability and usage limits depend on the selected provider.
+          body_path: docs/releases/${{ github.ref_name }}.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

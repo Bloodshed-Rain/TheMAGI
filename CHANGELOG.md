@@ -1,6 +1,6 @@
 # Release notes
 
-## 1.10.1 — Unreleased
+## 1.10.1 — 2026-10-30
 
 - Add a ChatGPT plan connection for optional coaching: browser sign-in and consent, account-provided models, account switching, refresh, disconnect, and usage management. Keep connection tokens in OS-encrypted main-process storage. Account eligibility and usage limits apply; live provider responses have not been verified in this documentation refresh.
 - Add Oracle and recent-form panel options alongside live stats, opponent/set tracking, Cornerman, practice focus, and notes in Play Mode.
@@ -8,7 +8,7 @@
 - Preserve queued Play Mode preference saves across route changes and write configuration through a flushed temporary file before replacement.
 - Refresh the README, user/development documentation, release instructions, and website feature tour to describe the current app, platform requirements, optional AI, and replay-clip limits.
 
-This entry describes the current source candidate, not a published release. See the preceding entries for the setup wizard, character action clips, Fullscreen panels, integrated Cornerman, and technical-accuracy changes since 1.8.0.
+The downloadable release also includes the setup wizard, character action clips, Fullscreen panels, integrated Cornerman, and technical-accuracy changes described in 1.9.0 and 1.10.0 below. See [1.10.1 release details](docs/releases/v1.10.1.md) for installation and upgrade notes.
 
 ## 1.10.0 — 2026-10-29
 
