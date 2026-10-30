@@ -11,6 +11,7 @@
 // a module with `koffi.proto("Name", ...)` then throws "Duplicate type name").
 
 import koffi from "koffi";
+import { selectDolphinGameSurface, type DolphinTopWindow, type DolphinGameSurface } from "../dolphinWindowSelection";
 
 // ── Win32 constants ───────────────────────────────────────────────────
 
@@ -65,6 +66,10 @@ interface Bindings {
   GetWindowTextW: (hwnd: bigint, buf: Uint16Array, max: number) => number;
   GetClassNameW: (hwnd: bigint, buf: Uint16Array, max: number) => number;
   GetParent: (hwnd: bigint) => unknown;
+  GetForegroundWindow: () => unknown;
+  GetAncestor: (hwnd: bigint, flags: number) => unknown;
+  GetMenu: (hwnd: bigint) => unknown;
+  SetMenu: (hwnd: bigint, menu: null) => boolean;
   GetWindowRect: (hwnd: bigint, rect: RectShape) => boolean;
   SetParent: (child: bigint, parent: bigint | null) => bigint;
   SetWindowLongPtrW: (hwnd: bigint, idx: number, value: number | bigint) => bigint;
@@ -90,6 +95,8 @@ function getBindings(): Bindings {
   if (cachedBindings) return cachedBindings;
 
   const user32 = koffi.load("user32.dll");
+  const GetMenu = user32.func("__stdcall", "GetMenu", "void *", ["void *"]);
+  const SetMenu = user32.func("__stdcall", "SetMenu", "bool", ["void *", "void *"]);
 
   // Anonymous types only — no global names to collide with on retry.
   const RECT = koffi.struct({
@@ -124,6 +131,8 @@ function getBindings(): Bindings {
     "int",
   ]);
   const GetParent = user32.func("__stdcall", "GetParent", "void *", ["void *"]);
+  const GetForegroundWindow = user32.func("__stdcall", "GetForegroundWindow", "void *", []);
+  const GetAncestor = user32.func("__stdcall", "GetAncestor", "void *", ["void *", "uint"]);
   const GetWindowRect = user32.func("__stdcall", "GetWindowRect", "bool", ["void *", koffi.out(koffi.pointer(RECT))]);
   const SetParent = user32.func("__stdcall", "SetParent", "void *", ["void *", "void *"]);
   const SetWindowLongPtrW = user32.func("__stdcall", "SetWindowLongPtrW", "intptr", ["void *", "int", "intptr"]);
@@ -151,6 +160,10 @@ function getBindings(): Bindings {
     GetWindowTextW: GetWindowTextW as Bindings["GetWindowTextW"],
     GetClassNameW: GetClassNameW as Bindings["GetClassNameW"],
     GetParent: GetParent as Bindings["GetParent"],
+    GetForegroundWindow: GetForegroundWindow as Bindings["GetForegroundWindow"],
+    GetAncestor: GetAncestor as Bindings["GetAncestor"],
+    GetMenu: GetMenu as Bindings["GetMenu"],
+    SetMenu: SetMenu as Bindings["SetMenu"],
     GetWindowRect: GetWindowRect as Bindings["GetWindowRect"],
     SetParent: SetParent as Bindings["SetParent"],
     SetWindowLongPtrW: SetWindowLongPtrW as Bindings["SetWindowLongPtrW"],
@@ -165,6 +178,13 @@ function getBindings(): Bindings {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
+
+/** Owned Dolphin windows count as MAGI foreground even while Electron is blurred. */
+export function isHostedGameForeground(ownerHwnd: bigint): boolean {
+  const b = getBindings();
+  const foreground = hwndAddr(b.GetForegroundWindow());
+  return foreground !== 0n && (foreground === ownerHwnd || hwndAddr(b.GetAncestor(foreground, 3)) === ownerHwnd);
+}
 
 /** Convert an Electron BrowserWindow.getNativeWindowHandle() Buffer to a BigInt HWND. */
 export function bufferToHwnd(buf: Buffer): bigint {
@@ -264,6 +284,8 @@ function getPathFromAncestorToDescendant(ancestor: bigint, descendant: bigint): 
   return [descendant];
 }
 
+const pendingRenderFits = new Map<bigint, ReturnType<typeof setTimeout>>();
+
 function fitRenderPathToMainClient(mainHwnd: bigint, renderHwnd: bigint, frameChanged: boolean = false): void {
   const b = getBindings();
   const rect: RectShape = { left: 0, top: 0, right: 0, bottom: 0 };
@@ -278,6 +300,24 @@ function fitRenderPathToMainClient(mainHwnd: bigint, renderHwnd: bigint, frameCh
   }
 }
 
+function settleRenderLayout(mainHwnd: bigint, renderHwnd: bigint): void {
+  const pending = pendingRenderFits.get(mainHwnd);
+  if (pending) clearTimeout(pending);
+  // wx processes its own resize after SetWindowPos and can restore toolbar
+  // margins. Fit again after that layout, without sending another shell resize.
+  const timer = setTimeout(() => {
+    pendingRenderFits.delete(mainHwnd);
+    try {
+      if (getBindings().IsWindowVisible(mainHwnd) && getBindings().IsWindowVisible(renderHwnd))
+        fitRenderPathToMainClient(mainHwnd, renderHwnd);
+    } catch (error) {
+      console.warn("[play] Delayed render fit failed:", error);
+    }
+  }, 100);
+  timer.unref();
+  pendingRenderFits.set(mainHwnd, timer);
+}
+
 interface DolphinWindowInfo {
   hwnd: bigint;
   width: number;
@@ -286,7 +326,7 @@ interface DolphinWindowInfo {
   title: string;
 }
 
-function inspectWindow(hwnd: bigint): DolphinWindowInfo | null {
+function inspectWindow(hwnd: bigint, minimumSize = 50): DolphinWindowInfo | null {
   const b = getBindings();
   if (!b.IsWindowVisible(hwnd)) return null;
 
@@ -294,7 +334,7 @@ function inspectWindow(hwnd: bigint): DolphinWindowInfo | null {
   if (!b.GetWindowRect(hwnd, rect)) return null;
   const width = rect.right - rect.left;
   const height = rect.bottom - rect.top;
-  if (width < 50 || height < 50) return null;
+  if (width < minimumSize || height < minimumSize) return null;
 
   const titleBuf = new Uint16Array(256);
   b.GetWindowTextW(hwnd, titleBuf, titleBuf.length);
@@ -314,6 +354,46 @@ export interface DolphinWindows {
   renderHwnd: bigint;
   /** True when render is a separate child HWND inside main. */
   renderIsChild: boolean;
+}
+
+/** Read-only process-specific inventory, also used to diagnose fork-specific
+ * window classes without touching unrelated Dolphin processes. */
+export function inspectDolphinWindows(pid: number): DolphinTopWindow[] {
+  const b = getBindings();
+  return findWindowsByPid(pid)
+    .map((hwnd) => {
+      const info = inspectWindow(hwnd);
+      if (!info) return null;
+      return {
+        ...info,
+        hasMenu: hwndAddr(b.GetMenu(hwnd)) !== 0n,
+        children: findChildWindows(hwnd)
+          .map((child) => inspectWindow(child, 1))
+          .filter((child): child is DolphinWindowInfo => child !== null),
+      };
+    })
+    .filter((window): window is DolphinTopWindow => window !== null);
+}
+
+export async function findDolphinGameWindows(
+  pid: number,
+  timeoutMs = 30000,
+  signal?: AbortSignal,
+): Promise<DolphinGameSurface> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    signal?.throwIfAborted();
+    const surface = selectDolphinGameSurface(inspectDolphinWindows(pid), Date.now() - started >= 1000);
+    if (surface) return surface;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  throw new Error("Melee’s render window did not appear. MAGI will not host Dolphin’s game-library window.");
+}
+
+/** Raise above the owner only when MAGI itself is foregrounded; this is not
+ * an always-on-top window and must not cover another application after Alt-Tab. */
+export function raiseHostedGame(hwnd: bigint): void {
+  getBindings().SetWindowPos(hwnd, null, 0, 0, 0, 0, 0x0001 | 0x0002 | SWP_NOACTIVATE | SWP_SHOWWINDOW);
 }
 
 /**
@@ -510,6 +590,7 @@ export function floatOver(
   screenY: number,
   w: number,
   h: number,
+  activate = true,
 ): void {
   const b = getBindings();
 
@@ -543,7 +624,7 @@ export function floatOver(
     Math.round(screenY),
     Math.round(w),
     Math.round(h),
-    SWP_NOZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW,
+    SWP_NOZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW | (activate ? 0 : SWP_NOACTIVATE),
   );
 }
 
@@ -561,6 +642,11 @@ export function setFloatBounds(hwnd: bigint, screenX: number, screenY: number, w
   );
 }
 
+/** Hide a hosted game without closing it, or show it without stealing focus. */
+export function setHostedGameVisible(hwnd: bigint, visible: boolean): void {
+  getBindings().ShowWindow(hwnd, visible ? 4 /* SW_SHOWNOACTIVATE */ : SW_HIDE);
+}
+
 /**
  * Hide every visible child of `mainHwnd` except `renderHwnd`, then resize
  * the render panel to fill main's full client area. Result: only the
@@ -572,6 +658,7 @@ export function setFloatBounds(hwnd: bigint, screenX: number, screenY: number, w
  */
 export function coverShellWithRender(mainHwnd: bigint, renderHwnd: bigint): void {
   const b = getBindings();
+  b.SetMenu(mainHwnd, null);
   const renderPath = getPathFromAncestorToDescendant(mainHwnd, renderHwnd);
   const keepVisible = new Set(renderPath);
 
@@ -585,6 +672,7 @@ export function coverShellWithRender(mainHwnd: bigint, renderHwnd: bigint): void
   }
 
   fitRenderPathToMainClient(mainHwnd, renderHwnd, true);
+  settleRenderLayout(mainHwnd, renderHwnd);
 }
 
 /**
@@ -594,6 +682,7 @@ export function coverShellWithRender(mainHwnd: bigint, renderHwnd: bigint): void
  */
 export function refitRender(mainHwnd: bigint, renderHwnd: bigint): void {
   fitRenderPathToMainClient(mainHwnd, renderHwnd);
+  settleRenderLayout(mainHwnd, renderHwnd);
 }
 
 /** True if `candidate` is a descendant of `ancestor` in the window tree. */

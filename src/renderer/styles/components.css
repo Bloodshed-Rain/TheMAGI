@@ -48,7 +48,7 @@
 
 /* ── Cards ─────────────────────────────────────────────────────── */
 .card {
-  background: rgba(30, 41, 59, 0.6); /* Translucent surface-1 */
+  background: var(--surface-1);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
@@ -74,6 +74,10 @@
 .card.clippi-card:hover {
   transform: none;
 }
+body .card.play-panel:hover,
+body .card.play-sidebar-editor:hover {
+  transform: none;
+}
 .card-title {
   font-size: 9px;
   font-weight: 600;
@@ -93,15 +97,15 @@
 .cornerman-live-alert {
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-left: 3px solid var(--accent);
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.54);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
   padding: 10px 12px;
 }
 
 .cornerman-live-alert-high {
-  border-color: rgba(245, 158, 11, 0.38);
-  border-left-color: #f59e0b;
-  background: rgba(51, 36, 14, 0.44);
+  border-color: rgba(var(--yellow-rgb), 0.38);
+  border-left-color: var(--caution);
+  background: color-mix(in srgb, var(--caution) 10%, var(--surface-1));
 }
 
 .cornerman-live-alert-head {
@@ -141,7 +145,7 @@
 
 .cornerman-live-alerts-compact .cornerman-live-alert {
   padding: 8px 10px;
-  background: rgba(15, 23, 42, 0.64);
+  background: var(--surface-1);
 }
 
 .cornerman-live-alerts-compact .cornerman-live-alert-title,
@@ -188,7 +192,7 @@
 .cornerman-live-stats-table td {
   text-align: right;
   padding: 5px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border);
 }
 .cornerman-live-stats-table th {
   font-family: var(--font-mono);
@@ -222,7 +226,7 @@
   color: var(--green);
 }
 .cornerman-live-stats-table td.cls-delta.is-worse {
-  color: #f59e0b;
+  color: var(--caution);
 }
 .record-win {
   color: var(--green);
@@ -233,8 +237,13 @@
 
 /* ── Buttons — Sharp, monospace, uppercase ──────────────────────── */
 .btn {
-  padding: 7px 14px;
-  border-radius: var(--radius-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: var(--control-padding-y) 14px;
+  border-radius: var(--control-radius);
   border: 1px solid var(--border);
   background: var(--surface-1);
   color: var(--text);
@@ -321,6 +330,7 @@
   padding: 4px 6px;
   min-width: unset;
   line-height: 1;
+  min-height: 28px;
 }
 
 /* Native form controls track the theme accent (was OS-default, off-palette in crt/amber/light). */

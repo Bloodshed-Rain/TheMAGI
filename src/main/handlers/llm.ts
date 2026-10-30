@@ -16,6 +16,7 @@ import { callLLM, MODELS, getActiveModelId, getModelLabel, type ProviderId } fro
 import { llmQueue } from "../../llmQueue.js";
 import { SYSTEM_PROMPT_SESSION, SYSTEM_PROMPT_PRACTICE, SYSTEM_PROMPT_ORACLE } from "../../pipeline/prompt.js";
 import type { SafeHandleFn } from "../ipc.js";
+import { getChatGPTClient } from "../chatgpt";
 import { resolveLLMConfig } from "./analysis.js";
 
 interface FetchedModel {
@@ -142,6 +143,15 @@ export function registerLlmHandlers(safeHandle: SafeHandleFn): void {
 
     const fetches: Promise<FetchedModel[]>[] = [];
     const providers: ProviderId[] = [];
+    if (config.activeProvider === "chatgpt") {
+      fetches.push(
+        getChatGPTClient()
+          .listModels()
+          .then((models) => models.map((model) => ({ ...model, provider: "chatgpt" as const })))
+          .catch(() => []),
+      );
+      providers.push("chatgpt");
+    }
 
     if (openaiKey) {
       fetches.push(fetchOpenAIModels(openaiKey));
@@ -163,6 +173,7 @@ export function registerLlmHandlers(safeHandle: SafeHandleFn): void {
     const results = await Promise.all(fetches);
     const byProvider: Record<string, FetchedModel[]> = {
       openai: [],
+      chatgpt: [],
       azure: [],
       openrouter: [],
       anthropic: [],

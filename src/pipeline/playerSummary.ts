@@ -1,3 +1,4 @@
+import { isKenCombo } from "../kenCombo";
 import {
   Frames,
   State,
@@ -44,8 +45,6 @@ import { PEACH_CHARACTER_ID, collectPeachTurnipPullStats } from "../peachItems.j
 // ── Ken combo detection (Marth only) ─────────────────────────────────
 
 const MARTH_CHARACTER_ID = 9;
-const FAIR_MOVE_ID = 14;
-const DAIR_MOVE_ID = 17;
 
 export function detectKenCombos(
   characterId: number | undefined,
@@ -56,14 +55,7 @@ export function detectKenCombos(
   const combos: KenComboStats["combos"] = [];
 
   for (const conv of myConversions) {
-    if (conv.moves.length < 2) continue;
-
-    const moveIds = conv.moves.map((m) => m.moveId);
-    const hasFair = moveIds.includes(FAIR_MOVE_ID);
-    const lastMoveId = moveIds[moveIds.length - 1];
-
-    // Ken combo: at least one fair, ending with dair
-    if (hasFair && lastMoveId === DAIR_MOVE_ID) {
+    if (isKenCombo(conv.moves, conv.didKill)) {
       const moveNames = conv.moves.map((m) => moveIdToName[m.moveId] ?? getMoveName(m.moveId));
       const totalDamage = Math.round((conv.endPercent ?? conv.currentPercent) - conv.startPercent);
 
@@ -71,7 +63,6 @@ export function detectKenCombos(
         moves: moveNames,
         totalDamage,
         startPercent: Math.round(conv.startPercent),
-        endedInKill: conv.didKill,
       });
     }
   }
@@ -80,7 +71,6 @@ export function detectKenCombos(
 
   return {
     total: combos.length,
-    kills: combos.filter((c) => c.endedInKill).length,
     combos,
   };
 }

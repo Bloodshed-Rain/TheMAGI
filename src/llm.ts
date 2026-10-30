@@ -1,3 +1,4 @@
+import { withMeleeAccuracy } from "./meleeAccuracy";
 /**
  * Multi-LLM provider abstraction.
  *
@@ -17,6 +18,7 @@
 
 export type { ProviderId } from "./llmProviders";
 import { PROVIDER_BY_ID, type ProviderId } from "./llmProviders";
+import { getChatGPTClient } from "./main/chatgpt";
 
 export interface ModelOption {
   id: string; // model identifier sent to the API
@@ -199,6 +201,7 @@ export class NoModelSelectedError extends Error {
 // Provider failures propagate to the caller — never silently reroute the
 // user's gameplay data to a different service than the one they picked.
 export async function callLLM(opts: CallLLMOptions): Promise<string> {
+  opts = { ...opts, systemPrompt: withMeleeAccuracy(opts.systemPrompt) };
   const modelId = opts.modelOverride ?? opts.config.modelId;
 
   if (!modelId) {
@@ -212,6 +215,9 @@ export async function callLLM(opts: CallLLMOptions): Promise<string> {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     let text: string;
     switch (provider) {
+      case "chatgpt":
+        text = await getChatGPTClient().analyze(opts.systemPrompt, opts.userPrompt, modelId);
+        break;
       case "openrouter":
         text = await callOpenRouter(opts.systemPrompt, opts.userPrompt, modelId, opts.config);
         break;
@@ -256,6 +262,7 @@ export type StreamChunkCallback = (chunk: string) => void;
  * Returns the full accumulated text when complete.
  */
 export async function callLLMStream(opts: CallLLMOptions, onChunk: StreamChunkCallback): Promise<string> {
+  opts = { ...opts, systemPrompt: withMeleeAccuracy(opts.systemPrompt) };
   const modelId = opts.modelOverride ?? opts.config.modelId;
 
   if (!modelId) {
@@ -267,6 +274,8 @@ export async function callLLMStream(opts: CallLLMOptions, onChunk: StreamChunkCa
     : (opts.config.activeProvider ?? getModelProvider(modelId));
 
   switch (provider) {
+    case "chatgpt":
+      return getChatGPTClient().analyze(opts.systemPrompt, opts.userPrompt, modelId, onChunk);
     case "gemini":
       return await callGeminiStream(opts.systemPrompt, opts.userPrompt, modelId, opts.config, onChunk);
     case "openrouter":

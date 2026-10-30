@@ -41,12 +41,12 @@ export function IdentityCard({ character, color, glowColor }: CharacterModulePro
   return (
     <Card tone="chrome-plate" className="identity-card" style={accentVars(color, glowColor)}>
       <div className="identity-card-head">
-        <div className="identity-card-eyebrow">AI Scouting Report</div>
+        <div className="identity-card-eyebrow">AI coaching summary</div>
         <button
           type="button"
           className="identity-card-regen"
-          aria-label="Regenerate"
-          title="Regenerate"
+          aria-label="Refresh coaching summary"
+          title="Refresh coaching summary"
           onClick={() => regenerate.mutate()}
           disabled={regenerate.isPending || isLoading}
         >
@@ -66,7 +66,7 @@ export function IdentityCard({ character, color, glowColor }: CharacterModulePro
 
       {insufficient && (
         <p className="identity-card-insufficient">
-          Play at least {EVENT_SAMPLE_GUARDS.blurbGamesMin} games with {character} to unlock the scouting report (
+          Play at least {EVENT_SAMPLE_GUARDS.blurbGamesMin} games with {character} to get a coaching summary (
           {insufficient.gamesPlayed} played).
         </p>
       )}

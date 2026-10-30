@@ -112,7 +112,12 @@ export function useEmbeddedReplaySession({
         setStatus("opening");
         setErrorMessage(null);
         setIsPaused(false);
-        const result = await window.clippi.embedReplayOpen(replayPath, getStageBounds(stage), initialFrame);
+        const result = await window.clippi.embedReplayOpen(
+          replayPath,
+          getStageBounds(stage),
+          initialFrame,
+          request?.endFrame,
+        );
 
         if (cancelled) {
           if (result.sessionId) await window.clippi.embedReplayClose(result.sessionId).catch(() => {});
@@ -122,7 +127,7 @@ export function useEmbeddedReplaySession({
         if (!result.embedded) {
           // Non-Windows (and any OS without embed): honest external Playback path
           try {
-            await window.clippi.openInDolphinAtFrame(replayPath, initialFrame);
+            await window.clippi.openInDolphinAtFrame(replayPath, initialFrame, request?.endFrame);
             if (cancelled) return;
             setStatus("fallback");
             setErrorMessage(null);
@@ -222,7 +227,7 @@ export function useEmbeddedReplaySession({
         if (!path) return false;
         setErrorMessage(null);
         try {
-          await window.clippi.openInDolphinAtFrame(path, nextFrame);
+          await window.clippi.openInDolphinAtFrame(path, nextFrame, endFrame);
           return true;
         } catch (error) {
           setStatus("error");
@@ -266,7 +271,7 @@ export function useEmbeddedReplaySession({
     if (!sessionId) {
       if (enabled && replayPath && status === "fallback") {
         appliedRequestIdRef.current = seekRequest.id;
-        void seek(seekRequest.frame);
+        void seek(seekRequest.frame, seekRequest.endFrame);
         return;
       }
       if (enabled && replayPath && (status === "ended" || status === "error")) {
@@ -278,7 +283,7 @@ export function useEmbeddedReplaySession({
       return;
     }
     appliedRequestIdRef.current = seekRequest.id;
-    void seek(seekRequest.frame);
+    void seek(seekRequest.frame, seekRequest.endFrame);
   }, [enabled, replayPath, seek, seekRequest, sessionId, setFrame, status]);
 
   const togglePause = useCallback(async () => {

@@ -1,3 +1,4 @@
+import { isKenCombo } from "./kenCombo";
 import { State, type ConversionType, type FramesType, type ItemUpdateType } from "@slippi/slippi-js/node";
 
 import { frameToTimestamp, getMoveName, isOffstage, moveIdToName, SHIELD_BREAK_FLY } from "./pipeline/helpers";
@@ -258,13 +259,13 @@ export function detectLiveConversionEvents({
 
     const candidates: CandidateEvent[] = [];
 
-    if (actor.character === "Marth" && last === MOVE_DAIR && conversion.moves.some((m) => m.moveId === MOVE_FAIR)) {
+    if (actor.character === "Marth" && isKenCombo(conversion.moves, conversion.didKill)) {
       addCandidate({
         type: "ken-combo",
-        title: conversion.didKill ? "Ken Combo Kill" : "Ken Combo",
+        title: "Ken Combo",
         body: `${actorName} hit ${victimName}: ${describeSequence(names)}, ${damage}% from ${startPercent}%.`,
-        importance: conversion.didKill ? "high" : "info",
-        priority: conversion.didKill ? 120 : 86,
+        importance: "high",
+        priority: 120,
       });
     }
 
@@ -283,7 +284,7 @@ export function detectLiveConversionEvents({
       if (shineCount >= 2 || endedWithUpsmash) {
         addCandidate({
           type: "waveshine",
-          title: endedWithUpsmash ? `Waveshine Upsmash${killed}` : `Waveshine Combo${killed}`,
+          title: endedWithUpsmash ? `Shine → Up Smash${killed}` : `Multiple Shine Hits${killed}`,
           body: `${actorName} hit ${victimName}: ${shineCount} shine${shineCount === 1 ? "" : "s"}, ${damage}% from ${startPercent}%.`,
           importance: conversion.didKill || endedWithUpsmash ? "high" : "info",
           priority: endedWithUpsmash || conversion.didKill ? 112 : 78,

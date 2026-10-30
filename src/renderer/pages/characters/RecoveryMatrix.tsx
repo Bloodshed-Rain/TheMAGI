@@ -27,10 +27,10 @@ export function RecoveryMatrix({ character, color, glowColor }: CharacterModuleP
   ];
 
   return (
-    <Card title="Recovery & Edgeguards" className="recovery-matrix" style={accentVars(color, glowColor)}>
+    <Card title="Getting back to stage" className="recovery-matrix" style={accentVars(color, glowColor)}>
       {ownSpans > 0 && (
         <div className="recovery-matrix-section">
-          <div className="recovery-matrix-section-label">Your Recoveries</div>
+          <div className="recovery-matrix-section-label">Your attempts to return</div>
           {routesGuarded ? (
             <>
               <div className="recovery-matrix-routes">
@@ -44,22 +44,23 @@ export function RecoveryMatrix({ character, color, glowColor }: CharacterModuleP
                       />
                     </span>
                     <span className="recovery-matrix-route-ratio">{ratio(r.total, ownSpans)}</span>
-                    <span className="recovery-matrix-died">died {pct(r.died, r.total)}</span>
+                    <span className="recovery-matrix-died">lost a stock {pct(r.died, r.total)}</span>
                   </div>
                 ))}
               </div>
               <div className="recovery-matrix-stat-line">
-                Early double-jump burn: <b className="recovery-matrix-stat-value">{ratio(djEarly.total, ownSpans)}</b>
+                Used your double jump early:{" "}
+                <b className="recovery-matrix-stat-value">{ratio(djEarly.total, ownSpans)}</b>
                 {djEarly.total >= DJ_EARLY_DETAIL_MIN && (
                   <span className={djDiedRate > 0.5 ? "recovery-matrix-died" : "recovery-matrix-stat-detail"}>
                     {" "}
-                    — died on {pct(djEarly.died, djEarly.total)} of those
+                    — lost a stock on {pct(djEarly.died, djEarly.total)} of those
                   </span>
                 )}
               </div>
               {contested.total > 0 && (
                 <div className="recovery-matrix-stat-line">
-                  When contested: died{" "}
+                  When the opponent challenged you: lost a stock{" "}
                   <b className={contestedDiedRate > 0.5 ? "recovery-matrix-died" : "recovery-matrix-stat-value"}>
                     {pct(contested.died, contested.total)}
                   </b>{" "}
@@ -77,7 +78,7 @@ export function RecoveryMatrix({ character, color, glowColor }: CharacterModuleP
 
       {opportunities > 0 && (
         <div className="recovery-matrix-section">
-          <div className="recovery-matrix-section-label">Your Edgeguards</div>
+          <div className="recovery-matrix-section-label">Stopping the opponent returning</div>
           <div className="recovery-matrix-opportunities">{opportunities} opponent recoveries</div>
           <div className="recovery-matrix-depth-row">
             {depthCells.map((cell) => {
@@ -91,19 +92,19 @@ export function RecoveryMatrix({ character, color, glowColor }: CharacterModuleP
                 >
                   <div className="recovery-matrix-depth-label">{prettyLabel(cell.depth)}</div>
                   <div className="recovery-matrix-depth-rate">{dimmed ? "—" : pct(cell.kills, cell.total)}</div>
-                  <div className="recovery-matrix-depth-n">n={cell.total}</div>
+                  <div className="recovery-matrix-depth-n">{cell.total} attempts</div>
                 </div>
               );
             })}
           </div>
           {invincibleLedgeSpans > 0 && (
             <div className="recovery-matrix-stat-line">
-              Held ledge invincibility on{" "}
+              Held the ledge while invincible on{" "}
               <b className="recovery-matrix-stat-value">{ratio(invincibleLedgeSpans, opportunities)}</b>
             </div>
           )}
           <div className="recovery-matrix-footer">
-            Descriptive rates, not causes — deeper commitment correlates with kills on YOUR data.
+            These rates describe your games. Going farther offstage does not necessarily improve your chances.
           </div>
         </div>
       )}

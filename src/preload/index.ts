@@ -2,9 +2,54 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { CornermanLiveEvent } from "../cornermanLiveEvents";
 import type { CornermanLiveSnapshot } from "../cornermanLiveStats";
 import type { ProviderSpeechEvent, ProviderSpeechRequest } from "../providerVoice";
+import type { PlayBounds, PlayStatus, PlayCoachingSetup } from "../playMode";
+import type { ChatGPTStatus, ChatGPTModel } from "../chatgptTypes";
+import type { PlayCursor } from "../playEdgePeek";
 
 const api = {
+  onCornermanSettingsChanged: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("cornerman:settings-changed", listener);
+    return () => ipcRenderer.removeListener("cornerman:settings-changed", listener);
+  },
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke("app:version"),
+  chatgptStatus: (): Promise<ChatGPTStatus> => ipcRenderer.invoke("chatgpt:status"),
+  chatgptConnect: (options?: {
+    profileId?: string;
+    newProfile?: boolean;
+    requestConsent?: boolean;
+  }): Promise<ChatGPTStatus> => ipcRenderer.invoke("chatgpt:connect", options),
+  chatgptCancel: (): Promise<boolean> => ipcRenderer.invoke("chatgpt:cancel"),
+  chatgptSelect: (id: string): Promise<ChatGPTStatus> => ipcRenderer.invoke("chatgpt:select", id),
+  chatgptDisconnect: (): Promise<{ status: ChatGPTStatus; remoteRevoked: boolean }> =>
+    ipcRenderer.invoke("chatgpt:disconnect"),
+  chatgptModels: (): Promise<ChatGPTModel[]> => ipcRenderer.invoke("chatgpt:models"),
+  chatgptUsage: (): Promise<void> => ipcRenderer.invoke("chatgpt:usage"),
+  playCoachingSetup: (): Promise<PlayCoachingSetup> => ipcRenderer.invoke("play:coachingSetup"),
+  playPrepareCoaching: (): Promise<PlayCoachingSetup> => ipcRenderer.invoke("play:prepareCoaching"),
+  playStatus: (): Promise<PlayStatus> => ipcRenderer.invoke("play:status"),
+  playStart: (bounds: PlayBounds): Promise<PlayStatus> => ipcRenderer.invoke("play:start", bounds),
+  playShow: (bounds: PlayBounds): Promise<PlayStatus> => ipcRenderer.invoke("play:show", bounds),
+  playHide: (): Promise<PlayStatus> => ipcRenderer.invoke("play:hide"),
+  playStop: (): Promise<PlayStatus> => ipcRenderer.invoke("play:stop"),
+  playGameOnly: (active?: boolean): Promise<boolean> => ipcRenderer.invoke("play:gameOnly", active),
+  onPlayCursor: (callback: (cursor: PlayCursor | null) => void) => {
+    const listener = (_event: unknown, cursor: PlayCursor | null) => callback(cursor);
+    ipcRenderer.on("play:cursor", listener);
+    return () => ipcRenderer.removeListener("play:cursor", listener);
+  },
+  onPlayGameOnly: (callback: (active: boolean) => void) => {
+    const listener = (_event: unknown, active: boolean) => callback(active);
+    ipcRenderer.on("play:gameOnly", listener);
+    return () => ipcRenderer.removeListener("play:gameOnly", listener);
+  },
+  onPlayStatus: (callback: (status: PlayStatus) => void) => {
+    const listener = (_event: unknown, status: PlayStatus) => callback(status);
+    ipcRenderer.on("play:status", listener);
+    return () => ipcRenderer.removeListener("play:status", listener);
+  },
   // Config
+  setupStatus: () => ipcRenderer.invoke("setup:status"),
   loadConfig: () => ipcRenderer.invoke("config:load"),
   saveConfig: (config: unknown) => ipcRenderer.invoke("config:save", config),
 
@@ -66,6 +111,8 @@ const api = {
   getCharacterList: () => ipcRenderer.invoke("stats:characterList"),
   getCharacterMatchups: (character: string) => ipcRenderer.invoke("stats:characterMatchups", character),
   getCharacterStageStats: (character: string) => ipcRenderer.invoke("stats:characterStages", character),
+  getCharacterTechniqueExamples: (character: string, key: string) =>
+    ipcRenderer.invoke("stats:characterTechniqueExamples", character, key),
   getCharacterSignatureStats: (character: string) => ipcRenderer.invoke("stats:characterSignature", character),
   getCharacterGameStats: (character: string) => ipcRenderer.invoke("stats:characterGameStats", character),
   getCharacterEventProfile: (character: string) => ipcRenderer.invoke("stats:characterEventProfile", character),
@@ -93,8 +140,8 @@ const api = {
 
   // Dolphin playback
   openInDolphin: (replayPath: string) => ipcRenderer.invoke("replay:openInDolphin", replayPath),
-  openInDolphinAtFrame: (replayPath: string, frame: number) =>
-    ipcRenderer.invoke("replay:openInDolphinAtFrame", replayPath, frame),
+  openInDolphinAtFrame: (replayPath: string, frame: number, endFrame?: number) =>
+    ipcRenderer.invoke("replay:openInDolphinAtFrame", replayPath, frame, endFrame),
 
   // Embedded Dolphin playback (Windows only)
   embedReplayOpen: (
@@ -137,12 +184,6 @@ const api = {
     ipcRenderer.invoke("cornerman:start", replayFolder, targetPlayer),
   cornermanStop: () => ipcRenderer.invoke("cornerman:stop"),
   cornermanStatus: () => ipcRenderer.invoke("cornerman:status"),
-  cornermanOverlayShow: () => ipcRenderer.invoke("cornerman:overlay-show"),
-  cornermanOverlayDismiss: () => ipcRenderer.invoke("cornerman:overlay-dismiss"),
-  cornermanOverlayResize: (handle: string, deltaX: number, deltaY: number) =>
-    ipcRenderer.invoke("cornerman:overlay-resize", handle, deltaX, deltaY),
-  cornermanOverlayResizeEnd: () => ipcRenderer.invoke("cornerman:overlay-resize-end"),
-  cornermanOverlayReady: () => ipcRenderer.invoke("cornerman:overlay-ready"),
   cornermanLiveStatsLatest: () => ipcRenderer.invoke("cornerman:live-stats-latest"),
 
   // Queue status

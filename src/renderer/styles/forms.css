@@ -1,0 +1,68 @@
+/* Shared controls stay available on cold Settings loads and in every Play layout. */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.form-field input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+.form-field select,
+.form-field textarea,
+.settings-field input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+.model-select,
+.library-filter-input,
+.sessions-search-input,
+.oracle-input,
+.training-log-form :is(input, select, textarea) {
+  min-width: 0;
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--control-padding-y) var(--space-3);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--control-radius);
+  background: var(--surface-1);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.form-field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+:is(.form-field, .settings-field, .training-log-form) :is(input, select, textarea):focus-visible,
+:is(.model-select, .library-filter-input, .sessions-search-input, .oracle-input):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+:where(input, textarea)::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+:where(input, select, textarea):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.helper-text {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.error-text {
+  color: var(--loss);
+  overflow-wrap: anywhere;
+}
+.chatgpt-connection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.chatgpt-connection p {
+  margin: 0;
+}

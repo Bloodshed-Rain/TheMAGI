@@ -31,8 +31,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck main process
-        run: npx tsc -p tsconfig.main.json --noEmit
+      - name: Typecheck main process and renderer
+        run: npm run typecheck
+
+      - name: Check documentation and source versions
+        run: |
+          npm run verify:docs
+          npm run verify:release
 
       - name: Run tests
         run: npm test
@@ -40,7 +45,11 @@ jobs:
       - name: Run lint
         run: npm run lint
 
+      - name: Check formatting
+        run: npm run format:check
+
   build:
+    needs: ci
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     strategy:
       matrix:
@@ -135,17 +144,21 @@ jobs:
           body: |
             ## MAGI ${{ github.ref_name }}
 
-            AI-powered Melee coaching from your Slippi replays.
+            Local-first Melee replay analysis, Windows Play Mode, and optional AI coaching.
+
+            See the [changelog](https://github.com/Bloodshed-Rain/TheMAGI/blob/${{ github.ref_name }}/CHANGELOG.md) for changes in this version.
 
             ### Downloads
-            - **Windows:** `.exe` installer
-            - **macOS:** `.dmg` disk image
-            - **Linux:** `.AppImage` (make executable with `chmod +x`)
+            - **Windows x64:** installer (`MAGI-Setup-*.exe`) or portable (`MAGI-*.exe`)
+            - **macOS:** `.dmg` disk image; choose the asset for your architecture
+            - **Linux x64:** `.AppImage` (make executable with `chmod +x`)
 
             ### Getting Started
-            1. Open the app
-            2. Go to Settings — enter your tag, browse to your replay folder
-            3. Click Import All
-            4. Go to Coaching tab and click any game for AI analysis
+            1. Open MAGI and follow the setup wizard for your player identity and replay folder. Existing users can reopen it from Settings.
+            2. Import Slippi replays, then explore Dashboard, Library, Characters, Sessions, Trends, and Performance Lab.
+            3. On Windows, configure Netplay Dolphin and your own Melee game image in Settings → Play Mode settings. Game Theater uses Playback Dolphin separately.
+            4. For optional coaching, choose a provider and model in Settings → AI. Parsing, stats, notes, and game hosting do not require AI.
+
+            Native Play Mode hosting and embedded replay playback are Windows-only. macOS and Linux use external Dolphin playback. MAGI includes neither Slippi Dolphin nor a Melee game image. Hosted AI availability and usage limits depend on the selected provider.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

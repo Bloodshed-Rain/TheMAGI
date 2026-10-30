@@ -7,6 +7,10 @@
    ────────────────────────────────────────────────────────────────── */
 
 :root {
+  color-scheme: dark;
+  --control-height: 36px;
+  --control-padding-y: 7px;
+  --control-radius: var(--radius-xs);
   /* Surfaces — aligned to the default "liquid" theme (composited over #0a0d14) */
   --bg: #0a0d14;
   --surface-1: #14171d;
@@ -102,7 +106,8 @@
   --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 
   /* Theme-specific app background. JS applies per-theme overrides from themes.ts. */
-  --app-bg-image: radial-gradient(900px 620px at 14% 18%, rgba(160, 168, 255, 0.18), transparent 62%),
+  --app-bg-image:
+    radial-gradient(900px 620px at 14% 18%, rgba(160, 168, 255, 0.18), transparent 62%),
     radial-gradient(880px 680px at 92% 82%, rgba(255, 138, 158, 0.14), transparent 60%),
     linear-gradient(145deg, #0a0d14 0%, #171b28 54%, #070910 100%);
   --app-bg-position: center;
@@ -144,6 +149,7 @@
 
 /* ── Light theme ────────────────────────────────────────────────── */
 [data-theme="light"] {
+  color-scheme: light;
   --bg: #ffffff;
   --surface-1: #f8fafc; /* Slate 50 */
   --surface-2: #f1f5f9; /* Slate 100 */
@@ -192,6 +198,10 @@
 }
 
 /* ── Density modes ───────────────────────────────────────── */
+[data-density="compact"] {
+  --control-height: 30px;
+  --control-padding-y: 4px;
+}
 [data-density="compact"] .card {
   padding: 14px;
   margin-bottom: 10px;

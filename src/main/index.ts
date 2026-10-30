@@ -30,10 +30,11 @@ import { llmQueue } from "../llmQueue";
 import { parsePool } from "../parsePool";
 import { setMainWindow, getFileWatcher } from "./state";
 import { setupIPC } from "./ipc";
-import { destroyOverlayWindow } from "./overlayWindow";
 import { resolveLLMConfig } from "./handlers/analysis";
 import { shutdownEmbeddedReplay } from "./handlers/embeddedReplay";
 import { shutdownExternalDolphin } from "./handlers/dolphin";
+import { shutdownPlaySession } from "./handlers/play";
+import { shutdownCornerman } from "./handlers/cornerman";
 
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
@@ -169,7 +170,6 @@ function createWindow(): void {
   mainWindow.on("closed", () => {
     mainWindow = null;
     setMainWindow(null);
-    destroyOverlayWindow();
   });
 }
 
@@ -249,12 +249,14 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
+  shutdownCornerman();
   const watcher = getFileWatcher();
   if (watcher) {
     watcher.close();
   }
   shutdownEmbeddedReplay();
   shutdownExternalDolphin();
+  shutdownPlaySession();
   llmQueue.clear();
   parsePool.terminate();
   closeDb();

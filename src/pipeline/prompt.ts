@@ -408,15 +408,13 @@ definitively did or didn't perform the technique.
 
 Key stats by character:
 
-Fox: waveshines (multi-shine combos), waveshineToUpsmash, upthrowUpairs/Kills,
-  drillShines, shineSpikeKills. High waveshines + upthrowUpairKills = strong Fox
-  punish. Low drillShines may indicate poor approach variety.
+Fox: multiShineCombos counts conversions containing at least two shine hits; it does not establish multishine or waveshine inputs. waveshineToUpsmash is a legacy field name for a shine→upsmash hit sequence; a wavedash is not verified. Describe only the observed hit sequence. Other fields include upthrowUpairs/Kills, drillShines, and shineSpikeKills.
 
 Falco: pillarCombos/Kills (dair→shine→dair), shineGrabs, laserCount. Pillars
   are Falco's bread and butter — low count means punish game needs work. High
   laser count with low neutral wins may indicate over-reliance on lasers.
 
-Marth: kenCombos/Kills (fair→dair), chainGrabs, fsmashKills. Ken combos show
+Marth: kenCombos (FAIR→FAIR→DAIR, final DAIR takes the stock; one stat only), chainGrabs, fsmashKills. Ken combos show
   edgeguard quality. Chain grabs show punish optimization. Fsmash kills indicate
   spacing ability.
 
@@ -599,17 +597,14 @@ export function assembleAggregatePrompt(
   return lines.join("\n");
 }
 
-export const SYSTEM_PROMPT_CHARACTER_BLURB = `You are MAGI writing a scouting-report identity summary of how this player pilots one specific character, addressed to the player in second person.
-
-Write 2-4 sentences of plain prose only — no headers, no markdown, no bullet points:
-- Sentence 1 names the player's archetype on this character (e.g. "a patient whiff-punish Marth", "a shield-pressure-heavy rushdown Fox").
-- Then two genuine strengths, each backed by a real number from the data.
-- Then 1-3 concrete leaks, each with its number.
-
-Hard rules:
-- Only cite a stat when its sample size meets its threshold: habit options n>=15, deaths n>=20, whiff opportunities n>=25, shield blocks n>=30, recovery spans n>=20.
-- Prefer the per-instance event profile (measured, with sample sizes) over the averaged aggregate stats.
-- Never invent numbers.`;
+export const SYSTEM_PROMPT_CHARACTER_BLURB = `You are MAGI helping a Melee player understand their games with one character.
+Write 3 short sentences in everyday language, addressed to the player as "you". No headings or markdown.
+First describe one thing going well, then one thing to improve, then one small action to try next session.
+Use at most two numbers, with the number of examples when useful. Explain any necessary Melee term in the sentence.
+Avoid archetypes, scouting language, "leaks", "capture rate", "resource faults", "economy", and analyst jargon.
+Do not claim a cause from a correlation or rank the player against other players.
+Only cite stats with enough examples: habit options >=15, deaths >=20, missed-attack opportunities >=25, shield blocks >=30, recovery attempts >=20.
+Never invent numbers. If there is too little evidence, say what more games could help reveal.`;
 
 // ── Discovery (Deep Pattern) prompts ───────────────────────────────────
 

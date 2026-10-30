@@ -370,7 +370,7 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       if (!force) {
         const cached = db
           .prepare(
-            "SELECT analysis_text, model_used, created_at FROM coaching_analyses WHERE scope = 'character-blurb' AND scope_identifier = ? ORDER BY created_at DESC LIMIT 1",
+            "SELECT analysis_text, model_used, created_at FROM coaching_analyses WHERE scope = 'character-blurb-plain-v1' AND scope_identifier = ? ORDER BY created_at DESC LIMIT 1",
           )
           .get(character) as { analysis_text: string; model_used: string; created_at: string } | undefined;
         if (cached) {
@@ -396,7 +396,7 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       );
 
       const modelUsed = llmConfig.modelId || "pollinations";
-      insertCoachingAnalysis(null, null, modelUsed, text, "character-blurb", character);
+      insertCoachingAnalysis(null, null, modelUsed, text, "character-blurb-plain-v1", character);
       return { text, modelUsed, createdAt: new Date().toISOString(), cached: false };
     },
   );

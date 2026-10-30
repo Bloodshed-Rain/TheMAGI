@@ -47,13 +47,11 @@ export interface Theme {
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
- * MAGI Theme Definitions — 6 curated themes
+ * MAGI Theme Definitions — 4 curated themes
  *
  *   liquid      — default chrome/glass aesthetic
  *   telemetry   — dark blue data-forward mode
  *   tournament  — high-contrast black for tournament overlays
- *   crt         — green phosphor CRT look
- *   amber       — warm monochrome amber CRT variant
  *   light       — clean bright mode for daytime / well-lit rooms
  *
  * Extra per-theme visual treatment (bevels, sizing) is handled by
@@ -203,94 +201,6 @@ export const THEMES: Record<string, Theme> = {
     easeOut: EASE_OUT,
   },
 
-  crt: {
-    id: "crt",
-    name: "CRT",
-    bg: "#050a05",
-    surface1: "#0a140a",
-    surface2: "#111e11",
-    surface3: "#1a2e1a",
-    border: "rgba(51,255,51,0.08)",
-    borderSubtle: "rgba(51,255,51,0.04)",
-    borderMuted: "rgba(51,255,51,0.15)",
-    text: "#33ff33",
-    textSecondary: "#29cc29",
-    textMuted: "#2fd02f", // raised to clear WCAG AA 4.5:1 (was #1a801a ≈ 3.7:1)
-    accent: "#33ff33",
-    accentHover: "#29cc29",
-    accentMuted: "rgba(51,255,51,0.12)",
-    win: "#33ff33",
-    loss: "#ff3333",
-    caution: "#ffcc00",
-    sidebarBg: "#050a05",
-    sidebarHover: "#0a140a",
-    sidebarActiveBg: "rgba(51,255,51,0.12)",
-    sidebarAccent: "#33ff33",
-    shadowSm: "0 0 4px rgba(51,255,51,0.25)",
-    shadowMd: "0 0 12px rgba(51,255,51,0.3)",
-    shadowLg: "0 0 24px rgba(51,255,51,0.35)",
-    appBackgroundImage:
-      "radial-gradient(700px 520px at 20% 20%, rgba(51,255,51,0.12), transparent 66%), repeating-linear-gradient(0deg, rgba(51,255,51,0.035) 0 1px, transparent 1px 5px), radial-gradient(circle at 50% 50%, #0a160a 0%, #050a05 72%)",
-    appBackgroundPosition: "center",
-    appBackgroundSize: "cover",
-    appBackgroundRepeat: "no-repeat",
-    appBackgroundBlendMode: "screen, normal, normal",
-    magiBackgroundOpacity: "0.13",
-    magiBackgroundFilter:
-      "drop-shadow(0 0 34px rgba(51,255,51,0.2)) sepia(1) hue-rotate(70deg) saturate(1.8) brightness(0.9)",
-    magiBackgroundPosition: "center",
-    magiBackgroundSize: "min(1080px, 74vw) auto",
-    fontMono: FONT_MONO,
-    fontSans: FONT_MONO,
-    fontDisplay: FONT_MONO,
-    easeSpring: EASE_SPRING,
-    easeOut: EASE_OUT,
-  },
-
-  amber: {
-    id: "amber",
-    name: "Amber",
-    bg: "#1a1006",
-    surface1: "#231709",
-    surface2: "#2e200e",
-    surface3: "#3d2c15",
-    border: "rgba(217,175,106,0.1)",
-    borderSubtle: "rgba(217,175,106,0.05)",
-    borderMuted: "rgba(217,175,106,0.18)",
-    text: "#f5e6c8",
-    textSecondary: "#c9a96e",
-    textMuted: "#b89461", // raised to clear WCAG AA 4.5:1 (was #8b6d3f ≈ 3.6:1)
-    accent: "#d9a540",
-    accentHover: "#c4922e",
-    accentMuted: "rgba(217,165,64,0.14)",
-    win: "#7dba5a",
-    loss: "#d95b5b",
-    caution: "#d9a540",
-    sidebarBg: "#1a1006",
-    sidebarHover: "#231709",
-    sidebarActiveBg: "rgba(217,165,64,0.14)",
-    sidebarAccent: "#d9a540",
-    shadowSm: "0 2px 6px rgba(0,0,0,0.4)",
-    shadowMd: "0 6px 18px rgba(0,0,0,0.5)",
-    shadowLg: "0 16px 48px rgba(0,0,0,0.6)",
-    appBackgroundImage:
-      "radial-gradient(760px 520px at 18% 20%, rgba(217,165,64,0.14), transparent 64%), radial-gradient(640px 520px at 86% 78%, rgba(125,186,90,0.08), transparent 64%), linear-gradient(145deg, #1a1006 0%, #271708 48%, #120904 100%)",
-    appBackgroundPosition: "center",
-    appBackgroundSize: "cover",
-    appBackgroundRepeat: "no-repeat",
-    appBackgroundBlendMode: "normal",
-    magiBackgroundOpacity: "0.16",
-    magiBackgroundFilter:
-      "drop-shadow(0 24px 58px rgba(0,0,0,0.55)) sepia(0.75) hue-rotate(330deg) saturate(1.2) brightness(0.92)",
-    magiBackgroundPosition: "center",
-    magiBackgroundSize: "min(1120px, 76vw) auto",
-    fontMono: FONT_MONO,
-    fontSans: FONT_SANS,
-    fontDisplay: FONT_DISPLAY,
-    easeSpring: EASE_SPRING,
-    easeOut: EASE_OUT,
-  },
-
   light: {
     id: "light",
     name: "Light",
@@ -335,9 +245,9 @@ export const THEMES: Record<string, Theme> = {
   },
 };
 
-export const THEME_ORDER = ["liquid", "telemetry", "tournament", "crt", "amber", "light"] as const;
+export const THEME_ORDER = ["liquid", "telemetry", "tournament", "light"] as const;
 
-export type ColorMode = "liquid" | "telemetry" | "tournament" | "crt" | "amber" | "light";
+export type ColorMode = "liquid" | "telemetry" | "tournament" | "light";
 
 /**
  * Resolve a saved theme ID to an actual Theme, falling back to liquid for

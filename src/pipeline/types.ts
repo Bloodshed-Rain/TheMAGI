@@ -82,16 +82,13 @@ export interface PlayerSummary {
 }
 
 export interface KenComboStats {
-  /** Total Ken combos landed (fair(s) → dair) */
+  /** FAIR → FAIR → DAIR finishers where the final DAIR takes the stock. */
   total: number;
-  /** How many resulted in a kill */
-  kills: number;
   /** Each individual Ken combo with details */
   combos: {
     moves: string[];
     totalDamage: number;
     startPercent: number;
-    endedInKill: boolean;
   }[];
 }
 
@@ -223,8 +220,6 @@ export interface MarthSignatureStats {
   character: "Marth";
   /** Reused from existing Ken combo detection */
   kenCombos: number;
-  /** Ken combos that killed */
-  kenComboKills: number;
   /** Conversions with 2+ throws (chain grabs) */
   chainGrabs: number;
   /** Conversions ending with fsmash that killed */
@@ -421,10 +416,10 @@ export interface DerivedInsights {
     damageEfficiency: number;
   }[];
   bestConversion: {
+    endedInKill: boolean;
     moves: string[];
     totalDamage: number;
     startPercent: number;
-    endedInKill: boolean;
     /** Game timestamp like "1:23" for cross-referencing with replay */
     timestamp: string;
   };

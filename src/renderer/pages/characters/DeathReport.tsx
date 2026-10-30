@@ -8,11 +8,11 @@ import type { CharacterModuleProps } from "./shared";
 import { accentVars, orderBy, pct, prettyLabel, ratio } from "./shared";
 
 const VERDICT_LABELS: Record<string, string> = {
-  NO_DI: "No DI",
-  WRONG_DI: "Wrong DI",
-  OK_DI: "OK DI",
-  GOOD_DI: "Good DI",
-  SD: "SD",
+  NO_DI: "No steering detected",
+  WRONG_DI: "Steered toward danger",
+  OK_DI: "Some helpful steering",
+  GOOD_DI: "Helpful steering",
+  SD: "Self-destruct",
 };
 
 const VERDICT_CLASSES: Record<string, string> = {
@@ -51,8 +51,8 @@ export function DeathReport({ character, color, glowColor }: CharacterModuleProp
   const throwRows = deaths.throwDI.filter((t) => t.total >= EVENT_SAMPLE_GUARDS.throwDirectionMin);
 
   return (
-    <Card title="Death Report" className="death-report" style={accentVars(color, glowColor)}>
-      <div className="death-report-bar" role="img" aria-label="DI verdict distribution across deaths">
+    <Card title="How you lose stocks" className="death-report" style={accentVars(color, glowColor)}>
+      <div className="death-report-bar" role="img" aria-label="Steering after hits that led to losing stocks">
         {verdicts.map((v) => (
           <div
             key={v.verdict}
@@ -72,26 +72,26 @@ export function DeathReport({ character, color, glowColor }: CharacterModuleProp
         ))}
       </div>
       {deaths.total < EVENT_SAMPLE_GUARDS.deathVerdictMin && (
-        <div className="death-report-caption">low sample (n={deaths.total})</div>
+        <div className="death-report-caption">Only {deaths.total} stocks recorded so far</div>
       )}
 
       <div className="death-report-kpis">
         <div className="death-report-kpi">
           <KPI
-            label="Avg Death %"
+            label="Damage when you lost a stock"
             value={
               <span className="death-report-mono">
                 {deaths.avgDeathPercent != null ? `${Math.round(deaths.avgDeathPercent)}%` : "—"}
               </span>
             }
-            sub={`n=${deaths.total} deaths`}
+            sub={`Based on ${deaths.total} lost stocks`}
           />
         </div>
         <div className={`death-report-kpi${resourceFaultBad ? " death-report-kpi-bad" : ""}`}>
           <KPI
-            label="Resource Faults"
+            label="Unused double jumps"
             value={<span className="death-report-mono">{ratio(deaths.resourceFaults, deaths.total)}</span>}
-            sub="Died with jump unspent"
+            sub="Lost a stock with a double jump still available"
             subTone={resourceFaultBad ? "bad" : "neutral"}
           />
         </div>
@@ -104,7 +104,7 @@ export function DeathReport({ character, color, glowColor }: CharacterModuleProp
 
       {killerMoves.length > 0 && (
         <div className="death-report-section">
-          <div className="death-report-section-label">What Kills You</div>
+          <div className="death-report-section-label">Moves that took your stocks</div>
           <DataTable colWidths={[undefined, "72px", "72px"]}>
             <thead>
               <tr>
@@ -133,7 +133,7 @@ export function DeathReport({ character, color, glowColor }: CharacterModuleProp
 
       {throwRows.length > 0 && (
         <div className="death-report-section">
-          <div className="death-report-section-label">Throw DI</div>
+          <div className="death-report-section-label">Steering after throws (DI)</div>
           {throwRows.map((t) => (
             <div key={t.direction} className="death-report-throw-row">
               <span className="death-report-throw-label">vs {prettyLabel(t.direction)} throw</span>
@@ -141,11 +141,13 @@ export function DeathReport({ character, color, glowColor }: CharacterModuleProp
                 <span className="death-report-throw-fill" style={{ width: pct(t.noDI, t.total, 1) }} />
               </span>
               <span className="death-report-throw-n">
-                {pct(t.noDI, t.total)} no-DI · {ratio(t.noDI, t.total)}
+                {pct(t.noDI, t.total)} without steering · {ratio(t.noDI, t.total)}
               </span>
             </div>
           ))}
-          <div className="death-report-caption">No-DI on throws is free percent for them.</div>
+          <div className="death-report-caption">
+            DI means holding a direction to change where a hit sends you. No input was detected on these throws.
+          </div>
         </div>
       )}
     </Card>

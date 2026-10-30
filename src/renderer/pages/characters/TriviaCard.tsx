@@ -19,7 +19,7 @@ function buildTiles(trivia: CharacterTrivia, character: string): FactTile[] {
     tiles.push({
       key: "playtime",
       value: fmtDuration(trivia.totalPlaytimeSeconds),
-      caption: `of your life as ${character}. No refunds.`,
+      caption: `played as ${character}.`,
     });
   }
 
@@ -37,7 +37,7 @@ function buildTiles(trivia: CharacterTrivia, character: string): FactTile[] {
     tiles.push({
       key: "airtime",
       value: fmtDuration(trivia.airtimeSeconds),
-      caption: "spent airborne. Technically a pilot.",
+      caption: "spent in the air.",
     });
   }
 
@@ -45,7 +45,7 @@ function buildTiles(trivia: CharacterTrivia, character: string): FactTile[] {
     tiles.push({
       key: "wavedashes",
       value: trivia.totalWavedashes.toLocaleString(),
-      caption: "wavedashes. The floor is a suggestion.",
+      caption: "wavedashes.",
     });
   }
 
@@ -53,7 +53,7 @@ function buildTiles(trivia: CharacterTrivia, character: string): FactTile[] {
     tiles.push({
       key: "sds",
       value: trivia.sdCount.toLocaleString(),
-      caption: "self-destructs. We don't talk about these.",
+      caption: "self-destructs.",
       tone: "red",
     });
   }
@@ -62,7 +62,7 @@ function buildTiles(trivia: CharacterTrivia, character: string): FactTile[] {
     tiles.push({
       key: "four-stocks",
       value: trivia.fourStockWins.toLocaleString(),
-      caption: "four-stocks delivered.",
+      caption: "wins without losing a stock.",
       tone: "green",
     });
   }
@@ -71,7 +71,7 @@ function buildTiles(trivia: CharacterTrivia, character: string): FactTile[] {
     tiles.push({
       key: "longest",
       value: fmtDuration(trivia.longestGameSeconds),
-      caption: "longest game. A saga.",
+      caption: "longest game.",
     });
   }
 
@@ -90,7 +90,7 @@ export function TriviaCard({ character, color, glowColor }: CharacterModuleProps
   if (tiles.length === 0) return null;
 
   return (
-    <Card title="The Ledger" className="trivia-card" style={accentVars(color, glowColor)}>
+    <Card title="Lifetime totals" className="trivia-card" style={accentVars(color, glowColor)}>
       <div className="trivia-card-grid">
         {tiles.map((tile) => (
           <div key={tile.key} className="trivia-card-tile">

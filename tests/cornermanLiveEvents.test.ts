@@ -93,6 +93,7 @@ describe("detectLiveConversionEvents", () => {
         conversion({
           moves: [
             { playerIndex: 0, frame: 130, moveId: MOVE_FAIR, hitCount: 1, damage: 12 },
+            { playerIndex: 0, frame: 150, moveId: MOVE_FAIR, hitCount: 1, damage: 12 },
             { playerIndex: 0, frame: 170, moveId: MOVE_DAIR, hitCount: 1, damage: 15 },
           ],
           didKill: true,
@@ -104,7 +105,7 @@ describe("detectLiveConversionEvents", () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe("ken-combo");
-    expect(events[0].title).toBe("Ken Combo Kill");
+    expect(events[0].title).toBe("Ken Combo");
     expect(events[0].body).toContain("You hit OPP");
   });
 
@@ -128,7 +129,7 @@ describe("detectLiveConversionEvents", () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe("waveshine");
-    expect(events[0].title).toBe("Waveshine Upsmash kill");
+    expect(events[0].title).toBe("Shine → Up Smash kill");
 
     const duplicate = detectLiveConversionEvents({
       conversions: [

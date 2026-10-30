@@ -410,7 +410,6 @@ export function detectSignatureStats(
 
     case "Marth": {
       const kenCombos = kenComboStats?.total ?? 0;
-      const kenComboKills = kenComboStats?.kills ?? 0;
       let chainGrabs = 0;
       let fsmashKills = 0;
 
@@ -428,7 +427,7 @@ export function detectSignatureStats(
         if (lastMove.moveId === MOVE_FSMASH && conv.didKill) fsmashKills++;
       }
 
-      return { character: "Marth", kenCombos, kenComboKills, chainGrabs, fsmashKills };
+      return { character: "Marth", kenCombos, chainGrabs, fsmashKills };
     }
 
     case "Peach": {

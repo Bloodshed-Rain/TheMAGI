@@ -1,22 +1,27 @@
 {
   "name": "magi-melee",
-  "version": "1.8.0",
-  "description": "AI-powered Melee coaching from your Slippi replays",
+  "version": "1.10.1",
+  "description": "Local-first Melee replay analysis, live Play Mode, and optional AI coaching",
   "main": "src/main/entry.js",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "dev": "node scripts/dev.js",
     "build:renderer": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.renderer.json",
-    "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && vite build && electron-builder",
-    "build:win": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && vite build && electron-builder --win",
-    "build:mac": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && vite build && electron-builder --mac",
-    "build:linux": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && vite build && electron-builder --linux",
+    "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && vite build && electron-builder --publish never",
+    "build:win": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && vite build && electron-builder --win --publish never",
+    "build:mac": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && vite build && electron-builder --mac --publish never",
+    "build:linux": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && vite build && electron-builder --linux --publish never",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
+    "verify:release": "node scripts/verify-release.cjs",
+    "verify:docs": "node scripts/verify-docs.cjs"
   },
   "keywords": [
     "melee",
@@ -132,6 +137,7 @@
     "chokidar": "^5.0.0",
     "electron-updater": "^6.8.9",
     "framer-motion": "^12.38.0",
+    "jose": "^6.2.13",
     "koffi": "^2.16.2",
     "lucide-react": "^1.7.0",
     "react": "^19.2.4",

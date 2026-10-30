@@ -70,34 +70,34 @@ export function PunishEconomy({ character, color, glowColor }: CharacterModulePr
     .slice(0, 3);
 
   return (
-    <Card title="Punish Economy" className="punish-economy" style={accentVars(color, glowColor)}>
+    <Card title="Missed chances & shield safety" className="punish-economy" style={accentVars(color, glowColor)}>
       {showWhiffSection && (
         <div className="punish-economy-section">
-          <div className="punish-economy-subheader">Whiff Punishing</div>
+          <div className="punish-economy-subheader">After the opponent misses</div>
           {showCapture && (
             <div className="punish-economy-kpis">
               <KPI
-                label="Capture rate"
+                label="Chances you used"
                 value={pct(whiffs.capturePunished, whiffs.captureOpportunities)}
-                sub={`${ratio(whiffs.capturePunished, whiffs.captureOpportunities)} reachable opponent whiffs punished`}
+                sub={`${ratio(whiffs.capturePunished, whiffs.captureOpportunities)} chances where you reached and hit the opponent`}
               />
               {whiffs.captureMedianReactionDelay !== null && (
                 <KPI
-                  label="Median reaction"
+                  label="Time to hit back"
                   value={fmtFrames(whiffs.captureMedianReactionDelay)}
-                  sub="frames from whiff to your punish"
+                  sub="frames after a missed attack (60 frames = 1 second)"
                 />
               )}
             </div>
           )}
           {exposureRows.length > 0 && (
             <div className="punish-economy-block">
-              <div className="punish-economy-minihead">Your exposure</div>
+              <div className="punish-economy-minihead">When your attacks miss</div>
               <DataTable colWidths={[undefined, "70px", "96px"]}>
                 <thead>
                   <tr>
                     <th>Move</th>
-                    <th>Whiffs</th>
+                    <th>Missed attacks</th>
                     <th>Punished</th>
                   </tr>
                 </thead>
@@ -116,9 +116,7 @@ export function PunishEconomy({ character, color, glowColor }: CharacterModulePr
                   })}
                 </tbody>
               </DataTable>
-              <div className="punish-economy-caption">
-                punished / punishable whiffs — when you whiff these, this is what it costs
-              </div>
+              <div className="punish-economy-caption">Times you were hit / chances the opponent had to hit back.</div>
             </div>
           )}
         </div>
@@ -146,18 +144,18 @@ export function PunishEconomy({ character, color, glowColor }: CharacterModulePr
                 </span>
               ))}
             </div>
-            <div className="punish-economy-caption">n={shield.defense.total} blocked hits</div>
+            <div className="punish-economy-caption">Based on {shield.defense.total} blocked hits</div>
           </div>
           <div className="punish-economy-kpis">
             <KPI
-              label="Guaranteed punishes"
+              label="Clear chances after blocking"
               value={`taken ${guaranteedTaken} · missed ${guaranteedMissed}`}
-              sub={`of ${ratio(guaranteedTaken + guaranteedMissed, shield.defense.total)} blocked hits with a guaranteed window`}
+              sub={`${guaranteedTaken + guaranteedMissed} clear openings across ${shield.defense.total} blocked hits`}
             />
           </div>
           {worstOffenders.length > 0 && (
             <div className="punish-economy-block">
-              <div className="punish-economy-minihead">Worst offenders</div>
+              <div className="punish-economy-minihead">Moves you could hit back after</div>
               {worstOffenders.map((m) => (
                 <div key={m.attackLabel} className="punish-economy-move-row">
                   <span className="punish-economy-move-label">{prettyLabel(m.attackLabel)}</span>
@@ -170,7 +168,7 @@ export function PunishEconomy({ character, color, glowColor }: CharacterModulePr
           )}
           {pressureRows.length > 0 && (
             <div className="punish-economy-block">
-              <div className="punish-economy-minihead">Your pressure</div>
+              <div className="punish-economy-minihead">When you hit their shield</div>
               {pressureRows.map((m) => {
                 const hot = m.punishedByDefender / m.blocks > 0.3;
                 return (
@@ -185,7 +183,7 @@ export function PunishEconomy({ character, color, glowColor }: CharacterModulePr
                   </div>
                 );
               })}
-              <div className="punish-economy-caption">your moves on their shield — punished / blocks</div>
+              <div className="punish-economy-caption">Times they hit you back / blocked hits.</div>
             </div>
           )}
         </div>

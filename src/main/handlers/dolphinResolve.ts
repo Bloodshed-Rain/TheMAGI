@@ -11,9 +11,9 @@ export function clampReplayStartFrame(frame: number): number {
  * Pure-ish helper so unit tests can lock the preference order.
  */
 export function listLinuxDolphinCandidates(home: string): string[] {
-  const playbackDir = path.join(home, ".config/Slippi Launcher/playback");
-  const netplayDir = path.join(home, ".config/Slippi Launcher/netplay");
-  const preferredPlayback = path.join(playbackDir, "Slippi_Playback-x86_64.AppImage");
+  const playbackDir = path.posix.join(home, ".config/Slippi Launcher/playback");
+  const netplayDir = path.posix.join(home, ".config/Slippi Launcher/netplay");
+  const preferredPlayback = path.posix.join(playbackDir, "Slippi_Playback-x86_64.AppImage");
   const candidates: string[] = [];
 
   const pushUnique = (p: string) => {
@@ -31,18 +31,18 @@ export function listLinuxDolphinCandidates(home: string): string[] {
         ...names.filter((n) => !/playback/i.test(n) && !/mainline/i.test(n)),
       ];
       for (const name of ranked) {
-        pushUnique(path.join(playbackDir, name));
+        pushUnique(path.posix.join(playbackDir, name));
       }
     }
   } catch {
     /* ignore unreadable dir */
   }
 
-  pushUnique(path.join(netplayDir, "Slippi_Online-x86_64.AppImage"));
+  pushUnique(path.posix.join(netplayDir, "Slippi_Online-x86_64.AppImage"));
   try {
     if (fs.existsSync(netplayDir)) {
       for (const name of fs.readdirSync(netplayDir)) {
-        if (name.endsWith(".AppImage")) pushUnique(path.join(netplayDir, name));
+        if (name.endsWith(".AppImage")) pushUnique(path.posix.join(netplayDir, name));
       }
     }
   } catch {
@@ -51,8 +51,8 @@ export function listLinuxDolphinCandidates(home: string): string[] {
 
   pushUnique("/usr/bin/slippi-dolphin");
   pushUnique("/usr/local/bin/slippi-dolphin");
-  pushUnique(path.join(home, ".local/bin/slippi-dolphin"));
-  pushUnique(path.join(home, "Slippi-Dolphin/squashfs-root/usr/bin/dolphin-emu"));
+  pushUnique(path.posix.join(home, ".local/bin/slippi-dolphin"));
+  pushUnique(path.posix.join(home, "Slippi-Dolphin/squashfs-root/usr/bin/dolphin-emu"));
 
   return candidates;
 }
@@ -111,6 +111,7 @@ export function assertDolphinRunnable(dolphinPath: string): void {
 export function buildExternalReplayComm(
   replayPath: string,
   startFrame?: number,
+  endFrame?: number,
 ): { seekFrame: number | null; commData: Record<string, unknown> } {
   const seekFrame = startFrame != null ? clampReplayStartFrame(startFrame) : null;
   const commandId = Math.random().toString(36).slice(2);
@@ -118,7 +119,13 @@ export function buildExternalReplayComm(
     seekFrame != null
       ? {
           mode: "queue",
-          queue: [{ path: replayPath, startFrame: seekFrame }],
+          queue: [
+            {
+              path: replayPath,
+              startFrame: seekFrame,
+              ...(endFrame != null ? { endFrame: Math.max(seekFrame, Math.floor(endFrame)) } : {}),
+            },
+          ],
           isRealTimeMode: false,
           commandId,
         }

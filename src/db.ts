@@ -1,3 +1,6 @@
+import { REPAIR_KEN_COMBOS_SQL } from "./kenCombo";
+import { readCharacterTechniqueExamples } from "./characterTechniqueReplayQuery";
+import { type CharacterTechniqueExample } from "./characterTechniqueExamples";
 import Database from "better-sqlite3";
 import path from "path";
 import os from "os";
@@ -682,6 +685,13 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_whiff_events_game ON whiff_events(game_id);
         CREATE INDEX IF NOT EXISTS idx_whiff_events_lookup ON whiff_events(whiffer_is_player, opportunity, attack_label);
       `);
+    },
+  },
+  {
+    version: 15,
+    description: "Recalculate Ken Combos using the strict FAIR FAIR DAIR stock-taking rule",
+    up: (db) => {
+      db.exec(REPAIR_KEN_COMBOS_SQL);
     },
   },
 ];
@@ -4599,3 +4609,7 @@ export function clearOracleMessages(): void {
 }
 
 export { DB_PATH, DATA_DIR };
+
+export function getCharacterTechniqueExamples(character: string, statKey: string): CharacterTechniqueExample[] {
+  return readCharacterTechniqueExamples(getDb(), character, statKey);
+}

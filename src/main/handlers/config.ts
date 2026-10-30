@@ -1,3 +1,5 @@
+import { getMainWindow } from "../state";
+import { app } from "electron";
 import { loadConfig, saveConfig, type Config } from "../../config.js";
 import { type ProviderId } from "../../llmProviders.js";
 import type { SafeHandleFn } from "../ipc.js";
@@ -12,14 +14,24 @@ function redactApiKeys(apiKeys: Partial<Record<ProviderId, string>>): Partial<Re
 }
 
 export function registerConfigHandlers(safeHandle: SafeHandleFn): void {
-  // Returns config with apiKeys map redacted to booleans.
-  safeHandle("config:load", () => {
-    const config = loadConfig();
-    const safe: Omit<Config, "apiKeys"> & { apiKeys: Partial<Record<ProviderId, true>> } = {
+  safeHandle("app:version", () => app.getVersion());
+  // Both reads and writes return only key-presence flags to the renderer.
+  const redactConfig = (config: Config): Omit<Config, "apiKeys"> & { apiKeys: Partial<Record<ProviderId, true>> } => {
+    return {
       ...config,
       apiKeys: redactApiKeys(config.apiKeys),
     };
-    return safe;
+  };
+  safeHandle("config:load", () => redactConfig(loadConfig()));
+  safeHandle("config:save", (_e, config: Partial<Config>) => {
+    const saved = saveConfig(config);
+    if (Object.keys(config).some((key) => key.startsWith("cornerman"))) {
+      try {
+        getMainWindow()?.webContents.send("cornerman:settings-changed");
+      } catch {
+        /* Closing renderer. */
+      }
+    }
+    return redactConfig(saved);
   });
-  safeHandle("config:save", (_e, config: Partial<Config>) => saveConfig(config));
 }

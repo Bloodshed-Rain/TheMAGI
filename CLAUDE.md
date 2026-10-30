@@ -8,7 +8,7 @@ MAGI (Melee Analysis through Generative Intelligence) is an Electron + React des
 
 ## Commands
 
-- **Install**: `npm install` then `npx electron-rebuild` (rebuilds `better-sqlite3` and `koffi` against the Electron ABI — required before `npm run dev` will boot)
+- **Install**: `npm ci` then `npx electron-rebuild` (rebuilds `better-sqlite3` and `koffi` against the Electron ABI — required before `npm run dev` will boot)
 - **Dev mode**: `npm run dev` — runs `scripts/dev.js`: compiles main/preload via `tsc -p tsconfig.main.json`, starts the Vite renderer server, then spawns Electron with `VITE_DEV_SERVER_URL` set. Also auto-loads `key.env` into `process.env`.
 - **Build**: `npm run build` — compiles main process TS, builds renderer via Vite, packages with electron-builder
 - **Platform builds**: `npm run build:linux`, `build:win`, `build:mac`
@@ -72,10 +72,10 @@ Three processes communicate via IPC:
 
 ### Renderer Pages
 
-`Dashboard`, `Sessions`, `Library` (history + filters, with `pages/library/` subviews), `Trends`, `Characters`, `Oracle` (persistent chat with recent-games context), `Practice` (LLM-generated drill plans), `Rivals` (opponent dossiers), `GameTheater` (replay viewer), `Cornerman` / `CornermanOverlay` (live coaching overlay), `Settings` — each in `src/renderer/pages/`.
+`Dashboard`, `Sessions`, `Library` (history + filters, with `pages/library/` subviews), `Trends`, `Characters`, `Oracle` (persistent chat with recent-games context), `Practice` (LLM-generated drill plans), `Rivals` (opponent dossiers), `GameTheater` (replay viewer), `Cornerman` (live coaching history; live delivery also runs in Play Mode panels), `Settings`, `SetupWizard`, `PlayMode` — each in `src/renderer/pages/`.
 
 Key components in `src/renderer/components/`:
-- `LiquidShell.tsx`: App chrome / nav rail used by every page; theme switching lives here
+- `LiquidShell.tsx`: App chrome / navigation for analysis pages, with a featured Play Mode entry; theme state is applied in App.tsx
 - `CoachingCards.tsx`: Parsed markdown coaching display with collapsible sections, section icons, timestamp links
 - `CoachingModal.tsx`: Full-page coaching modal with LLM streaming, scope info
 - `ReplayPlayer.tsx` (+ `useReplayPlayerStore`, `styles/replay-player.css`): Embedded Dolphin playback surface (uses `embeddedReplay` IPC + `win32Embed` on Windows)
@@ -122,3 +122,24 @@ Vitest with global APIs enabled, looking at `tests/**/*.test.ts`. Existing suite
 - Config and DB live in `~/.magi-melee/`
 - Test replays in `test-replays/`
 - ESLint + Prettier are configured at the repo root; Prettier defaults are 2-space indent, semicolons, double quotes, trailing commas, `printWidth: 120`.
+
+### First-run setup
+
+`SetupWizard.tsx` at `#/setup` saves only its own profile/path fields and onboarding progress. `setupOnboarding.ts` decides whether a fresh installation needs the guide; existing profiles are preserved. `setupStatus.ts` checks filesystem access in the main process through `handlers/setup.ts`. Keep filesystem imports out of the renderer. Setup is optional and can be reopened from Settings. File checks do not establish game-image compatibility or AI availability.
+
+Appearance options are Liquid, Telemetry, Tournament, and Light. Removed CRT/Amber IDs fall back to Liquid.
+
+## Mandatory Melee technical accuracy rule
+
+This rule applies to the assistant's reasoning, explanations, recommendations, research, code, UI, statistics, detectors, highlights, replay clips, and AI coaching: NEVER sacrifice Melee technical accuracy for simpler wording or a convenient implementation. It covers ALL Melee mechanics, characters, moves, inputs, timing, hitboxes, combos, recovery, DI/SDI, movement, matchups, and terminology, not only named combos.
+
+- Verify uncertain mechanics against primary evidence (game/frame data, replay inputs, maintained Slippi source, or documented tests). Research deeply when necessary. State uncertainty instead of guessing.
+- Preserve exact move order, timing, input, character, and kill requirements. Do not infer a mechanic from a looser hit sequence or substitute one technical term for another.
+- A detector may display a named technique as confirmed only when its evidence establishes every required condition. Otherwise describe exactly the observed sequence, or explicitly mark it unverified. An approximation is not a confirmed technique.
+- Make definitions consistent across parsing, stored historical data, live alerts, search, counts, clips, labels, and coaching prompts. Add positive and negative regression tests before claiming a detector is corrected.
+- Project Ken Combo rule, explicitly required by the user: the finishing sequence must be FAIR → FAIR → DAIR, and that final DAIR must take the stock. A nonlethal sequence, a single FAIR → DAIR, a different finishing move, or a different move inserted in the finishing sequence does NOT count. There is one Ken Combo stat; do not create a separate "Ken Combo Kills" category.
+- Plain-language explanations may clarify technical terms; they must never change the technical meaning. Discuss uncertain or disputed definitions explicitly instead of silently broadening them.
+
+### Play Mode presentation
+
+Fullscreen shows configured information in the unused side space around the largest 4:3 game. `playGameOnlyLayout.ts` computes those bars independently of panel visibility. `playLayout.gameOnlyPanelMode` defaults to visible; auto-hide and narrow-screen fallback reuse edge reveal. Game paths and the Cornerman enable switch live in Settings → Play Mode settings. The main renderer's `useCornermanCoach` owns card delivery, live alerts, and voice across routes. There is no separate Cornerman window or overlay IPC.

@@ -12,7 +12,7 @@ export const DEFAULT_CORNERMAN_POPUP_SETTINGS: CornermanPopupSettings = {
   coachingCards: true,
   liveAlerts: "all",
   errors: true,
-  desktopNotifications: true,
+  desktopNotifications: false,
   autoHideSeconds: 0,
 };
 

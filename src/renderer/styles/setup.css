@@ -1,0 +1,123 @@
+.setup-page {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 12px 0 40px;
+}
+.setup-intro {
+  margin-bottom: 28px;
+}
+.setup-eyebrow {
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+  letter-spacing: 0.15em;
+}
+.setup-intro h1 {
+  font: 600 clamp(26px, 4vw, 40px) var(--font-display);
+  margin: 12px 0;
+}
+.setup-intro p,
+.setup-card p {
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+.setup-steps {
+  list-style: none;
+  display: flex;
+  gap: 16px;
+  padding: 0;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.setup-steps li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.setup-steps li span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+.setup-steps li[aria-current] {
+  color: var(--text);
+  font-weight: 700;
+}
+.setup-steps li[aria-current] span {
+  background: var(--accent-muted);
+  border-color: var(--accent);
+}
+.setup-card {
+  padding: clamp(18px, 4vw, 36px);
+}
+.setup-card h2 {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+}
+.setup-card h2:focus {
+  outline: none;
+}
+.setup-card .settings-field {
+  margin: 20px 0;
+}
+.setup-card input {
+  width: 100%;
+  min-width: 0;
+}
+.setup-card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.setup-path {
+  display: flex;
+  gap: 8px;
+}
+.setup-path input {
+  flex: 1;
+}
+.setup-actions,
+.setup-destinations,
+.setup-footer,
+.setup-footer > div {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.setup-card .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.setup-footer {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 20px;
+  justify-content: space-between;
+}
+.setup-card .setup-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.setup-checks {
+  padding-left: 20px;
+  line-height: 1.8;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.setup-card .setup-error {
+  color: var(--loss);
+}
+@media (max-width: 600px) {
+  .setup-path {
+    flex-wrap: wrap;
+  }
+  .setup-path input {
+    flex-basis: 100%;
+  }
+}

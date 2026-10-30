@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { motion, type MotionStyle } from "framer-motion";
 import {
   useCharacterList,
@@ -6,6 +6,8 @@ import {
   useCharacterSignatureStats,
   useCharacterGameStats,
 } from "../hooks/queries";
+import { CharacterMoves } from "./characters/CharacterMoves";
+import "../styles/character-detail.css";
 import { Card } from "../components/ui/Card";
 import { DataTable } from "../components/ui/DataTable";
 import { WinrateBar } from "../components/ui/WinrateBar";
@@ -77,6 +79,7 @@ function CharacterCardImage({
 // ── Types ────────────────────────────────────────────────────────────
 
 interface SignatureStat {
+  key: string;
   label: string;
   value: number;
   perGame?: number;
@@ -90,13 +93,6 @@ interface CharacterSummary {
   wins?: number;
   losses?: number;
   winRate?: number;
-}
-
-interface HeroCallout {
-  label: string;
-  value: string;
-  detail?: string;
-  highlight?: boolean;
 }
 
 // ── Character metadata ────────────────────────────────────────────────
@@ -162,10 +158,10 @@ function aggregateSignatureStats(rawStats: any[], characterName?: string): Signa
     Record<string, { label: string; suffix?: string; highlight?: boolean; tip?: string }>
   > = {
     Fox: {
-      multiShineCombos: { label: "Multi-Shine Combos", highlight: true },
-      waveshineToUpsmash: { label: "Waveshine \u2192 Upsmash" },
-      upthrowUpairs: { label: "Uthrow \u2192 Uair" },
-      upthrowUpairKills: { label: "Uthrow \u2192 Uair Kills", highlight: true },
+      multiShineCombos: { label: "Combos with 2+ shine hits", highlight: true },
+      waveshineToUpsmash: { label: "Shine \u2192 Up smash" },
+      upthrowUpairs: { label: "Up throw \u2192 Up air" },
+      upthrowUpairKills: { label: "Up throw \u2192 Up air Kills", highlight: true },
       drillShines: { label: "Drill \u2192 Shine" },
       shineSpikeKills: { label: "Shine Spike Kills", highlight: true },
     },
@@ -177,99 +173,98 @@ function aggregateSignatureStats(rawStats: any[], characterName?: string): Signa
     },
     Marth: {
       kenCombos: { label: "Ken Combos", highlight: true },
-      kenComboKills: { label: "Ken Combo Kills", highlight: true },
       chainGrabs: { label: "Chain Grabs" },
-      fsmashKills: { label: "Fsmash Kills", highlight: true },
+      fsmashKills: { label: "Forward smash Kills", highlight: true },
     },
     Sheik: {
       techChases: { label: "Tech Chases", highlight: true },
       techChaseKills: { label: "Tech Chase Kills", highlight: true },
       needleHits: { label: "Needle Hits" },
-      fairChains: { label: "Fair Chains (3+)" },
+      fairChains: { label: "Forward air Chains (3+)" },
     },
     Falcon: {
       kneeKills: { label: "Knee Kills", highlight: true },
       stompKnees: { label: "Stomp \u2192 Knee", highlight: true },
-      upthrowKnees: { label: "Uthrow \u2192 Knee Kills" },
+      upthrowKnees: { label: "Up throw \u2192 Knee Kills" },
       techChaseGrabs: { label: "Tech Chase Grabs", highlight: true },
       gentlemanCount: { label: "Gentlemen" },
     },
     Puff: {
       restKills: { label: "Rest Kills", highlight: true },
       restAttempts: { label: "Rest Attempts" },
-      bairStrings: { label: "Bair Walls (3+)", highlight: true },
-      longestBairString: { label: "Longest Bair String", suffix: " hits" },
+      bairStrings: { label: "Back air Walls (3+)", highlight: true },
+      longestBairString: { label: "Longest Back air String", suffix: " hits" },
     },
     ICs: {
       wobbles: { label: "Wobbles", highlight: true },
       wobbleKills: { label: "Wobble Kills", highlight: true },
       desyncs: { label: "Desyncs", highlight: true },
-      sopoKills: { label: "Sopo Kills" },
+      sopoKills: { label: "Solo Popo Kills" },
       nanaDeaths: { label: "Nana Deaths" },
     },
     Peach: {
       turnipPulls: { label: "Turnip Pulls" },
       turnipHits: { label: "Turnip Hits" },
       stitchFaces: { label: "Stitch Faces", highlight: true },
-      dsmashKills: { label: "Downsmash Kills", highlight: true },
+      dsmashKills: { label: "Down smash Kills", highlight: true },
       floatCancelAerials: { label: "Float Cancel Aerials" },
     },
     Samus: {
       chargeShotKills: { label: "Charge Shot Kills", highlight: true },
       missileCount: { label: "Missiles Fired" },
       upBKills: { label: "Up-B Kills" },
-      dairKills: { label: "Dair Kills" },
+      dairKills: { label: "Down air Kills" },
     },
     Pikachu: {
       thunderKills: { label: "Thunder Kills", highlight: true },
-      upSmashKills: { label: "Upsmash Kills", highlight: true },
-      upairChains: { label: "Uair Chains (3+)" },
-      nairCombos: { label: "Nair Combos (2+)" },
+      upSmashKills: { label: "Up smash Kills", highlight: true },
+      upairChains: { label: "Up air Chains (3+)" },
+      nairCombos: { label: "Neutral air Combos (2+)" },
     },
     Luigi: {
       shoryukenKills: { label: "Shoryuken Kills", highlight: true },
-      dairKills: { label: "Dair Kills" },
-      downSmashKills: { label: "Dsmash Kills" },
+      dairKills: { label: "Down air Kills" },
+      downSmashKills: { label: "Down smash Kills" },
       fireBallCount: { label: "Fireballs Fired" },
     },
     Mario: {
       capeCount: { label: "Capes Used" },
       fireBallCount: { label: "Fireballs Fired" },
-      fsmashKills: { label: "Fsmash Kills", highlight: true },
-      upSmashKills: { label: "Upsmash Kills" },
-      fairSpikeKills: { label: "Fair Spike Kills", highlight: true },
+      fsmashKills: { label: "Forward smash Kills", highlight: true },
+      upSmashKills: { label: "Up smash Kills" },
+      fairSpikeKills: { label: "Forward air Spike Kills", highlight: true },
     },
     Doc: {
       pillCount: { label: "Pills Thrown" },
-      fsmashKills: { label: "Fsmash Kills", highlight: true },
+      fsmashKills: { label: "Forward smash Kills", highlight: true },
       upBKills: { label: "Up-B Kills", highlight: true },
-      dairKills: { label: "Dair Kills" },
-      fairSpikeKills: { label: "Fair Spike Kills", highlight: true },
+      dairKills: { label: "Down air Kills" },
+      fairSpikeKills: { label: "Forward air Spike Kills", highlight: true },
     },
     Yoshi: {
       eggThrowCount: { label: "Eggs Thrown" },
-      dairKills: { label: "Dair Kills", highlight: true },
-      upSmashKills: { label: "Upsmash Kills" },
-      fairSpikeKills: { label: "Fair Spike Kills", highlight: true },
+      dairKills: { label: "Down air Kills", highlight: true },
+      upSmashKills: { label: "Up smash Kills" },
+      fairSpikeKills: { label: "Forward air Spike Kills", highlight: true },
     },
     Ganon: {
       stompKills: { label: "Stomp Kills", highlight: true },
       sideBKills: { label: "Gerudo Dragon Kills", highlight: true },
       upTiltKills: { label: "Utilt Kills", highlight: true },
-      fairKills: { label: "Fair Kills" },
+      fairKills: { label: "Forward air Kills" },
     },
     Link: {
       boomerangCount: { label: "Boomerangs" },
       bombCount: { label: "Bombs" },
-      dairSpikeKills: { label: "Dair Spike Kills", highlight: true },
-      upSmashKills: { label: "Upsmash Kills" },
+      dairSpikeKills: { label: "Down air Spike Kills", highlight: true },
+      upSmashKills: { label: "Up smash Kills" },
       grabCombos: { label: "Grab Combos" },
     },
     YLink: {
       fireArrowCount: { label: "Fire Arrows" },
       bombCount: { label: "Bombs" },
-      dairSpikeKills: { label: "Dair Spike Kills", highlight: true },
-      nairCombos: { label: "Nair Combos (2+)" },
+      dairSpikeKills: { label: "Down air Spike Kills", highlight: true },
+      nairCombos: { label: "Neutral air Combos (2+)" },
     },
     Zelda: {
       lightningKickKills: { label: "Lightning Kick Kills", highlight: true },
@@ -277,7 +272,7 @@ function aggregateSignatureStats(rawStats: any[], characterName?: string): Signa
       upBKills: { label: "Up-B Kills" },
     },
     Roy: {
-      fsmashKills: { label: "Fsmash Kills", highlight: true },
+      fsmashKills: { label: "Forward smash Kills", highlight: true },
       blazerKills: { label: "Blazer Kills", highlight: true },
       counterCount: { label: "Counters" },
       chainGrabs: { label: "Chain Grabs" },
@@ -286,45 +281,45 @@ function aggregateSignatureStats(rawStats: any[], characterName?: string): Signa
     Mewtwo: {
       shadowBallCount: { label: "Shadow Balls" },
       confusionCount: { label: "Confusions" },
-      upThrowKills: { label: "Uthrow Kills", highlight: true },
-      fairKills: { label: "Fair Kills" },
+      upThrowKills: { label: "Up throw Kills", highlight: true },
+      fairKills: { label: "Forward air Kills" },
     },
     "G&W": {
       judgementCount: { label: "Judgements" },
       judgementKills: { label: "Judgement Kills", highlight: true },
-      upAirKills: { label: "Uair Kills", highlight: true },
+      upAirKills: { label: "Up air Kills", highlight: true },
       baconCount: { label: "Bacon (Chef)" },
     },
     Ness: {
       pkFireCount: { label: "PK Fire" },
       backThrowKills: { label: "Back Throw Kills", highlight: true },
-      dairKills: { label: "Dair Kills" },
-      fairKills: { label: "Fair Kills" },
+      dairKills: { label: "Down air Kills" },
+      fairKills: { label: "Forward air Kills" },
     },
     Bowser: {
       flameCount: { label: "Flame Breath" },
       koopaClaw: { label: "Koopa Klaw" },
       upBKills: { label: "Up-B Kills" },
-      fsmashKills: { label: "Fsmash Kills", highlight: true },
+      fsmashKills: { label: "Forward smash Kills", highlight: true },
     },
     Kirby: {
       inhaleCount: { label: "Inhales" },
       upTiltKills: { label: "Utilt Kills", highlight: true },
-      fsmashKills: { label: "Fsmash Kills" },
-      dairCombos: { label: "Dair Combos (3+)" },
+      fsmashKills: { label: "Forward smash Kills" },
+      dairCombos: { label: "Down air Combos (3+)" },
       stoneKills: { label: "Stone Kills", highlight: true },
     },
     DK: {
       giantPunchKills: { label: "Giant Punch Kills", highlight: true },
       headbuttCount: { label: "Headbutts" },
       spikeKills: { label: "Spike Kills", highlight: true },
-      bairKills: { label: "Bair Kills" },
+      bairKills: { label: "Back air Kills" },
     },
     Pichu: {
       thunderJoltCount: { label: "Thunder Jolts" },
       thunderKills: { label: "Thunder Kills", highlight: true },
-      upSmashKills: { label: "Upsmash Kills" },
-      nairCombos: { label: "Nair Combos (2+)" },
+      upSmashKills: { label: "Up smash Kills" },
+      nairCombos: { label: "Neutral air Combos (2+)" },
     },
   };
 
@@ -343,7 +338,7 @@ function aggregateSignatureStats(rawStats: any[], characterName?: string): Signa
     .filter(([key]) => totals[key] !== undefined)
     .map(([key, meta]) => {
       const total = totals[key]!;
-      const item: SignatureStat = { label: meta.label, value: total };
+      const item: SignatureStat = { key, label: meta.label, value: total };
       if (meta.suffix !== undefined) item.suffix = meta.suffix;
       if (meta.highlight !== undefined) item.highlight = meta.highlight;
       return item;
@@ -520,6 +515,8 @@ function CharacterDetail({
   const { data: signature } = useCharacterSignatureStats(character);
   const { data: gameStats, isLoading: statsLoading } = useCharacterGameStats(character);
   const [coachOpen, setCoachOpen] = useState(false);
+  const [view, setView] = useState("overview");
+  const [selectedTechnique, setSelectedTechnique] = useState<string | null>(null);
 
   const gameStatRows = useMemo<RadarGameStats[]>(() => (Array.isArray(gameStats) ? gameStats : []), [gameStats]);
   const totalGames = gameStatRows.length;
@@ -530,10 +527,10 @@ function CharacterDetail({
   const heroStats: Array<[string, string]> =
     totalGames > 0
       ? [
-          ["Neutral WR", `${(avgField(gameStatRows, "neutralWinRate") * 100).toFixed(1)}%`],
-          ["Conv Rate", `${(avgField(gameStatRows, "conversionRate") * 100).toFixed(0)}%`],
-          ["L-Cancel", `${(avgField(gameStatRows, "lCancelRate") * 100).toFixed(0)}%`],
-          ["Op/Kill", avgField(gameStatRows, "openingsPerKill").toFixed(1)],
+          ["Winning the first hit", `${(avgField(gameStatRows, "neutralWinRate") * 100).toFixed(1)}%`],
+          ["Combos extended", `${(avgField(gameStatRows, "conversionRate") * 100).toFixed(0)}%`],
+          ["L-cancel success", `${(avgField(gameStatRows, "lCancelRate") * 100).toFixed(0)}%`],
+          ["Openings per stock", avgField(gameStatRows, "openingsPerKill").toFixed(1)],
         ]
       : [];
 
@@ -569,29 +566,22 @@ function CharacterDetail({
     );
   }
 
-  // Keep the character art central and use at most four signature callouts
-  // around it. Highlighted character-specific moments win the limited space.
-  const flankItems: HeroCallout[] =
-    signatureStats.length > 0
-      ? [...signatureStats]
-          .sort((a, b) => Number(Boolean(b.highlight)) - Number(Boolean(a.highlight)))
-          .slice(0, 4)
-          .map((stat) => {
-            const item: HeroCallout = {
-              label: stat.label,
-              value: `${stat.value}${stat.suffix ?? ""}`,
-            };
-            if (stat.highlight) item.highlight = true;
-            if (!stat.suffix && totalGames > 0) {
-              const perGame = stat.value / totalGames;
-              item.detail = `${perGame >= 10 ? perGame.toFixed(1) : perGame.toFixed(2)} / game`;
-            }
-            return item;
-          })
-      : heroStats.map(([label, value]) => ({ label, value }));
-  const leftFlank = flankItems.filter((_, index) => index % 2 === 0);
-  const rightFlank = flankItems.filter((_, index) => index % 2 === 1);
-
+  const flankStats = [...signatureStats]
+    .sort((a, b) => Number(Boolean(b.highlight)) - Number(Boolean(a.highlight)))
+    .slice(0, 4);
+  const showTechnique = (key: string) => {
+    setSelectedTechnique(key);
+    setView("moves");
+    requestAnimationFrame(() =>
+      document.querySelector(".character-detail-nav")?.scrollIntoView({ block: "start", behavior: "smooth" }),
+    );
+  };
+  const metricHelp: Record<string, string> = {
+    "Winning the first hit": "The share of neutral openings you won in these games.",
+    "Combos extended": "The share of openings that Slippi records as successful conversions.",
+    "L-cancel success": "Successful L-cancels divided by recorded L-cancel attempts.",
+    "Openings per stock": "Separate openings needed to take a stock. Lower means fewer openings per stock.",
+  };
   const summaryGames = summary?.gamesPlayed ?? totalGames;
   const summaryWins = summary?.wins ?? 0;
   const summaryLosses = summary?.losses ?? 0;
@@ -611,7 +601,7 @@ function CharacterDetail({
       >
         <div className="character-hero-head">
           <div className="character-hero-identity">
-            <div className="character-hero-eyebrow">Character dossier</div>
+            <div className="character-hero-eyebrow">Your character</div>
             <div className="character-hero-title-row">
               <h2>{character}</h2>
               <span className="character-hero-games mono">
@@ -632,180 +622,263 @@ function CharacterDetail({
           </div>
           {!statsLoading && totalGames > 0 && (
             <button className="btn btn-primary character-hero-cta" onClick={() => setCoachOpen(true)}>
-              Analyze Character
+              Get coaching
             </button>
           )}
         </div>
 
         <div className="character-hero-stage">
-          <div className="character-hero-side character-hero-side--left">
-            {leftFlank.map((s) => (
-              <div
-                key={s.label}
-                className={`character-hero-stat${s.highlight ? " character-hero-stat--highlight" : ""}`}
-              >
-                <div className="character-hero-stat-value mono">{s.value}</div>
-                <div className="character-hero-stat-label">{s.label}</div>
-                {s.detail && <div className="character-hero-stat-detail mono">{s.detail}</div>}
-              </div>
-            ))}
+          <div className="character-hero-art-xl" aria-hidden="true">
+            <CharacterCardImage character={character} variant="portrait" color={meta.color} />
           </div>
-
-          <div className="character-hero-art-xl">
-            {CHARACTER_IMAGE_URLS[character] ? (
-              <CharacterCardImage character={character} variant="portrait" color={meta.color} />
-            ) : (
-              <div className="character-hero-emoji">{meta.emoji}</div>
-            )}
-          </div>
-
-          <div className="character-hero-side character-hero-side--right">
-            {rightFlank.map((s) => (
-              <div
-                key={s.label}
-                className={`character-hero-stat${s.highlight ? " character-hero-stat--highlight" : ""}`}
-              >
-                <div className="character-hero-stat-value mono">{s.value}</div>
-                <div className="character-hero-stat-label">{s.label}</div>
-                {s.detail && <div className="character-hero-stat-detail mono">{s.detail}</div>}
-              </div>
-            ))}
-          </div>
+          {(["left", "right"] as const).map((side, index) => (
+            <div key={side} className={`character-hero-side character-hero-side--${side}`}>
+              {flankStats
+                .filter((_, i) => i % 2 === index)
+                .map((stat) => (
+                  <button
+                    key={stat.key}
+                    className="character-hero-stat"
+                    onClick={() => showTechnique(stat.key)}
+                    aria-label={`View ${stat.label} clips`}
+                  >
+                    <div className="character-hero-stat-value mono">
+                      {stat.value}
+                      {stat.suffix}
+                    </div>
+                    <div className="character-hero-stat-label">{stat.label}</div>
+                    <div className="character-hero-stat-detail">View action clips →</div>
+                  </button>
+                ))}
+            </div>
+          ))}
         </div>
 
-        {signatureStats.length > 0 && heroStats.length > 0 && (
+        {heroStats.length > 0 && (
           <div className="character-hero-stripe">
             {heroStats.map(([label, value]) => (
-              <div key={label} className="character-hero-stripe-cell">
-                <div className="mono character-hero-stripe-value">{value}</div>
-                <div className="character-hero-stripe-label">{label}</div>
-              </div>
+              <details key={label} className="character-hero-stripe-cell character-hero-metric">
+                <summary>
+                  <span className="mono character-hero-stripe-value">{value}</span>
+                  <span className="character-hero-stripe-label">{label} +</span>
+                </summary>
+                <p>{metricHelp[label]}</p>
+              </details>
             ))}
           </div>
         )}
       </Card>
 
-      <Suspense
-        fallback={
-          <div className="character-analytics-loading" aria-label="Loading character analytics">
-            <div className="spinner" />
-          </div>
-        }
-      >
-        <section className="character-analytics-stack" aria-label={`${character} analytics`}>
-          <IdentityCard character={character} color={meta.color} glowColor={meta.glowColor} />
-          <FormStrip character={character} color={meta.color} glowColor={meta.glowColor} />
-          <div className="character-analytics-grid">
-            <PunishEconomy character={character} color={meta.color} glowColor={meta.glowColor} />
-            <HabitLedger character={character} color={meta.color} glowColor={meta.glowColor} />
-            <RecoveryMatrix character={character} color={meta.color} glowColor={meta.glowColor} />
-            <DeathReport character={character} color={meta.color} glowColor={meta.glowColor} />
-            <StageCard character={character} color={meta.color} glowColor={meta.glowColor} />
-            <TriviaCard character={character} color={meta.color} glowColor={meta.glowColor} />
-          </div>
-        </section>
-      </Suspense>
-
-      <div className="character-detail-bottom">
-        <Card
-          tone="chrome-plate"
-          className="character-radar-card"
-          style={{ "--char-color": meta.color, "--char-glow": meta.glowColor } as MotionStyle}
-        >
-          <div className="character-radar-head">
-            <div>
-              <div className="character-radar-eyebrow">Character form</div>
-              <h3>{character} radar</h3>
-              <p>
-                Built from this character's games only. The shape favors repeatable strengths over one-off highlight
-                moments.
-              </p>
-            </div>
-            <div className="character-radar-sample">
-              <span className="mono">{totalGames}</span>
-              <small>{totalGames === 1 ? "game" : "games"}</small>
-            </div>
-          </div>
-
-          <Suspense
-            fallback={
-              <div className="character-radar-loading">
-                <div className="spinner" />
-              </div>
-            }
+      <nav className="character-detail-nav" aria-label="Character views">
+        {[
+          ["overview", "Overview"],
+          ["moves", "Character moves"],
+          ["details", "Details"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            className={`btn${view === id ? " btn-primary" : ""}`}
+            aria-pressed={view === id}
+            onClick={() => setView(id!)}
           >
-            <PlayerRadar stats={radarStats} games={gameStatRows} accentColor={meta.color} />
-          </Suspense>
-
-          <div className="character-radar-readout">
-            <div>
-              <div className="character-radar-label">Strengths</div>
-              <div className="character-radar-pills">
-                {radarStrengths.map((axis) => (
-                  <span className="character-radar-pill character-radar-pill-strong" key={axis.key}>
-                    {axis.label}
-                    <b>{Math.round(axis.value)}</b>
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div className="character-radar-label">Lab targets</div>
-              <div className="character-radar-pills">
-                {radarTargets.map((axis) => (
-                  <span className="character-radar-pill" key={axis.key}>
-                    {axis.label}
-                    <b>{Math.round(axis.value)}</b>
-                  </span>
-                ))}
-              </div>
-            </div>
+            {label}
+          </button>
+        ))}
+      </nav>
+      <p className="character-detail-note">
+        Based on {totalGames} imported {character} games. The numbers above are averages per game. Small samples can
+        change quickly.
+      </p>
+      {view === "moves" && (
+        <CharacterMoves
+          key={`${character}:${selectedTechnique}`}
+          character={character}
+          stats={signatureStats}
+          selectedKey={selectedTechnique}
+        />
+      )}
+      {view === "overview" && (
+        <Suspense fallback={<p>Loading recent games…</p>}>
+          <div className="character-overview-focus">
+            <Card title="Start here">
+              <h3>Review one thing at a time</h3>
+              <p>
+                Watch a recent game and choose one habit to practice. Character moves helps you find your combos;
+                Details explains where you lose stocks and miss chances.
+              </p>
+              <button className="btn" onClick={() => setView("moves")}>
+                Find a combo to watch
+              </button>
+            </Card>
+            <Card title="What the numbers mean">
+              <dl className="character-metric-guide">
+                <dt>Winning the first hit</dt>
+                <dd>How often you win the start of an exchange.</dd>
+                <dt>Combos extended</dt>
+                <dd>How often an opening leads to more hits.</dd>
+                <dt>L-cancel success</dt>
+                <dd>Successful landing inputs that shorten aerial attack recovery.</dd>
+                <dt>Openings per stock</dt>
+                <dd>How many separate openings you need to take a stock. Fewer is better.</dd>
+              </dl>
+            </Card>
           </div>
-        </Card>
+          <FormStrip character={character} color={meta.color} glowColor={meta.glowColor} />
+          <CharacterDisclosure
+            title="AI coaching summary"
+            description="Optional advice based on your games. Opens when you ask for it."
+          >
+            <IdentityCard character={character} color={meta.color} glowColor={meta.glowColor} />
+          </CharacterDisclosure>
+        </Suspense>
+      )}
+      {view === "details" && (
+        <Suspense fallback={<p>Loading details…</p>}>
+          <p>Open a topic to explore it. Rates include the number of examples behind them.</p>
+          <div className="character-detail-topics">
+            <CharacterDisclosure
+              title="Missed chances & shield safety"
+              description="When attacks miss, and what happens after blocking."
+            >
+              <PunishEconomy character={character} color={meta.color} glowColor={meta.glowColor} />
+            </CharacterDisclosure>
+            <CharacterDisclosure
+              title="Repeated habits"
+              description="What you choose after being knocked down, reaching the ledge, or coming under pressure."
+            >
+              <HabitLedger character={character} color={meta.color} glowColor={meta.glowColor} />
+            </CharacterDisclosure>
+            <CharacterDisclosure
+              title="Getting back to stage"
+              description="Your recovery routes and attempts to stop the opponent returning."
+            >
+              <RecoveryMatrix character={character} color={meta.color} glowColor={meta.glowColor} />
+            </CharacterDisclosure>
+            <CharacterDisclosure
+              title="How you lose stocks"
+              description="Damage before losing a stock, unused jumps, and steering after a hit."
+            >
+              <DeathReport character={character} color={meta.color} glowColor={meta.glowColor} />
+            </CharacterDisclosure>
+            <CharacterDisclosure title="Stages & matchups" description="Where you play and which opponents you face.">
+              <StageCard character={character} color={meta.color} glowColor={meta.glowColor} />
+            </CharacterDisclosure>
+            <CharacterDisclosure
+              title="Lifetime totals"
+              description="Time played, damage dealt, and other career counts."
+            >
+              <TriviaCard character={character} color={meta.color} glowColor={meta.glowColor} />
+            </CharacterDisclosure>
+          </div>
+        </Suspense>
+      )}
+      {view === "details" && (
+        <CharacterDisclosure
+          title="Skill chart & matchup records"
+          description="A closer look at the numbers. Chart scores are relative estimates, not a player rating."
+        >
+          <div className="character-detail-bottom">
+            <Card
+              tone="chrome-plate"
+              className="character-radar-card"
+              style={{ "--char-color": meta.color, "--char-glow": meta.glowColor } as MotionStyle}
+            >
+              <div className="character-radar-head">
+                <div>
+                  <div className="character-radar-eyebrow">Character form</div>
+                  <h3>{character} radar</h3>
+                  <p>
+                    Built from this character's games only. Use it to compare your own games, rather than comparing
+                    scores with other players.
+                  </p>
+                </div>
+                <div className="character-radar-sample">
+                  <span className="mono">{totalGames}</span>
+                  <small>{totalGames === 1 ? "game" : "games"}</small>
+                </div>
+              </div>
 
-        <Card title="Matchups" className="character-matchups-card">
-          <DataTable>
-            <thead>
-              <tr>
-                <th>vs</th>
-                <th>Games</th>
-                <th>Record</th>
-                <th>Win Rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {matchups.slice(0, 12).map((m) => {
-                const gamesCount = m.gamesPlayed ?? 0;
-                const wr = m.winRate ?? (m.wins + m.losses > 0 ? m.wins / (m.wins + m.losses) : 0);
-                return (
-                  <tr key={m.opponentCharacter}>
-                    <td style={{ fontWeight: 600 }}>{m.opponentCharacter}</td>
-                    <td className="mono">{gamesCount}</td>
-                    <td>
-                      <span style={{ color: "var(--win)" }}>{m.wins}W</span>-
-                      <span style={{ color: "var(--loss)" }}>{m.losses}L</span>
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span
-                          className="mono"
-                          style={{
-                            color: wr >= 0.5 ? "var(--win)" : "var(--loss)",
-                            fontWeight: 700,
-                          }}
-                        >
-                          {(wr * 100).toFixed(0)}%
-                        </span>
-                        <WinrateBar value={wr} />
-                      </div>
-                    </td>
+              <Suspense
+                fallback={
+                  <div className="character-radar-loading">
+                    <div className="spinner" />
+                  </div>
+                }
+              >
+                <PlayerRadar stats={radarStats} games={gameStatRows} accentColor={meta.color} />
+              </Suspense>
+
+              <div className="character-radar-readout">
+                <div>
+                  <div className="character-radar-label">Strengths</div>
+                  <div className="character-radar-pills">
+                    {radarStrengths.map((axis) => (
+                      <span className="character-radar-pill character-radar-pill-strong" key={axis.key}>
+                        {axis.label}
+                        <b>{Math.round(axis.value)}</b>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="character-radar-label">Areas to review</div>
+                  <div className="character-radar-pills">
+                    {radarTargets.map((axis) => (
+                      <span className="character-radar-pill" key={axis.key}>
+                        {axis.label}
+                        <b>{Math.round(axis.value)}</b>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card title="Matchups" className="character-matchups-card">
+              <DataTable>
+                <thead>
+                  <tr>
+                    <th>vs</th>
+                    <th>Games</th>
+                    <th>Record</th>
+                    <th>Win Rate</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </DataTable>
-        </Card>
-      </div>
+                </thead>
+                <tbody>
+                  {matchups.slice(0, 12).map((m) => {
+                    const gamesCount = m.gamesPlayed ?? 0;
+                    const wr = m.winRate ?? (m.wins + m.losses > 0 ? m.wins / (m.wins + m.losses) : 0);
+                    return (
+                      <tr key={m.opponentCharacter}>
+                        <td style={{ fontWeight: 600 }}>{m.opponentCharacter}</td>
+                        <td className="mono">{gamesCount}</td>
+                        <td>
+                          <span style={{ color: "var(--win)" }}>{m.wins}W</span>-
+                          <span style={{ color: "var(--loss)" }}>{m.losses}L</span>
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span
+                              className="mono"
+                              style={{
+                                color: wr >= 0.5 ? "var(--win)" : "var(--loss)",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {(wr * 100).toFixed(0)}%
+                            </span>
+                            <WinrateBar value={wr} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </DataTable>
+            </Card>
+          </div>
+        </CharacterDisclosure>
+      )}
 
       {coachOpen && (
         <Suspense fallback={null}>
@@ -814,11 +887,37 @@ function CharacterDetail({
             onClose={() => setCoachOpen(false)}
             scope="character"
             id={character}
-            title={`${character} Matchup Analysis`}
+            title={`${character} coaching`}
             replayPath=""
           />
         </Suspense>
       )}
     </div>
+  );
+}
+
+function CharacterDisclosure({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="character-topic" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </summary>
+      {open && (
+        <div className="character-topic-body">
+          <p className="character-detail-note">Some stats appear only after enough examples have been recorded.</p>
+          {children}
+        </div>
+      )}
+    </details>
   );
 }

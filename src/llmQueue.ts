@@ -16,6 +16,8 @@ export class LLMQueue {
   private processing = false;
   private delayMs: number;
   private lastCallTime = 0;
+  private waiting: QueueItem<any> | null = null;
+  private cancelWait: (() => void) | null = null;
 
   /**
    * @param delayMs Minimum milliseconds between API calls. Default 1500ms
@@ -50,12 +52,32 @@ export class LLMQueue {
 
     this.processing = true;
     const item = this.queue.shift()!;
+    this.waiting = item;
 
     // Enforce minimum delay between calls
     const elapsed = Date.now() - this.lastCallTime;
     if (elapsed < this.delayMs) {
-      await sleep(this.delayMs - elapsed);
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          this.cancelWait = null;
+          resolve();
+        }, this.delayMs - elapsed);
+        this.cancelWait = () => {
+          clearTimeout(timer);
+          this.cancelWait = null;
+          resolve();
+        };
+      });
     }
+
+    // clear() must also cancel the item already removed from the queue but
+    // still waiting for its rate-limit delay. It has not made an API call yet.
+    if (this.waiting !== item) {
+      this.processing = false;
+      void this.processNext();
+      return;
+    }
+    this.waiting = null;
 
     try {
       this.lastCallTime = Date.now();
@@ -76,11 +98,12 @@ export class LLMQueue {
       item.reject(new Error("Queue cleared"));
     }
     this.queue = [];
+    if (this.waiting) {
+      this.waiting.reject(new Error("Queue cleared"));
+      this.waiting = null;
+      this.cancelWait?.();
+    }
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Singleton instance used by the app

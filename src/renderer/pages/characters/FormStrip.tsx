@@ -32,12 +32,12 @@ const METRICS: Array<{
   invert?: boolean;
   domain?: [number, number];
 }> = [
-  { key: "neutralWinRate", label: "Neutral WR", fmt: (v) => `${(v * 100).toFixed(1)}%`, domain: [0, 1] },
-  { key: "conversionRate", label: "Conversion", fmt: (v) => `${(v * 100).toFixed(1)}%`, domain: [0, 1] },
-  { key: "lCancelRate", label: "L-Cancel", fmt: (v) => `${(v * 100).toFixed(1)}%`, domain: [0, 1] },
-  { key: "openingsPerKill", label: "Op/Kill", fmt: (v) => v.toFixed(1), invert: true },
-  { key: "avgDamagePerOpening", label: "Dmg/Open", fmt: (v) => v.toFixed(1) },
-  { key: "avgDeathPercent", label: "Death %", fmt: (v) => `${v.toFixed(0)}%`, invert: true },
+  { key: "neutralWinRate", label: "Winning the first hit", fmt: (v) => `${(v * 100).toFixed(1)}%`, domain: [0, 1] },
+  { key: "conversionRate", label: "Combos extended", fmt: (v) => `${(v * 100).toFixed(1)}%`, domain: [0, 1] },
+  { key: "lCancelRate", label: "L-cancel success", fmt: (v) => `${(v * 100).toFixed(1)}%`, domain: [0, 1] },
+  { key: "openingsPerKill", label: "Openings per stock", fmt: (v) => v.toFixed(1), invert: true },
+  { key: "avgDamagePerOpening", label: "Damage per opening", fmt: (v) => v.toFixed(1) },
+  { key: "avgDeathPercent", label: "Damage before stock loss", fmt: (v) => `${v.toFixed(0)}%`, invert: true },
 ];
 
 // Copied from Trends.tsx: 5-game rolling average smoothing.
@@ -121,7 +121,7 @@ export function FormStrip({ character, color, glowColor }: CharacterModuleProps)
           </div>
         </div>
         <div className="form-strip-sparks">
-          {METRICS.map((metric) => {
+          {METRICS.slice(0, 3).map((metric) => {
             const values = statRows
               .map((row) => row[metric.key])
               .filter((v): v is number => typeof v === "number" && Number.isFinite(v));

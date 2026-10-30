@@ -1,3 +1,4 @@
+import { isKenCombo } from "../kenCombo";
 import type { ConversionType, FramesType } from "@slippi/slippi-js/node";
 
 import type { GameSummary } from "./types.js";
@@ -293,13 +294,13 @@ function detectCharacterHighlights(
 
     switch (character) {
       case "Marth": {
-        // Ken combo: fair → dair (with kill, ideally offstage)
-        if (hasSequence(moves, MOVE_FAIR, MOVE_DAIR) && conv.didKill) {
+        // Ken Combo: FAIR → FAIR → DAIR, with the final DAIR taking the stock.
+        if (isKenCombo(moves, conv.didKill)) {
           highlights.push({
             ...base,
             type: "ken-combo",
             label: "Ken Combo",
-            description: `fair → dair kill at ${Math.round(conv.startPercent)}%`,
+            description: `fair → fair → dair kill at ${Math.round(conv.startPercent)}%`,
           });
         }
         // Tipper fsmash kill at low percent
@@ -349,7 +350,7 @@ function detectCharacterHighlights(
           highlights.push({
             ...base,
             type: "waveshine-upsmash",
-            label: "Waveshine Upsmash",
+            label: "Shine → Up Smash",
             description: `shine → upsmash kill at ${Math.round(conv.startPercent)}%`,
           });
         }

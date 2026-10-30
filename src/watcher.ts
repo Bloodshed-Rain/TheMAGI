@@ -47,6 +47,7 @@ export function watchReplays(options: WatcherOptions): { close: () => void } {
   const { replayFolder, targetPlayer, importExisting = true, onImport, onError } = options;
 
   let gameCount = 0;
+  let closed = false;
 
   // Import existing replays first
   if (importExisting) {
@@ -59,9 +60,11 @@ export function watchReplays(options: WatcherOptions): { close: () => void } {
         let imported = 0;
         let skipped = 0;
         for (const filePath of existing) {
+          if (closed) break;
           gameCount++;
           try {
             const result = await importReplay(filePath, targetPlayer, gameCount);
+            if (closed) break;
             if (result.skipped) {
               skipped++;
             } else {
@@ -76,7 +79,7 @@ export function watchReplays(options: WatcherOptions): { close: () => void } {
           } catch (err) {
             const error = err instanceof Error ? err : new Error(String(err));
             console.error(`[error] ${path.basename(filePath)}: ${error.message}`);
-            onError?.(error, filePath);
+            if (!closed) onError?.(error, filePath);
           }
         }
         console.log(`Imported: ${imported}, Skipped (duplicate): ${skipped}`);
@@ -99,10 +102,12 @@ export function watchReplays(options: WatcherOptions): { close: () => void } {
   });
 
   watcher.on("add", async (absolutePath) => {
+    if (closed || !absolutePath.toLowerCase().endsWith(".slp")) return;
     gameCount++;
 
     try {
       const result = await importReplay(absolutePath, targetPlayer, gameCount);
+      if (closed) return;
 
       const basename = path.basename(absolutePath);
       if (result.skipped) {
@@ -120,11 +125,12 @@ export function watchReplays(options: WatcherOptions): { close: () => void } {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       console.error(`[error] Failed to import ${path.basename(absolutePath)}: ${error.message}`);
-      onError?.(error, absolutePath);
+      if (!closed) onError?.(error, absolutePath);
     }
   });
 
   watcher.on("error", (err: unknown) => {
+    if (closed) return;
     const error = err instanceof Error ? err : new Error(String(err));
     console.error(`Watcher error: ${error.message}`);
     onError?.(error, replayFolder);
@@ -132,7 +138,9 @@ export function watchReplays(options: WatcherOptions): { close: () => void } {
 
   return {
     close: () => {
-      watcher.close();
+      if (closed) return;
+      closed = true;
+      void watcher.close().catch((err) => console.warn("[watcher] close failed:", err));
     },
   };
 }

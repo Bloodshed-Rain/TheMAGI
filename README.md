@@ -2,28 +2,44 @@
 
 **Melee Analysis through Generative Intelligence**
 
+Source version **1.10.1** · [Release notes](CHANGELOG.md) · [Detailed user guide](docs/USER_GUIDE.md)
+
+The release badge below shows the latest published build, which may lag this checkout. Check the release notes for the version you download.
+
 [![Latest release](https://img.shields.io/github/v/release/Bloodshed-Rain/TheMAGI?label=release)](https://github.com/Bloodshed-Rain/TheMAGI/releases)
 [![Build & Release](https://github.com/Bloodshed-Rain/TheMAGI/actions/workflows/build.yml/badge.svg)](https://github.com/Bloodshed-Rain/TheMAGI/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-7ee8c5)](https://github.com/Bloodshed-Rain/TheMAGI/releases)
 [![Slippi](https://img.shields.io/badge/Slippi-.slp%20replays-8ea7ff)](https://slippi.gg/)
 
-MAGI is a local-first desktop coach and replay-analysis workspace for Super Smash Bros. Melee. It turns Slippi `.slp` files into a searchable performance database, frame-derived analytics, replay review tools, AI coaching, opponent dossiers, and concrete practice plans.
+MAGI is a free, open-source desktop workspace for Super Smash Bros. Melee. On Windows, **Play Mode** brings your Slippi Netplay Dolphin, live stats, Cornerman coaching, practice focus, and notes together beside the game. Your Slippi `.slp` files also become a searchable local library with frame-derived analytics, replay review, character action clips, opponent dossiers, and optional AI coaching.
 
 - **Replay-native:** analysis is built from the actual decisions and events in your Slippi files.
 - **Local-first:** replays, parsed stats, notes, configuration, and cached reports live on your machine.
-- **AI-optional:** core parsing and analytics work without an API key; use a hosted provider, the free no-key fallback, or a local model for coaching.
+- **AI-optional:** parsing, analytics, browsing, notes, and game hosting work without AI. Add an eligible ChatGPT plan connection, your own API key, a local model, or the optional no-key provider for coaching. Hosted services have their own availability and usage limits.
 - **Practice-oriented:** MAGI connects trends, matchups, habits, and replay moments to specific review targets and drills.
 
 **Website:** [themagi.gg](https://themagi.gg)<br>
 **Downloads:** [GitHub Releases](https://github.com/Bloodshed-Rain/TheMAGI/releases)<br>
 **Source:** [github.com/Bloodshed-Rain/TheMAGI](https://github.com/Bloodshed-Rain/TheMAGI)
 
-![MAGI dashboard](screenshots/app-dashboard.png)
+![MAGI Fullscreen Play Mode with Melee centered between configurable panels](screenshots/app-play-fullscreen.png)
+
+## What's new
+
+- **Play Mode and Fullscreen:** host Netplay Dolphin on Windows, arrange and resize panels on either side, save layouts, and keep the game at 4:3. Panels can stay visible in the side space or reveal on hover. Available panels include live stats, opponent and set tracking, Cornerman, Oracle, recent form, practice focus, and notes.
+- **Integrated Cornerman:** live events, running stats, between-game coaching, and optional voice live in MAGI and Play Mode. The former separate popup window has been removed. The live session reads the hosted Dolphin's replay output rather than assuming your import folder is its live source.
+- **Character overviews and bounded action clips:** large character artwork, explained core metrics, move and technique breakdowns, and expandable habit, recovery, stock-loss, stage, and career details. Supported examples open short replay clips when timestamp evidence and the replay file are available.
+- **Resumable setup:** a first-run wizard for identity, replay import, and optional Dolphin/game-image paths, with checks and a Finish later option.
+- **ChatGPT plan connection:** browser sign-in, account-provided models, refresh, account switching, disconnect, and usage management for optional coaching. Eligibility and usage limits depend on your account.
+- **Four appearance options:** Liquid, Telemetry, Tournament, and Light, shared by the main app and Play Mode. Saved CRT and Amber selections migrate to Liquid.
+
+The [changelog](CHANGELOG.md) also describes the stricter Ken Combo definition, historical data repair, and coaching accuracy requirements.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Play Mode and Live Coaching](#play-mode-and-live-coaching)
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [What MAGI Measures](#what-magi-measures)
@@ -42,34 +58,60 @@ MAGI is a local-first desktop coach and replay-analysis workspace for Super Smas
 
 ## Quick Start
 
-1. Download the latest build from [GitHub Releases](https://github.com/Bloodshed-Rain/TheMAGI/releases).
-2. Open **Settings → Profile** and enter your Slippi connect code or player tag. A connect code is the most reliable identifier.
-3. Open **Settings → Replays**, select the folder containing your `.slp` files, and click **Import All**.
-4. Optionally enable the replay watcher so new games are imported as they arrive.
-5. Explore **Dashboard**, **Performance Lab**, **Library**, **Sessions**, **Trends**, **Characters**, or **Rivals**.
-6. For AI coaching, choose a provider and model under **Settings → AI**. An API key is not required for local models or Pollinations.
-7. For replay playback, configure Slippi Dolphin and a legally obtained Melee ISO under **Settings → Playback**.
+1. Download and open MAGI from [GitHub Releases](https://github.com/Bloodshed-Rain/TheMAGI/releases).
+2. Follow the **setup wizard**, which opens automatically on a fresh installation. Enter your Slippi connect code (or your player tag for offline games).
+3. Choose your Slippi replay folder and select **Import my replays**. Subfolders are included; duplicates are skipped. You can also import later.
+4. Optionally configure Slippi **Netplay Dolphin**, **Playback Dolphin**, and your own Melee game image. Detected paths are filled in for you. **Check setup** verifies readable paths; launching a game is the final compatibility check.
+5. Open the Dashboard, launch Play Mode on Windows, or configure optional coaching in **Settings → AI**.
+
+Use **Finish later** to save your progress. Reopen the guide with **Settings → Setup wizard**. Existing installations keep their settings and are not forced through onboarding.
+
+For automatic imports, enable **Settings → Replays → Watch for New Games**. Configure your controller in Dolphin before playing. MAGI does not include Slippi Dolphin or a Melee game image.
 
 Replay parsing, statistics, browsing, trends, and manual notes do not require an AI provider.
 
+## Play Mode and Live Coaching
+
+**Play Mode (Windows):** Open **Play Mode** from the sidebar or command palette for a dedicated workspace with Melee in the center and configurable sidebars. Use **Settings → Play Mode settings** to select Slippi **Netplay** Dolphin and your Melee image; this is separate from Playback Dolphin used by Game Theater. Slippi Launcher's usual Windows installation and ISO settings are detected when available.
+
+Use **Customize** to select and reorder panels independently on either side, adjust sidebar widths, choose live statistics, collapse either sidebar, or apply Minimal, Live Coaching, and Practice presets. Layout, practice focus, and notes are saved locally. **Back to MAGI** hides the game while preserving its process; returning to Play Mode restores it. **Stop Game** ends the game, and quitting MAGI closes its hosted Dolphin session.
+
+**Fullscreen:** The game keeps its 4:3 aspect ratio, with information visible in the unused space beside it by default. Choose **Customize → Fullscreen panels → Auto-hide until hovered** for edge reveal. When the side space is too narrow for readable panels, edge reveal is used automatically. **Ctrl+Shift+F11** returns to the regular layout. Sidebar visibility controls live in Customize.
+
+Cornerman runs inside Play Mode; there is no separate popup window. Use **Settings → Play Mode settings → Enable Cornerman in Play Mode** to control its live-session button and automatic tracking. Game paths and the replay output folder are configured in the same Settings section. Voice and optional desktop notifications remain under **Settings → Cornerman**.
+
+Play Mode uses the existing Cornerman service for live tracking and coaching. Configure your player identity in Settings first. Tracking, watching, and the game have independent controls: leaving Play Mode does not stop the live session. Oracle and Cornerman use your configured AI provider; game hosting, replay parsing, layout, notes, and focus do not require AI. Native hosting does not yet support macOS or Linux.
+
+Launching Melee in Play Mode starts live tracking automatically when Cornerman is enabled and your player identity is configured. MAGI reads the hosted Dolphin's `SlippiReplayDir` and replay-saving setting, so an old import folder cannot silently receive the live session. **Start live session** also prepares that folder and enables live stats. The setup strip shows the replay source and AI readiness separately; **Stop live session** stops Cornerman, while the app-wide import watcher stays active.
+
 ## Features
 
-| Area                | What it provides                                                                                                                                                                                                                                                                                               |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Dashboard**       | Overall record, recent form, rolling stat cards, recent games, detected highlights, and an Oracle summary of recent play.                                                                                                                                                                                      |
-| **Performance Lab** | A current-form scorecard against the prior baseline, wins-versus-losses comparisons, actionable signals, a prioritized replay-review queue, and a manual training log for drills, friendlies, tournaments, coaching, and VOD review.                                                                           |
-| **Library**         | Search and filter recent games by opponent, character, stage, and result, then open any game in the review workspace. Duplicate replay files are skipped by SHA-256 hash.                                                                                                                                      |
-| **Sessions**        | Calendar-day game groups with result strips, opponent summaries, and cached or regenerated AI session reports.                                                                                                                                                                                                 |
-| **Trends**          | Rolling performance charts for neutral, conversion, execution, punish, recovery, and survival metrics over configurable ranges.                                                                                                                                                                                |
-| **Characters**      | A full roster view plus character dossiers with recent form, matchup and stage records, radar stats, AI identity blurbs, punish economy, habit ledger, recovery routes, measured death/DI reports, and career trivia. Data-heavy cards wait for minimum sample sizes rather than presenting noisy conclusions. |
-| **Rivals**          | Searchable opponent history, head-to-head records, recent form, character and stage breakdowns, game links, and generated scouting dossiers.                                                                                                                                                                   |
-| **Game Theater**    | Replay playback, scrubbing and transport controls, stock markers, highlight clips, optional looping, game-level coaching, timestamp seeking, stats, and persistent review notes.                                                                                                                               |
-| **Cornerman**       | Watches a live Slippi folder, tracks the current game and set, surfaces live alerts and running stats, and generates concise between-game adjustments. Its configurable popup supports auto-hide, desktop notifications, and optional system/OpenAI/Azure voice.                                               |
-| **Practice**        | AI-generated practice plans based on detected weaknesses, with drill-level completion tracking and plan history.                                                                                                                                                                                               |
-| **MAGI Oracle**     | Persistent chat grounded in recent local game context for questions about matchups, habits, changes in form, and what to review next.                                                                                                                                                                          |
-| **Settings**        | Player identity, themes and density, replay import/watching, Cornerman behavior, Dolphin paths, AI providers and models, and local-data maintenance.                                                                                                                                                           |
+| Area                | What it provides                                                                                                                                                                                                                                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dashboard**       | Overall record, recent form, rolling stat cards, recent games, detected highlights, and an Oracle summary of recent play.                                                                                                                                                                                                                               |
+| **Performance Lab** | A current-form scorecard against the prior baseline, wins-versus-losses comparisons, actionable signals, a prioritized replay-review queue, and a manual training log for drills, friendlies, tournaments, coaching, and VOD review.                                                                                                                    |
+| **Library**         | Search and filter recent games by opponent, character, stage, and result, then open any game in the review workspace. Duplicate replay files are skipped by SHA-256 hash.                                                                                                                                                                               |
+| **Sessions**        | Calendar-day game groups with result strips, opponent summaries, and cached or regenerated AI session reports.                                                                                                                                                                                                                                          |
+| **Trends**          | Rolling performance charts for neutral, conversion, execution, punish, recovery, and survival metrics over configurable ranges.                                                                                                                                                                                                                         |
+| **Characters**      | A compact overview with explained stats, character move counts linked to short action clips, and expandable topics for habits, recovery, stock losses, stages, and lifetime totals. Ken combos, multi-shines, and other supported sequences play with a short lead-in and a bounded ending. Some older or count-only stats do not have clip timestamps. |
+| **Rivals**          | Searchable opponent history, head-to-head records, recent form, character and stage breakdowns, game links, and generated scouting dossiers.                                                                                                                                                                                                            |
+| **Game Theater**    | Replay playback, scrubbing and transport controls, stock markers, highlight clips, optional looping, game-level coaching, timestamp seeking, stats, and persistent review notes.                                                                                                                                                                        |
+| **Cornerman**       | Watches a live Slippi folder, tracks the current game and set, surfaces live alerts and running stats, and generates concise between-game adjustments. Coaching and live alerts appear directly in Play Mode panels, with optional desktop notifications and system/OpenAI/Azure voice.                                                                 |
+| **Practice**        | AI-generated practice plans based on detected weaknesses, with drill-level completion tracking and plan history.                                                                                                                                                                                                                                        |
+| **MAGI Oracle**     | Persistent chat grounded in recent local game context for questions about matchups, habits, changes in form, and what to review next.                                                                                                                                                                                                                   |
+| **Play Mode**       | Windows workspace with hosted Netplay Dolphin, configurable panels for live stats, opponent/set tracking, Cornerman, Oracle, recent form, practice focus, and notes; saved layouts and Fullscreen preserve the 4:3 game image.                                                                                                                                                                                                                |
+| **Setup wizard**    | Resumable first-run guide for player identity, replay imports, and optional game paths. Reopen it from Settings.                                                                                                                                                                                                                                        |
+| **Settings**        | Player identity, themes and density, replay import/watching, Cornerman behavior, Dolphin paths, AI providers and models, and local-data maintenance.                                                                                                                                                                                                    |
 
 ## Screenshots
+
+![MAGI character overview with explained stats and action clip links](screenshots/app-character-overview.png)
+
+![MAGI character move and technique breakdown](screenshots/app-character-moves.png)
+
+![MAGI dashboard](screenshots/app-dashboard.png)
+
+![MAGI setup wizard](screenshots/setup-wizard.png)
 
 ![Game Theater replay viewer](screenshots/app-game-theater.png)
 
@@ -104,19 +146,24 @@ These metrics are descriptive. MAGI displays sample counts and suppresses some c
 
 ## AI Coaching and Providers
 
-MAGI supports both no-key and bring-your-own-key workflows:
+AI coaching is optional. In **Settings → AI → ChatGPT plan**, select **Continue with ChatGPT**, complete sign-in and plan-usage consent in your browser, and choose an available model. The connection supplies coaching for Cornerman, Oracle, replay reports, and practice generation. It does not grant access to your ChatGPT conversations. Tokens use OS-encrypted main-process storage; account switching, refresh, disconnect, and **Manage usage** are available. Eligibility, model access, and usage limits are determined by OpenAI. [Official sign-in documentation](https://developers.openai.com/siwc/token-sharing-open-source).
+
+MAGI also supports API-key and local-model workflows:
 
 | Provider           | Key required | Notes                                                                                            |
 | ------------------ | ------------ | ------------------------------------------------------------------------------------------------ |
+| ChatGPT plan       | No API key   | Browser sign-in and plan-usage consent; account eligibility, available models, and limits apply. |
 | OpenAI             | Yes          | Coaching plus optional streamed Cornerman text-to-speech.                                        |
 | Azure OpenAI       | Yes          | Requires an Azure resource endpoint and deployment name; also supports optional Cornerman voice. |
 | OpenRouter         | Yes          | Select from supported hosted models or enter a custom model ID.                                  |
 | Anthropic          | Yes          | Direct Anthropic model access.                                                                   |
 | Google Gemini      | Yes          | Direct Gemini model access.                                                                      |
 | Ollama / LM Studio | No           | Uses a local OpenAI-compatible endpoint, defaulting to `http://localhost:1234/v1`.               |
-| Pollinations       | No           | Free hosted fallback for getting started without a key.                                          |
+| Pollinations       | No           | Optional no-key hosted provider; availability and usage limits apply.                                          |
 
 Provider-aware model selection and model discovery are available in Settings. Analysis requests are queued, streamed where appropriate, retried on transient failures, and cached locally when possible.
+
+AI suggestions can be wrong. Replay timestamps and bounded clips are available for supported moments, not every AI claim. Named Melee techniques require their specific evidence; an approximate hit sequence does not confirm a technique. See the [technical accuracy policy](docs/melee-accuracy.md).
 
 AI appears in:
 
@@ -169,6 +216,7 @@ MAGI does not require an account or a MAGI-hosted backend.
 | ----------------------------------- | -------------------------------------------------------------- |
 | SQLite database                     | `~/.magi-melee/magi.db`                                        |
 | App configuration and provider keys | `~/.magi-melee/config.json`                                    |
+| ChatGPT connection tokens           | `~/.magi-melee/chatgpt-auth.enc`, encrypted with OS credential storage |
 | Development-only environment keys   | `key.env` in the repository root                               |
 | Replay files                        | Your existing Slippi folder; MAGI does not copy or delete them |
 
@@ -182,11 +230,15 @@ Download the latest package from [GitHub Releases](https://github.com/Bloodshed-
 
 - **Windows x64:** NSIS installer or portable `.exe`
 - **macOS Intel / Apple Silicon:** `.dmg`
-- **Linux x64:** `.AppImage` or `.deb`
+- **Linux x64:** `.AppImage`; local builds can also produce `.deb`
+
+Package and architecture availability depends on the release. Native Play Mode hosting and embedded replay playback are Windows-only. MAGI does not include Slippi Dolphin or a Melee game image.
 
 Packaged builds check GitHub Releases for updates when the app launches. Availability and signing behavior can vary by platform and release.
 
 ## Development Setup
+
+See the [development guide](docs/DEVELOPMENT.md) for the full command reference, architecture, historical backfill, troubleshooting, and release process.
 
 ### Prerequisites
 
@@ -200,7 +252,7 @@ Packaged builds check GitHub Releases for updates when the app launches. Availab
 ```bash
 git clone https://github.com/Bloodshed-Rain/TheMAGI.git
 cd TheMAGI
-npm install
+npm ci
 npx electron-rebuild
 npm run dev
 ```
@@ -225,7 +277,7 @@ npm run dev
 | `npm run build:mac`      | Build macOS Intel and Apple Silicon DMGs.                       |
 | `npm run build:linux`    | Build Linux AppImage and Debian packages.                       |
 
-CI runs type checking, tests, and lint on pull requests and pushes to `main`. Version tags (`v*`) build release artifacts for Windows, macOS, and Linux.
+CI runs type checking, tests, lint, and formatting on pull requests and pushes to `main`. Version tags (`v*`) build release artifacts for Windows, macOS, and Linux.
 
 ## Historical Replay Backfill
 
@@ -307,7 +359,7 @@ MAGI uses three application layers:
 
 | Path                                 | Responsibility                                                                                                                              |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/main/`                          | Electron startup, IPC registration, handlers, updater, dialogs, native Windows replay embedding, and overlay windows.                       |
+| `src/main/`                          | Electron startup, IPC registration, handlers, updater, dialogs, native Windows replay embedding, and the application window.                |
 | `src/preload/`                       | Typed bridge between Electron and React.                                                                                                    |
 | `src/renderer/`                      | React pages, components, hooks, stores, themes, assets, and styles.                                                                         |
 | `src/pipeline/`                      | Slippi parsing, frame/event extraction, derived insights, character data, signatures, highlights, and prompt assembly.                      |
@@ -320,6 +372,18 @@ MAGI uses three application layers:
 | `screenshots/`                       | README and marketing screenshots.                                                                                                           |
 
 ## Troubleshooting
+
+### Reopen setup or recover from a failed step
+
+Choose **Settings → Setup wizard**. Progress is saved when you continue or finish later. Canceling a file picker preserves your current selection; failed imports and checks leave the guide open so you can fix the location and retry. AI is optional and never blocks setup.
+
+An empty folder can be readable without containing games. If import finds no `.slp` files, play a game with replay saving enabled, then import again. If files are skipped because the player cannot be found, check your connect code before importing more games.
+
+### Play Mode cannot launch or live stats stay empty
+
+Hosted Play Mode currently requires Windows. Choose the **Netplay** Dolphin executable for live play; Game Theater uses a separate **Playback** executable. Both need a readable Melee game image. The wizard checks file access, not game-image integrity, controller configuration, network access, or provider availability.
+
+Enable replay saving in Dolphin, and use its replay output folder for live tracking. Set your player identity before launching a live session. AI coaching additionally needs a configured, available provider; live parsing and stats do not.
 
 ### MAGI does not recognize my player
 
@@ -339,11 +403,11 @@ Set both paths under **Settings → Playback**. MAGI can auto-detect common Slip
 
 ### Cornerman is not receiving games
 
-Confirm the player identity and replay folder, then start a Corner Session from the Cornerman page. The folder must be writable by Slippi and readable by MAGI. Live voice is opt-in and must be enabled separately in Settings.
+Confirm your player identity and enable Cornerman in **Settings → Play Mode settings**. Launching Melee starts tracking automatically when configured; **Start live session** can also prepare the hosted Dolphin's replay folder. The folder must be writable by Slippi and readable by MAGI, and replay saving must be enabled. The Cornerman page also offers Corner Sessions. Live voice is opt-in under **Settings → Cornerman**.
 
 ### A hosted AI provider fails
 
-Confirm that the selected provider has a valid key, endpoint where required, and model or Azure deployment name. Local providers must expose an OpenAI-compatible endpoint. Core replay analytics remain available while AI is unavailable.
+For ChatGPT plan coaching, check the connection, plan-usage consent, available model, and account usage limits; use **Refresh connection & models** or reconnect if needed. API-key providers need a valid key, endpoint where required, and model or Azure deployment name. Local providers must expose an OpenAI-compatible endpoint. Core replay analytics remain available while AI is unavailable.
 
 ### Development startup reports `NODE_MODULE_VERSION`
 
@@ -357,10 +421,10 @@ Then rerun `npm run dev`.
 
 ## Current Boundaries
 
-- Embedded Game Theater playback is Windows-only; macOS and Linux use external Slippi Dolphin playback.
+- Native Play Mode hosting and embedded Game Theater playback are Windows-only; macOS and Linux use external Slippi Dolphin playback.
 - Detailed event cards are sample-gated and cannot recover data from replay files that were moved, replaced, or deleted before a historical backfill.
 - Hosted-provider availability, pricing, model IDs, quotas, and output quality are controlled by those providers.
-- Pollinations is convenient for no-key testing; a paid or self-hosted provider offers more control for regular use.
+- Pollinations is an optional no-key hosted provider; its availability and limits are controlled by the provider.
 - MAGI is a local desktop application, not a hosted replay-storage service.
 
 ## Contributing
@@ -374,6 +438,8 @@ npm run typecheck
 npm test
 npm run lint
 npm run format:check
+npm run verify:docs
+npm run verify:release
 ```
 
 ## License

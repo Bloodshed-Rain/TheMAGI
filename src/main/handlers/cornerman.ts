@@ -3,7 +3,7 @@ import { loadConfig } from "../../config.js";
 import { getDb, insertCoachingAnalysis } from "../../db.js";
 import { advanceLiveSet, type LiveSetState } from "../../cornerman.js";
 import { startCornermanLiveMonitor, type CornermanLiveMonitor } from "../../cornermanLiveMonitor.js";
-import { resolveCornermanPopupSettings, shouldShowCornermanLiveAlert } from "../../cornermanPopupSettings.js";
+import { resolveCornermanPopupSettings } from "../../cornermanPopupSettings.js";
 import {
   resolveCornermanLiveStatsSettings,
   type CornermanLiveStatsSettings,
@@ -17,16 +17,6 @@ import { type SafeHandleFn, validatePath } from "../ipc.js";
 import { getMainWindow, setImportListener, type WatcherImportEvent } from "../state.js";
 import { resolveLLMConfig } from "./analysis.js";
 import { notifyGameHighlights, startReplayWatcher } from "./watcher.js";
-import {
-  ensureOverlayWindow,
-  showOverlayWindow,
-  hideOverlayWindow,
-  destroyOverlayWindow,
-  resizeOverlayWindow,
-  finishOverlayResize,
-  sendToOverlay,
-  markOverlayRendererReady,
-} from "../overlayWindow.js";
 
 /** Cap on games rendered into the prompt — long friendlies runs vs the same
  *  opponent are one "set"; the card should focus on recent games anyway. */
@@ -74,14 +64,17 @@ function broadcast(channel: string, ...args: unknown[]): void {
   } catch {
     // window may have closed
   }
-  // Overlay leg is queued until its renderer mounts listeners — a send fired
-  // during the window's initial load would otherwise vanish silently.
-  sendToOverlay(channel, ...args);
 }
 
 function stopLiveMonitor(): void {
   liveMonitor?.close();
   liveMonitor = null;
+}
+export function shutdownCornerman(): void {
+  session = null;
+  lastSnapshot = null;
+  stopLiveMonitor();
+  setImportListener(null);
 }
 
 /** Player's recent per-game averages, for live-stats baseline deltas. Averages
@@ -176,25 +169,14 @@ async function handleCornermanImport(event: WatcherImportEvent): Promise<void> {
 
   let card: string;
   try {
-    let shownThisCard = false;
     card = await llmQueue.enqueue(() =>
       callLLMStream({ systemPrompt: SYSTEM_PROMPT_CORNERMAN, userPrompt, config: llmConfig }, (chunk) => {
-        if (session !== mySession) return; // stale session — drop chunks, don't pop the toast
-        if (!shownThisCard && popupSettings.coachingCards) {
-          shownThisCard = true;
-          // Re-ensure: the overlay window may have died since cornerman:start.
-          ensureOverlayWindow();
-          showOverlayWindow();
-        }
+        if (session !== mySession) return; // stale session — drop chunks from the old session
         broadcast("cornerman:stream", chunk);
       }),
     );
   } catch (err) {
     if (session === mySession) {
-      if (popupSettings.errors) {
-        ensureOverlayWindow();
-        showOverlayWindow();
-      }
       broadcast("cornerman:error", err instanceof Error ? err.message : String(err));
     }
     return;
@@ -204,13 +186,6 @@ async function handleCornermanImport(event: WatcherImportEvent): Promise<void> {
   // skip the card broadcast and notification — they belong to a dead session.
   // The DB insert still runs because we already paid for the tokens.
   if (session === mySession) {
-    if (popupSettings.coachingCards) {
-      // Re-show for the finished card: if the user dismissed the toast
-      // mid-stream, the completed card would otherwise land in a hidden
-      // window and never be seen for the between-games window it serves.
-      ensureOverlayWindow();
-      showOverlayWindow();
-    }
     broadcast("cornerman:card", {
       text: card,
       gameNumber: totalGames,
@@ -251,8 +226,12 @@ async function handleCornermanImport(event: WatcherImportEvent): Promise<void> {
  *  predates the folder watcher, whose ignoreInitial suppresses the "add" event,
  *  so without this the first game would never produce a card. SHA-256 dedup in
  *  importReplay makes this a cheap no-op when the watcher also imported it. */
-async function importCompletedLiveGame(filePath: string, targetPlayer: string): Promise<void> {
-  const mySession = session;
+async function importCompletedLiveGame(
+  filePath: string,
+  targetPlayer: string,
+  mySession: CornermanSession,
+): Promise<void> {
+  if (session !== mySession) return;
   const result = await importReplay(filePath, targetPlayer);
   if (session !== mySession) return;
 
@@ -284,6 +263,8 @@ export function registerCornermanHandlers(safeHandle: SafeHandleFn): void {
     const safeFolder = validatePath(replayFolder);
     // Resolve baseline + live-stats prefs once, up front — never in the 500ms tick.
     const startConfig = loadConfig();
+    if (startConfig.cornermanEnabled === false)
+      throw new Error("Enable Cornerman in Settings → Play Mode settings to start a live session.");
     const mySession: CornermanSession = {
       targetTag: targetPlayer,
       setState: null,
@@ -293,28 +274,18 @@ export function registerCornermanHandlers(safeHandle: SafeHandleFn): void {
     session = mySession;
     lastSnapshot = null;
     startReplayWatcher(safeFolder, targetPlayer);
-    ensureOverlayWindow();
     stopLiveMonitor();
     liveMonitor = startCornermanLiveMonitor({
       replayFolder: safeFolder,
       targetPlayer,
       onEvents: (events) => {
-        ensureOverlayWindow();
-        const popupSettings = resolveCornermanPopupSettings(loadConfig());
-        const hasVisiblePopupEvent = events.some((event) =>
-          shouldShowCornermanLiveAlert(popupSettings.liveAlerts, event.importance),
-        );
-        if (hasVisiblePopupEvent) showOverlayWindow();
+        if (session !== mySession) return;
         for (const liveEvent of events) {
           broadcast("cornerman:live-event", liveEvent);
         }
       },
       onSnapshot: (snapshot) => {
-        // AMBIENT CONTENT — never an attention event. This path must contain NO
-        // ensureOverlayWindow/showOverlayWindow/loadConfig calls: coupling live
-        // stats to window visibility can re-trigger the Win11 invisible-overlay
-        // state, and disk reads don't belong in the tick. It rides the existing
-        // broadcast() (which queues to the overlay), never showing the window.
+        // Running stats update the main renderer without creating windows.
         if (session !== mySession) return; // stale session after stop/restart
         if (!mySession.liveStats.enabled) return;
         const stamped: CornermanLiveSnapshot = { ...snapshot, baseline: mySession.baseline };
@@ -322,7 +293,7 @@ export function registerCornermanHandlers(safeHandle: SafeHandleFn): void {
         broadcast("cornerman:live-stats", stamped);
       },
       onGameComplete: (filePath) => {
-        void importCompletedLiveGame(filePath, targetPlayer).catch((err) => {
+        void importCompletedLiveGame(filePath, targetPlayer, mySession).catch((err) => {
           console.error("[cornerman] live-game import failed:", err);
         });
       },
@@ -331,6 +302,7 @@ export function registerCornermanHandlers(safeHandle: SafeHandleFn): void {
       },
     });
     setImportListener((event) => {
+      if (session !== mySession) return;
       // Fire-and-forget; failures are logged so they're not silently invisible
       void handleCornermanImport(event).catch((err) => {
         console.error("[cornerman] card generation failed:", err);
@@ -341,11 +313,7 @@ export function registerCornermanHandlers(safeHandle: SafeHandleFn): void {
   });
 
   safeHandle("cornerman:stop", () => {
-    session = null;
-    lastSnapshot = null;
-    stopLiveMonitor();
-    setImportListener(null);
-    destroyOverlayWindow();
+    shutdownCornerman();
     // The folder watcher stays up — it's the app-wide live import; stop it via watcher:stop.
     broadcast("cornerman:set-update", currentStatus());
     return currentStatus();
@@ -353,30 +321,7 @@ export function registerCornermanHandlers(safeHandle: SafeHandleFn): void {
 
   safeHandle("cornerman:status", () => currentStatus());
 
-  // Seed for a late-mounting page/overlay: returns the last snapshot (FINAL
+  // Seed for a late-mounting page: returns the last snapshot (FINAL
   // between games) so it paints instantly rather than waiting for the next emit.
   safeHandle("cornerman:live-stats-latest", () => lastSnapshot);
-
-  safeHandle("cornerman:overlay-show", () => {
-    ensureOverlayWindow();
-    showOverlayWindow();
-    broadcast("cornerman:set-update", currentStatus());
-    return true;
-  });
-
-  safeHandle("cornerman:overlay-dismiss", () => {
-    hideOverlayWindow();
-    return true;
-  });
-
-  safeHandle("cornerman:overlay-ready", () => {
-    markOverlayRendererReady();
-    return true;
-  });
-
-  safeHandle("cornerman:overlay-resize", (_e, handle: unknown, deltaX: unknown, deltaY: unknown) =>
-    resizeOverlayWindow(handle, deltaX, deltaY),
-  );
-
-  safeHandle("cornerman:overlay-resize-end", () => finishOverlayResize());
 }

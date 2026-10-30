@@ -25,6 +25,9 @@ interface GlobalState {
   setGamesCount: (count: number) => void;
   refreshKey: number;
   triggerRefresh: () => void;
+  cornermanStream: string;
+  cornermanError: string | null;
+  cornermanLiveEvents: CornermanLiveEvent[];
   cornermanHistory: CornermanHistoryCard[];
   addCornermanCard: (card: CornermanCard) => void;
   clearCornermanHistory: () => void;
@@ -46,6 +49,9 @@ export const useGlobalStore = create<GlobalState>((set) => ({
   setGamesCount: (count) => set({ gamesCount: count }),
   refreshKey: 0,
   triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
+  cornermanStream: "",
+  cornermanError: null,
+  cornermanLiveEvents: [],
   cornermanHistory: [],
   addCornermanCard: (card) =>
     set((state) => ({

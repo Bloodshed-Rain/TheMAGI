@@ -11,20 +11,34 @@ export function ReplayPlayer() {
   const playerCharacter = useReplayPlayerStore((state) => state.playerCharacter);
   const opponentCharacter = useReplayPlayerStore((state) => state.opponentCharacter);
   const startFrame = useReplayPlayerStore((state) => state.startFrame);
+  const clipEndFrame = useReplayPlayerStore((state) => state.clipEndFrame);
   const seekRevision = useReplayPlayerStore((state) => state.seekRevision);
   const closePlayer = useReplayPlayerStore((state) => state.closePlayer);
 
   const seekRequest = useMemo(
-    () => (replayPath ? { id: seekRevision, frame: startFrame ?? 0 } : undefined),
-    [replayPath, seekRevision, startFrame],
+    () =>
+      replayPath
+        ? { id: seekRevision, frame: startFrame ?? 0, ...(clipEndFrame != null ? { endFrame: clipEndFrame } : {}) }
+        : undefined,
+    [replayPath, seekRevision, startFrame, clipEndFrame],
   );
 
-  const { stageRef, status, errorMessage, isPaused, currentFrame, isExternal, seekRelative, togglePause, restart } =
-    useEmbeddedReplaySession({
-      enabled: open,
-      replayPath,
-      seekRequest,
-    });
+  const {
+    stageRef,
+    status,
+    errorMessage,
+    isPaused,
+    currentFrame,
+    isExternal,
+    seek,
+    seekRelative,
+    togglePause,
+    restart,
+  } = useEmbeddedReplaySession({
+    enabled: open,
+    replayPath,
+    seekRequest,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -44,20 +58,31 @@ export function ReplayPlayer() {
         void togglePause();
       } else if (event.key === "ArrowLeft") {
         event.preventDefault();
-        void seekRelative(-2);
+        if (clipEndFrame == null) void seekRelative(-2);
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
-        void seekRelative(2);
+        if (clipEndFrame == null) void seekRelative(2);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closePlayer, isExternal, open, seekRelative, status, togglePause]);
+  }, [closePlayer, isExternal, open, seekRelative, status, togglePause, clipEndFrame]);
+
+  const openClipAgain = () => {
+    if (replayPath && clipEndFrame != null)
+      useReplayPlayerStore
+        .getState()
+        .openClip(replayPath, startFrame ?? 0, clipEndFrame, playerCharacter ?? "", opponentCharacter ?? "");
+  };
 
   const onOpenInDolphin = async () => {
     if (!replayPath) return;
     try {
-      await window.clippi.openInDolphinAtFrame(replayPath, currentFrame);
+      await window.clippi.openInDolphinAtFrame(
+        replayPath,
+        clipEndFrame != null ? (startFrame ?? 0) : currentFrame,
+        clipEndFrame ?? undefined,
+      );
     } catch (error) {
       console.error("Dolphin launch failed:", error);
     }
@@ -80,6 +105,7 @@ export function ReplayPlayer() {
 
             <div className="replay-player-titlebar">
               <span className="replay-player-titlebar-label">
+                {clipEndFrame != null && <span>Action clip · </span>}
                 {playerCharacter && opponentCharacter
                   ? `${playerCharacter} vs ${opponentCharacter}`
                   : "Replay Playback"}
@@ -94,7 +120,11 @@ export function ReplayPlayer() {
                 </div>
               )}
               {status === "ended" && (
-                <div className="replay-player-loading replay-player-ended">Replay ended. Restart to watch again.</div>
+                <div className="replay-player-loading replay-player-ended">
+                  {clipEndFrame != null
+                    ? "Clip ended. Restart to watch this action again."
+                    : "Replay ended. Restart to watch again."}
+                </div>
               )}
               {status === "error" && (
                 <div className="replay-player-error">
@@ -109,7 +139,9 @@ export function ReplayPlayer() {
                 <div className="replay-player-error">
                   <div>Playing in Slippi Dolphin (external)</div>
                   <div style={{ fontSize: 11, marginTop: 4 }}>
-                    Embedded playback is Windows-only. Use Open Externally to relaunch at the current frame.
+                    Embedded playback is Windows-only. Use{" "}
+                    {clipEndFrame != null ? "Open clip in Dolphin" : "Open Externally"} to relaunch at the current
+                    frame.
                   </div>
                 </div>
               )}
@@ -121,8 +153,15 @@ export function ReplayPlayer() {
                   status={status}
                   isPaused={isPaused}
                   onTogglePause={() => void togglePause()}
-                  onSeekRelative={(seconds) => void seekRelative(seconds)}
-                  onRestart={() => void restart()}
+                  onSeekRelative={(seconds) => {
+                    if (clipEndFrame != null)
+                      void seek(
+                        Math.min(clipEndFrame - 1, Math.max(startFrame ?? 0, currentFrame + seconds * 60)),
+                        clipEndFrame,
+                      );
+                    else void seekRelative(seconds);
+                  }}
+                  onRestart={() => (clipEndFrame != null ? openClipAgain() : void restart())}
                   showCloseHint
                 />
               )}
@@ -130,7 +169,7 @@ export function ReplayPlayer() {
               <div className="replay-player-footer-right">
                 <button className="replay-player-dolphin" type="button" onClick={onOpenInDolphin}>
                   <ExternalLink size={13} />
-                  Open Externally
+                  {clipEndFrame != null ? "Open clip in Dolphin" : "Open Externally"}
                 </button>
                 <span className="replay-player-hint">esc to close</span>
               </div>

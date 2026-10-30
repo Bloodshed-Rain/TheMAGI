@@ -3,11 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MAGI - Melee Analysis Thru Generative Intelligence</title>
+    <title>MAGI — Your Melee game. Your corner.</title>
     <meta
       name="description"
-      content="MAGI is a local-first desktop app for Slippi replay stats, live Cornerman alerts, AI coaching, practice plans, Oracle chat, and Dolphin replay review."
+      content="Play, review, and practice with MAGI. Windows Play Mode, live Cornerman stats, Slippi replay review, character action clips, and optional AI in a free, open-source desktop app."
     />
+    <link rel="canonical" href="https://themagi.gg/" />
+    <meta name="theme-color" content="#090b12" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://themagi.gg/" />
+    <meta property="og:title" content="MAGI — Your Melee game. Your corner." />
+    <meta property="og:description" content="A free, open-source workspace for Slippi replays, live stats, and optional AI coaching. Play Mode brings it beside your game on Windows." />
+    <meta property="og:image" content="https://themagi.gg/screenshots/app-character-overview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MAGI — Your Melee game. Your corner." />
+    <meta name="twitter:description" content="Slippi replay analysis, character clips, and Windows Play Mode. Free and open source." />
+    <meta name="twitter:image" content="https://themagi.gg/screenshots/app-character-overview.png" />
     <link rel="icon" href="favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png" />
@@ -1409,9 +1420,16 @@
           padding: 56px 20px;
         }
       }
+      .skip-link { position: fixed; top: -80px; left: 16px; z-index: 100; background: #f5f7fb; color: #090b12; padding: 12px 18px; border-radius: 8px; }
+      .skip-link:focus { top: 12px; }
+      a:focus-visible, button:focus-visible, .feature-shot img:focus-visible { outline: 2px solid var(--win); outline-offset: 5px; }
+      section[id] { scroll-margin-top: 90px; }
+      @media (max-width: 1250px) { .nav-links .hide-sm { display: none; } }
+      @media (max-width: 480px) { .site-nav { padding: 0 12px; } .nav-links { gap: 2px; } .nav-links a { padding: 8px; } .brand { gap: 6px; } .brand img { width: 42px; } }
     </style>
   </head>
   <body>
+    <a class="skip-link" href="#top">Skip to content</a>
     <div class="wireframe-bg" id="wireframe-bg" aria-hidden="true"></div>
 
     <nav class="site-nav" aria-label="Primary">
@@ -1420,7 +1438,8 @@
         <span>MAGI</span>
       </a>
       <div class="nav-links">
-        <a class="hide-sm" href="#training-hub">Hub</a>
+        <a class="hide-sm" href="#play-mode">Play Mode</a>
+        <a class="hide-sm" href="#training-hub">Review</a>
         <a class="hide-sm" href="#deep-analysis">Analysis</a>
         <a class="hide-sm" href="#stats-tracking">Stats</a>
         <a class="hide-sm" href="#cornerman">Cornerman</a>
@@ -1445,8 +1464,8 @@
       <header class="hero">
         <div class="hero-fx" aria-hidden="true"></div>
         <div class="hero-inner parallax-layer">
-          <div class="eyebrow">Shatter Your Glass Ceiling</div>
-          <h1 class="hero-title" aria-label="Melee Analysis Thru Generative Intelligence">
+          <div class="eyebrow">Your game. Your corner.</div>
+          <h1 class="hero-title" aria-label="Melee Analysis through Generative Intelligence">
             <span class="hero-title-line">
               <span class="hero-initial melee">M</span>
               <span class="hero-title-word">elee</span>
@@ -1455,7 +1474,7 @@
               <span class="hero-initial analysis">A</span>
               <span class="hero-title-word">nalysis</span>
             </span>
-            <span class="hero-title-thru">Thru</span>
+            <span class="hero-title-thru">Through</span>
             <span class="hero-title-line">
               <span class="hero-initial generative">G</span>
               <span class="hero-title-word">enerative</span>
@@ -1465,7 +1484,7 @@
               <span class="hero-title-word">ntelligence.</span>
             </span>
           </h1>
-          <p class="hero-copy">The next level of Melee is here.</p>
+          <p class="hero-copy">Play with your stats beside you. Find the moments that matter. Take one clear adjustment into the next game.</p>
           <div class="hero-actions">
             <a
               class="button primary"
@@ -1475,28 +1494,46 @@
               rel="noreferrer"
               >Get MAGI</a
             >
-            <a class="button" href="https://github.com/Bloodshed-Rain/TheMAGI" target="_blank" rel="noreferrer"
-              >View Source</a
+            <a class="button" href="#play-mode"
+              >See Play Mode</a
             >
           </div>
           <p class="download-meta" id="download-meta">
-            Windows, macOS, and Linux ·
+            Free &amp; open source · Windows Play Mode ·
             <a href="https://github.com/Bloodshed-Rain/TheMAGI/releases" target="_blank" rel="noreferrer"
               >GitHub Releases</a
             >
           </p>
+          <p class="download-meta">This feature tour reflects MAGI 1.10.1. Check the release notes for the build you download.</p>
         </div>
       </header>
+
+      <section id="play-mode" class="feature-section">
+        <div class="wrap">
+          <div class="feature-layout">
+            <div class="feature-copy">
+              <div class="eyebrow">Play Mode · Windows</div>
+              <h2>Melee in the middle.<br />Your corner beside it.</h2>
+              <p>Launch your Slippi Netplay Dolphin from MAGI. Arrange live statistics, opponent and set tracking, Cornerman, Oracle, recent form, practice focus, and notes around the game. Choose and reorder panels on either side, resize the sidebars, and save your layout.</p>
+              <p>Go Fullscreen with panels visible in the side space, or choose auto-hide and reveal them at the edge. Your game keeps its 4:3 aspect ratio. Minimal, Live Coaching, and Practice presets give you a starting point.</p>
+              <div class="feature-pills" aria-label="Play Mode highlights"><span>Customizable panels</span><span>Fullscreen sidebars</span><span>Saved layouts</span><span>AI optional</span></div>
+            </div>
+            <figure class="feature-shot">
+              <img src="screenshots/app-play-fullscreen.png" alt="MAGI fullscreen Play Mode with panels arranged beside the game area" loading="lazy" />
+              <figcaption>Actual Play Mode interface. Slippi Dolphin and your own Melee game image are required.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
 
       <section id="training-hub" class="feature-section">
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
               <div class="eyebrow">Replay review</div>
-              <h2>Your New Training Hub</h2>
+              <h2>Go from a stat to the replay.</h2>
               <p>
-                In-app replay viewer (Windows Only) paired with clickable timestamps in MAGI analysis. Don't believe the
-                A.I. hype? Want to see that 0 to death combo in action? Here's your chance.
+                Review games in Game Theater, jump to supported coaching timestamps, and replay character action clips. See the sequence in context before deciding what to practice.
               </p>
               <div class="feature-pills" aria-label="Training hub highlights">
                 <span>Clickable timestamps</span>
@@ -1505,7 +1542,7 @@
               </div>
             </div>
             <figure class="feature-shot">
-              <img
+              <img loading="lazy" decoding="async"
                 src="screenshots/app-clickable-timestamps.png"
                 alt="MAGI replay viewer beside clickable coaching timestamps"
               />
@@ -1520,19 +1557,18 @@
           <div class="feature-layout">
             <div class="feature-copy">
               <div class="eyebrow">Pattern recognition</div>
-              <h2>Deep Analysis</h2>
+              <h2>See what changes across your games.</h2>
               <p>
-                Leverages A.I.'s superhuman ability to recognize patterns across large sets of data to provide insights
-                even the best coach would miss.
+                Track recent form, compare sessions, and review trends across your replay history. Optional AI reports turn that statistical context into suggested review targets and practice plans.
               </p>
               <div class="feature-pills" aria-label="Deep analysis highlights">
-                <span>Large-set pattern reads</span>
+                <span>Session and trend reports</span>
                 <span>Replay-derived context</span>
                 <span>Actionable coaching</span>
               </div>
             </div>
             <figure class="feature-shot">
-              <img src="screenshots/app-dashboard.png" alt="MAGI dashboard with replay analysis summary" />
+              <img loading="lazy" decoding="async" src="screenshots/app-dashboard.png" alt="MAGI dashboard with replay analysis summary" />
               <figcaption>Dashboard context turns local replay history into readable direction.</figcaption>
             </figure>
           </div>
@@ -1544,10 +1580,9 @@
           <div class="feature-layout">
             <div class="feature-copy">
               <div class="eyebrow">Stats that matter</div>
-              <h2>Per Character and All Character Stats Tracking</h2>
+              <h2>Know your character. Find your next rep.</h2>
               <p>
-                L-cancels, neutral win %, OOS Entropy numbers etc tracked as well as special character specific stats
-                such as Ken Combos, Waveshines, Stitch face pulls, and more.
+                Explore character records, execution and punish statistics, matchup results, and supported character-specific sequences. Click the surrounding stats for replay examples, expand core metrics for explanations, and open details for habits, recovery, stock losses, stages, and lifetime totals. Move and technique entries link to short replay clips when timestamp evidence and the original replay are available.
               </p>
               <div class="feature-pills" aria-label="Stats tracking highlights">
                 <span>L-cancel %</span>
@@ -1558,16 +1593,16 @@
             </div>
             <div class="feature-media stats-showcase">
               <figure class="feature-shot feature-shot-wide">
-                <img src="screenshots/app-characters.png" alt="MAGI character stats page" />
+                <img loading="lazy" decoding="async" src="screenshots/app-characters.png" alt="MAGI character stats page" />
                 <figcaption>All-character tracking shows roster-wide performance at a glance.</figcaption>
               </figure>
               <figure class="feature-shot">
-                <img src="screenshots/app-marth-character.png" alt="MAGI Marth character stats page" />
-                <figcaption>Marth pages surface character-specific confirms, kills, and matchup context.</figcaption>
+                <img loading="lazy" decoding="async" src="screenshots/app-character-overview.png" alt="Current MAGI Marth overview with statistics and action clip links" />
+                <figcaption>Character overviews connect supported statistics to action clips.</figcaption>
               </figure>
               <figure class="feature-shot">
-                <img src="screenshots/app-marth-radar.png" alt="MAGI Marth radar stats display" />
-                <figcaption>Radar stats turn a character's form into strengths and lab targets.</figcaption>
+                <img loading="lazy" decoding="async" src="screenshots/app-character-moves.png" alt="MAGI character move and technique breakdown" />
+                <figcaption>Explore move usage and supported technique examples in the character breakdown.</figcaption>
               </figure>
             </div>
           </div>
@@ -1578,35 +1613,21 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">Transparent live coaching</div>
-              <h2>LIVE In-game Event Popups and Between Set Analysis</h2>
+              <div class="eyebrow">Integrated live coaching</div>
+              <h2>One adjustment between games.</h2>
               <p>
-                Cornerman provides valuable insights inbetween sets on your as well as your opponents strengths,
-                weaknesses, and how to alter your gameplay to claim victory via transparent, nonintrusive popups that
-                can be moved anywhere.
+                Cornerman reads Slippi replay files as they are written, surfaces detected events and running statistics, and uses your selected AI provider for concise between-game coaching. Coaching, alerts, and optional spoken callouts are integrated into MAGI and Play Mode; there is no separate popup window.
               </p>
-              <div class="event-tags" aria-label="Detected live event examples">
-                <span>Ken combos</span>
-                <span>Waveshines</span>
-                <span>Power shields</span>
-                <span>Stitch faces</span>
-                <span>Rare Peach items</span>
-                <span>Shield breaks</span>
-                <span>Zero-to-deaths</span>
-                <span>Rest kills</span>
-                <span>Falco pillars</span>
-                <span>Edgeguard kills</span>
-                <span>SDs</span>
-                <span>Character confirms</span>
-              </div>
+              <p>When enabled and configured, launching Melee starts tracking from the hosted Dolphin's replay output. Replay stats work without AI; generated coaching uses the provider you choose.</p>
+              <div class="event-tags" aria-label="Cornerman features"><span>Live replay events</span><span>Running stats</span><span>Set tracking</span><span>Between-game adjustments</span><span>Optional voice</span></div>
             </div>
             <div class="beam-frame">
               <figure class="feature-shot">
-                <img
-                  src="screenshots/app-cornerman-live-overlay.png"
-                  alt="MAGI Cornerman live overlay during a match"
+                <img loading="lazy" decoding="async"
+                  src="screenshots/app-play-fullscreen.png"
+                  alt="MAGI Fullscreen panels with integrated Cornerman coaching"
                 />
-                <figcaption>Transparent live popups surface major events the moment they happen.</figcaption>
+                <figcaption>Coaching and live information stay beside the game.</figcaption>
               </figure>
             </div>
           </div>
@@ -1633,11 +1654,11 @@
             </div>
             <div class="feature-media">
               <figure class="feature-shot">
-                <img src="screenshots/app-rivals-overview.png" alt="MAGI Rivals page showing opponent history" />
+                <img loading="lazy" decoding="async" src="screenshots/app-rivals-overview.png" alt="MAGI Rivals page showing opponent history" />
                 <figcaption>Rivals collects the opponents you keep running into.</figcaption>
               </figure>
               <figure class="feature-shot">
-                <img src="screenshots/app-rival-dossier-report.png" alt="MAGI Rival Dossier scouting report" />
+                <img loading="lazy" decoding="async" src="screenshots/app-rival-dossier-report.png" alt="MAGI Rival Dossier scouting report" />
                 <figcaption>Dossier reports turn that history into habits, threats, and a next-set plan.</figcaption>
               </figure>
             </div>
@@ -1650,11 +1671,9 @@
           <div class="feature-layout">
             <div class="feature-copy">
               <div class="eyebrow">Ask about any game, session, or pattern</div>
-              <h2>ORACLE</h2>
-              <p>Ask the Oracle anything.</p>
+              <h2>Ask a better question.</h2>
               <p>
-                MAGI Oracle is a replay-aware coaching chat that answers questions about your games, explains patterns
-                in your stats, and turns recent match history into clear next steps for improvement.
+                Ask Oracle about recent form, matchup trends, or what to review next. It receives selected game context from MAGI and responds through your configured AI provider. Check its suggestions against the replay.
               </p>
               <div class="feature-pills" aria-label="Oracle highlights">
                 <span>Replay-aware chat</span>
@@ -1663,8 +1682,45 @@
               </div>
             </div>
             <figure class="feature-shot">
-              <img src="screenshots/app-oracle-analysis-chat.png" alt="MAGI Oracle analysis chat with response text" />
+              <img loading="lazy" decoding="async" src="screenshots/app-oracle-analysis-chat.png" alt="MAGI Oracle analysis chat with response text" />
               <figcaption>Oracle lets you ask direct questions against your local replay context.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="practice" class="feature-section">
+        <div class="wrap">
+          <div class="feature-layout">
+            <div class="feature-copy">
+              <div class="eyebrow">From review to practice</div>
+              <h2>Give the next session a focus.</h2>
+              <p>Performance Lab compares your recent form with the prior baseline, surfaces review targets, and keeps a manual training log for drills, friendlies, tournaments, coaching, and VOD review. Track what you worked on alongside what changed in your games.</p>
+              <p>Optional AI practice plans turn supplied game context into suggested drills, with completion tracking and plan history. Keep a practice focus and notes beside the game in Play Mode.</p>
+              <div class="feature-pills" aria-label="Practice highlights"><span>Review queue</span><span>Training log</span><span>Practice plans</span><span>Drill tracking</span></div>
+            </div>
+            <figure class="feature-shot">
+              <img loading="lazy" decoding="async" src="screenshots/app-practice.png" alt="MAGI practice plan with suggested drills and completion tracking" />
+              <figcaption>Choose a review target, practice it, and track your next sessions.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="getting-started" class="feature-section alt">
+        <div class="wrap">
+          <div class="feature-layout">
+            <div class="feature-copy">
+              <div class="eyebrow">First-run setup</div>
+              <h2>Start with the replays you already have.</h2>
+              <p>The setup wizard guides you through your player identity, Slippi replay folder, and first import. Use your connect code for online games or your tag for offline games. Subfolders are included, and duplicate files are skipped.</p>
+              <p>Add Netplay Dolphin, Playback Dolphin, and your own Melee game image when you want to play or review. Common Slippi Launcher paths are detected when available. Finish later and reopen the wizard from Settings whenever you need it.</p>
+              <p>Choose Liquid, Telemetry, Tournament, or Light for the main app and Play Mode. AI is optional throughout setup.</p>
+              <div class="feature-pills" aria-label="Setup highlights"><span>Guided import</span><span>Resumable setup</span><span>Four appearances</span><span>No AI required</span></div>
+            </div>
+            <figure class="feature-shot">
+              <img loading="lazy" decoding="async" src="screenshots/setup-wizard.png" alt="MAGI first-run setup wizard for player identity, replays, and optional game paths" />
+              <figcaption>Set up your identity and replay folder first. Add playback and coaching when you want them.</figcaption>
             </figure>
           </div>
         </div>
@@ -1672,128 +1728,17 @@
 
       <section id="faq" class="feature-section">
         <div class="wrap">
-          <div class="section-head">
-            <h2>Fair Questions</h2>
-            <p>
-              Melee players are allergic to snake oil, and they should be. Here is exactly what MAGI is, what it isn't,
-              and where your data goes.
-            </p>
-          </div>
+          <div class="section-head"><h2>A few things to know.</h2><p>Start with your replays. Add game hosting and AI when you want them.</p></div>
           <div class="faq-list">
-            <details class="faq-item" data-etch open>
-              <summary>Isn't this just AI slop?</summary>
-              <div class="faq-body">
-                <p>
-                  The numbers never come from the AI. MAGI's parser computes every stat — L-cancel rate, neutral wins,
-                  conversions, edgeguards — deterministically from Slippi frame data, the same way any stats tool does.
-                  The AI's only job is to read those verified numbers and point at what matters.
-                </p>
-                <p>
-                  And every claim comes with a clickable timestamp. Don't trust a word it says? Click it and watch the
-                  replay yourself. Receipts over vibes.
-                </p>
-              </div>
-            </details>
-            <details class="faq-item" data-etch>
-              <summary>Where does my data go?</summary>
-              <div class="faq-body">
-                <p>
-                  Your replays, stats, and config live in a SQLite database and JSON file on your machine. No account,
-                  no MAGI-hosted backend. If this project vanished tomorrow, your app and your data keep working.
-                </p>
-                <p>
-                  When you run AI coaching, a compact stat summary — not your replay files — goes to the provider you
-                  configured. Run a local model through Ollama or LM Studio and nothing leaves your machine at all. The
-                  code is MIT-licensed, so you can audit every network call.
-                </p>
-              </div>
-            </details>
-            <details class="faq-item" data-etch>
-              <summary>What does it cost?</summary>
-              <div class="faq-body">
-                <p>
-                  Nothing. Free, open source, no account, no subscription, no pro tier. AI coaching works with a free
-                  no-key fallback, your own API key, or a local model — and the stat tracking, library, trends, and
-                  replay review don't need AI at all.
-                </p>
-              </div>
-            </details>
-            <details class="faq-item" data-etch>
-              <summary>Slippi already shows me stats.</summary>
-              <div class="faq-body">
-                <p>
-                  For one game at a time. MAGI is the layer above that: a searchable database of every game you've
-                  played, rolling trends, per-character and matchup records, opponent dossiers, and detection that
-                  per-game stats don't cover — habit entropy, signature confirms like Ken combos and waveshines,
-                  highlight moments. The point isn't the numbers in one game; it's the pattern across two hundred.
-                </p>
-              </div>
-            </details>
-            <details class="faq-item" data-etch>
-              <summary>Does it touch my game? Is this fine on netplay?</summary>
-              <div class="faq-body">
-                <p>
-                  MAGI never touches Dolphin or Melee — no injection, no memory reading, no inputs. It reads the .slp
-                  replay files Slippi itself writes to disk. Cornerman's live popups come from reading that same replay
-                  stream as it's written — the same information a friend standing behind you could call out.
-                </p>
-              </div>
-            </details>
-            <details class="faq-item" data-etch>
-              <summary>A real coach would smoke this thing.</summary>
-              <div class="faq-body">
-                <p>
-                  At reading the player in front of them, sure — mindset, mid-set adaptation, the feel of a matchup. But
-                  they are not doing the same job. A human coach samples: a few VODs, one week, human memory. MAGI
-                  measures every game you play at frame precision and remembers all of it — your L-cancel rate across a
-                  thousand games, how your neutral shifts against Marth on Final Destination, the knockdown habit that
-                  only becomes visible as a pattern across three months. No human coach is counting that. Ever.
-                </p>
-                <p>
-                  The honest answer is they stack. MAGI surfaces what is invisible from inside any single set; a coach
-                  helps you fix it — and a coach handed months of hard data does their best work. If you can only pick
-                  one, MAGI is free.
-                </p>
-              </div>
-            </details>
-            <details class="faq-item" data-etch>
-              <summary>What about the water and energy AI burns?</summary>
-              <div class="faq-body">
-                <p>
-                  The industry-scale concern is real — training runs and hyperscale data centers consume serious
-                  electricity and water, and it's fair to care about that. But scale matters: MAGI trains nothing and
-                  generates text, not video. A coaching analysis is one small text query, and published estimates put a
-                  single text prompt at around a quarter watt-hour and a few drops of water. The netplay session you're
-                  analyzing used hundreds of times more electricity than the analysis of it.
-                </p>
-                <p>
-                  MAGI is also frugal by architecture, not by promise. Stats, trends, and tracking are deterministic
-                  local compute — no AI involved. Analyses are cached in your local database, so the same game is never
-                  analyzed twice. And if you want the entire footprint on your own meter, run a local model through
-                  Ollama or LM Studio — then the only water involved is whatever's in your AIO.
-                </p>
-              </div>
-            </details>
-            <details class="faq-item" data-etch>
-              <summary>I'm not good enough to need this.</summary>
-              <div class="faq-body">
-                <p>
-                  Bad habits show up at every level — they're just easier to fix at yours. "You roll to ledge on every
-                  knockdown" or "you die at 40 because you never DI the first hit" is exactly the kind of pattern MAGI
-                  surfaces, and fixing one of those pays off faster at mid level than at top level.
-                </p>
-              </div>
-            </details>
-            <details class="faq-item" data-etch>
-              <summary>Windows only?</summary>
-              <div class="faq-body">
-                <p>
-                  MAGI ships for Windows, macOS, and Linux. The embedded in-app replay viewer is Windows-only for now;
-                  on Mac and Linux, replay review launches through your Slippi Dolphin externally. Everything else —
-                  stats, coaching, Oracle, dossiers — works everywhere.
-                </p>
-              </div>
-            </details>
+            <details class="faq-item" data-etch open><summary>What do I need to get started?</summary><div class="faq-body"><p>Download an available release, open the setup wizard, enter your player identity, and select your Slippi replay folder. Import existing games or enable watching for new ones. Playback and Play Mode also need the appropriate Slippi Dolphin and your own Melee game image. MAGI includes neither.</p></div></details>
+            <details class="faq-item" data-etch><summary>What is AI doing?</summary><div class="faq-body"><p>MAGI computes statistics and supported event detections from replay data. Optional AI features interpret supplied summaries and suggest coaching, scouting, and practice ideas. Those suggestions can be wrong; replay timestamps and clips are available for supported moments, not every claim.</p></div></details>
+            <details class="faq-item" data-etch><summary>Where does my data go?</summary><div class="faq-body"><p>Your replay files stay where you store them. Parsed statistics, notes, and cached reports are stored locally. Hosted AI features send selected summaries, game context, and prompts to the provider you choose; cloud voice sends the text to speak. A local model can keep analysis local. Downloads, update checks, and optional hosted services still use the network.</p></div></details>
+            <details class="faq-item" data-etch><summary>What does it cost?</summary><div class="faq-body"><p>MAGI is free and MIT-licensed. Parsing, statistics, browsing, and manual notes work without AI. Hosted AI and cloud voice may have provider charges or usage limits. You can configure your own provider or use a supported local model.</p></div></details>
+            <details class="faq-item" data-etch><summary>Can I use my ChatGPT plan or another AI provider?</summary><div class="faq-body"><p>Yes. In Settings → AI → ChatGPT plan, choose Continue with ChatGPT, complete browser sign-in and plan-usage consent, and select an available model. Account eligibility and usage limits apply. This connection does not give MAGI access to your ChatGPT conversations. MAGI also supports OpenAI, Azure OpenAI, OpenRouter, Anthropic, Gemini, local OpenAI-compatible endpoints such as Ollama or LM Studio, and Pollinations as an optional no-key hosted provider. Their availability, models, and limits vary. <a href="https://developers.openai.com/siwc/token-sharing-open-source" target="_blank" rel="noreferrer">OpenAI's plan-usage documentation</a>.</p></div></details>
+            <details class="faq-item" data-etch><summary>Does every stat or AI claim have a replay clip?</summary><div class="faq-body"><p>No. Supported timestamps, stock markers, highlights, and character action entries can open replay moments, but some older or count-only metrics have no timestamp evidence. Missing replay files cannot be played. AI suggestions need review, and named Melee techniques require their specific conditions; a similar hit sequence is not enough to confirm one.</p></div></details>
+            <details class="faq-item" data-etch><summary>How does it work with Dolphin?</summary><div class="faq-body"><p>Gameplay analysis reads Slippi replay files on disk. On Windows, Play Mode can launch and host the Netplay Dolphin window; replay review can launch Playback Dolphin. MAGI does not supply gameplay inputs or modify Melee mechanics. Check the rules of your event before using live coaching in competition.</p></div></details>
+            <details class="faq-item" data-etch><summary>Which platforms are supported?</summary><div class="faq-body"><p>The desktop project targets Windows, macOS, and Linux; check GitHub Releases for available builds. Native Play Mode hosting and embedded replay playback are Windows-only. Other platforms use external Dolphin playback.</p></div></details>
+            <details class="faq-item" data-etch><summary>Can I use it while streaming?</summary><div class="faq-body"><p>Play Mode is designed to keep the game and selected panels in one workspace on Windows. Configure your layout and voice volume, then make a short test recording in your capture software. Verify that your Dolphin gameplay appears in the recording and that no private notes or account details are visible.</p></div></details>
           </div>
         </div>
       </section>
@@ -1802,9 +1747,9 @@
         <div class="wrap">
           <div class="install" data-etch>
             <div>
-              <div class="eyebrow">Build from source</div>
-              <h2>Electron, Vite, React, SQLite, and Slippi parsing.</h2>
-              <code>git clone https://github.com/Bloodshed-Rain/TheMAGI.git cd TheMAGI npm install npm run dev</code>
+              <div class="eyebrow">Start with one session</div>
+              <h2>Your next game has a corner.</h2>
+              <p>Get an available build from GitHub Releases, check its version and release notes, then follow the setup wizard. The README covers Play Mode, replay review, providers, privacy, and building from source.</p>
             </div>
             <div class="hero-actions" style="margin: 0">
               <a
@@ -1830,12 +1775,12 @@
 
     <footer>
       <div class="foot-inner">
-        <span>MAGI - Melee Analysis Thru Generative Intelligence</span>
+        <span>MAGI — Melee Analysis through Generative Intelligence</span>
         <span>MIT License - local-first desktop app</span>
       </div>
     </footer>
 
-    <div class="image-lightbox" id="image-lightbox" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="image-lightbox" id="image-lightbox" role="dialog" aria-modal="true" aria-label="Enlarged screenshot" aria-hidden="true">
       <div class="image-lightbox-panel">
         <button class="image-lightbox-close" type="button" aria-label="Close enlarged image">X</button>
         <img alt="" />
@@ -1896,7 +1841,9 @@
           if (event.target === lightbox) closeLightbox();
         });
         document.addEventListener("keydown", (event) => {
-          if (event.key === "Escape" && lightbox.classList.contains("is-open")) closeLightbox();
+          if (!lightbox.classList.contains("is-open")) return;
+          if (event.key === "Escape") closeLightbox();
+          if (event.key === "Tab") { event.preventDefault(); closeButton.focus(); }
         });
       })();
 
@@ -1926,7 +1873,8 @@
         })
           .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
           .then((release) => {
-            const asset = (release.assets || []).find((a) => matchers[os](a.name));
+            const asset = (release.assets || []).find((a) => matchers[os](a.name) &&
+              typeof a.browser_download_url === "string" && a.browser_download_url.startsWith(`https://github.com/${OWNER_REPO}/releases/download/`));
             if (!asset) return;
 
             ctas.forEach((cta) => {
@@ -1937,10 +1885,11 @@
 
             if (meta) {
               const version = release.tag_name ? `${release.tag_name} ` : "";
-              meta.innerHTML =
-                `${version}direct download · ` +
-                `<a href="https://github.com/${OWNER_REPO}/releases" target="_blank" rel="noreferrer">` +
-                `all platforms &amp; older builds</a>`;
+              meta.replaceChildren(document.createTextNode(`${version}published release · `));
+              const releasesLink = document.createElement("a");
+              releasesLink.href = `https://github.com/${OWNER_REPO}/releases`;
+              releasesLink.textContent = "All available builds & release notes";
+              meta.append(releasesLink);
             }
           })
           .catch(() => {

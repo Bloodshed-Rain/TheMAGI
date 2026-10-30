@@ -13,8 +13,8 @@ type HabitFilter = "all" | "cornered" | "pressured";
 
 const FILTERS: Array<{ key: HabitFilter; label: string }> = [
   { key: "all", label: "All" },
-  { key: "cornered", label: "Cornered" },
-  { key: "pressured", label: "Pressured" },
+  { key: "cornered", label: "Near the edge" },
+  { key: "pressured", label: "Under pressure" },
 ];
 
 interface OptionCounts {
@@ -79,7 +79,7 @@ export function HabitLedger({ character, color, glowColor }: CharacterModuleProp
   const sections = filter === "all" ? allSections : buildSections(profile.habits, filter);
 
   return (
-    <Card title="Habit Ledger" className="habit-ledger" style={accentVars(color, glowColor)}>
+    <Card title="Repeated habits" className="habit-ledger" style={accentVars(color, glowColor)}>
       <PillRow className="habit-ledger-filters">
         {FILTERS.map((f) => (
           <Pill key={f.key} active={filter === f.key} onClick={() => setFilter(f.key)}>
@@ -89,13 +89,13 @@ export function HabitLedger({ character, color, glowColor }: CharacterModuleProp
       </PillRow>
 
       {sections.length === 0 ? (
-        <div className="habit-ledger-empty-note">Not enough {filter} samples yet</div>
+        <div className="habit-ledger-empty-note">Not enough examples for this filter yet</div>
       ) : (
         sections.map((section) => (
           <div key={section.situation} className="habit-ledger-section">
             <div className="habit-ledger-section-header">
               <span className="habit-ledger-situation">{prettyLabel(section.situation)}</span>
-              <span className="habit-ledger-section-n">{section.total} instances</span>
+              <span className="habit-ledger-section-n">{section.total} examples</span>
             </div>
             {section.options.map((o) => {
               const dimmed = o.n < EVENT_SAMPLE_GUARDS.habitOptionMin;
@@ -115,7 +115,7 @@ export function HabitLedger({ character, color, glowColor }: CharacterModuleProp
                         title="When you are in this situation you pick this option over 40% of the time and it gets punished over half the time"
                       >
                         <Eye size={11} aria-hidden="true" />
-                        Scoutable
+                        Easy to predict
                       </span>
                     )}
                   </div>
@@ -133,7 +133,7 @@ export function HabitLedger({ character, color, glowColor }: CharacterModuleProp
                       {pct(o.punished, o.n)} punished
                     </span>
                   ) : (
-                    <span className="habit-ledger-punished habit-ledger-punished-na" title="sample too small">
+                    <span className="habit-ledger-punished habit-ledger-punished-na" title="Not enough examples yet">
                       —
                     </span>
                   )}

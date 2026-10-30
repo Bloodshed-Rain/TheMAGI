@@ -4,7 +4,15 @@
  * can import it without pulling in fs/crypto/etc.
  */
 
-export type ProviderId = "openai" | "azure" | "openrouter" | "anthropic" | "gemini" | "local" | "pollinations";
+export type ProviderId =
+  | "openai"
+  | "azure"
+  | "openrouter"
+  | "anthropic"
+  | "gemini"
+  | "local"
+  | "pollinations"
+  | "chatgpt";
 
 export interface ProviderInfo {
   id: ProviderId;
@@ -16,6 +24,7 @@ export interface ProviderInfo {
 }
 
 export const PROVIDERS: ProviderInfo[] = [
+  { id: "chatgpt", label: "ChatGPT plan", envVar: "", keyPlaceholder: "", signupUrl: "", needsKey: false },
   {
     id: "openai",
     label: "OpenAI",

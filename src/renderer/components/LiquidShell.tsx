@@ -42,7 +42,7 @@ export function LiquidShell({
     return (
       <motion.button
         key={item.id}
-        className={`nav-item${isActive ? " active" : ""}`}
+        className={`nav-item${item.id === "play" ? " nav-item-play" : ""}${isActive ? " active" : ""}`}
         onClick={() => onNavigate(item, isActive)}
         aria-current={isActive ? "page" : undefined}
         aria-label={item.label}
@@ -104,11 +104,13 @@ export function LiquidShell({
       <nav className="sidebar" aria-label="Main navigation">
         <div className="brand" aria-hidden="true" />
 
+        <div className="nav-play-feature">{systemItems.filter((item) => item.id === "play").map(renderItem)}</div>
+
         <div className="nav-section-label">Analyze</div>
         {analyzeItems.map(renderItem)}
 
         <div className="nav-section-label">System</div>
-        {systemItems.map(renderItem)}
+        {systemItems.filter((item) => item.id !== "play").map(renderItem)}
 
         <div className="sidebar-footer">
           <button

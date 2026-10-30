@@ -30,8 +30,12 @@ function contrastRatio(fg: [number, number, number], bg: [number, number, number
 }
 
 describe("themes", () => {
-  it("includes all six themes with stable ids", () => {
-    expect(Object.keys(THEMES).sort()).toEqual(["amber", "crt", "light", "liquid", "telemetry", "tournament"].sort());
+  it("includes all four themes with stable ids", () => {
+    expect(Object.keys(THEMES).sort()).toEqual(["light", "liquid", "telemetry", "tournament"].sort());
+  });
+
+  it("falls back from removed skins", () => {
+    for (const id of ["crt", "amber"]) expect(getResolvedTheme(id, "liquid").id).toBe("liquid");
   });
 
   it("orders liquid first", () => {
@@ -76,14 +80,14 @@ describe("themes", () => {
     } as unknown as Document;
 
     try {
-      applyTheme(THEMES["crt"]!);
+      applyTheme(THEMES["telemetry"]!);
     } finally {
       globalThis.document = originalDocument;
     }
 
-    expect(rootSetAttribute).toHaveBeenCalledWith("data-theme", "crt");
-    expect(bodySetAttribute).toHaveBeenCalledWith("data-theme", "crt");
-    expect(setProperty).toHaveBeenCalledWith("--app-bg-image", THEMES["crt"]!.appBackgroundImage);
+    expect(rootSetAttribute).toHaveBeenCalledWith("data-theme", "telemetry");
+    expect(bodySetAttribute).toHaveBeenCalledWith("data-theme", "telemetry");
+    expect(setProperty).toHaveBeenCalledWith("--app-bg-image", THEMES["telemetry"]!.appBackgroundImage);
   });
 });
 

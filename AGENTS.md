@@ -4,7 +4,7 @@
 `src/main/` contains Electron main-process code and IPC handlers, `src/preload/` exposes the bridge API, and `src/renderer/` holds the Vite + React UI (`pages/`, `components/`, `styles/`, `assets/`). Core replay parsing, stats, and import logic live in top-level `src/` modules plus `src/pipeline/`. Tests live in `tests/*.test.ts`. Static marketing assets are under `site/`, screenshots under `screenshots/`, and character art in `CharacterCards/`.
 
 ## Build, Test, and Development Commands
-Use Node.js 18+ and install with `npm install`.
+Use Node.js `^20.19.0` or `>=22.12.0` (CI uses Node.js 22) and install with `npm ci`.
 
 - `npm run dev` starts the Vite renderer, compiles main/preload TS, and launches Electron.
 - `npm run build` creates a packaged app in `release/`; use `build:win`, `build:mac`, or `build:linux` for platform-specific builds.
@@ -25,3 +25,18 @@ Recent history uses short imperative subjects such as `Fix Dolphin playback...` 
 
 ## Security & Configuration Tips
 Do not commit `key.env`, API keys, or local replay data. Keep secrets in local env files, and use `.env.example` as the template for new configuration fields.
+
+## Mandatory Melee technical accuracy rule
+
+This rule applies to the assistant's reasoning, explanations, recommendations, research, code, UI, statistics, detectors, highlights, replay clips, and AI coaching: NEVER sacrifice Melee technical accuracy for simpler wording or a convenient implementation. It covers ALL Melee mechanics, characters, moves, inputs, timing, hitboxes, combos, recovery, DI/SDI, movement, matchups, and terminology, not only named combos.
+
+- Verify uncertain mechanics against primary evidence (game/frame data, replay inputs, maintained Slippi source, or documented tests). Research deeply when necessary. State uncertainty instead of guessing.
+- Preserve exact move order, timing, input, character, and kill requirements. Do not infer a mechanic from a looser hit sequence or substitute one technical term for another.
+- A detector may display a named technique as confirmed only when its evidence establishes every required condition. Otherwise describe exactly the observed sequence, or explicitly mark it unverified. An approximation is not a confirmed technique.
+- Make definitions consistent across parsing, stored historical data, live alerts, search, counts, clips, labels, and coaching prompts. Add positive and negative regression tests before claiming a detector is corrected.
+- Project Ken Combo rule, explicitly required by the user: the finishing sequence must be FAIR → FAIR → DAIR, and that final DAIR must take the stock. A nonlethal sequence, a single FAIR → DAIR, a different finishing move, or a different move inserted in the finishing sequence does NOT count. There is one Ken Combo stat; do not create a separate "Ken Combo Kills" category.
+- Plain-language explanations may clarify technical terms; they must never change the technical meaning. Discuss uncertain or disputed definitions explicitly instead of silently broadening them.
+
+## Release version discipline
+
+Before producing a distributable for meaningful user-facing changes, select the appropriate new semantic version and update both `package.json` and the root/package entries in `package-lock.json`. Update `CHANGELOG.md`, then verify the packaged app version, displayed Settings version, executable metadata, and installer/portable filenames all agree. Do not label substantially changed release builds with the previous release's version. Building a local artifact does not authorize publishing it or creating a release tag.

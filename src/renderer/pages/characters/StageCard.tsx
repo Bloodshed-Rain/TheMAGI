@@ -141,15 +141,15 @@ export function StageCard({ character, color, glowColor }: CharacterModuleProps)
 
       {bestMU && (
         <div className="stage-card-ban">
-          <div className="stage-card-ban-label">Ban Sheet</div>
+          <div className="stage-card-ban-label">Matchup records</div>
           <div className="stage-card-ban-chips">
             <span className="stage-card-chip stage-card-chip-best">
-              Best MU: <b>{bestMU.opponentCharacter}</b> {Math.round(winRateOf(bestMU) * 100)}% (n=
+              Highest win rate: <b>{bestMU.opponentCharacter}</b> {Math.round(winRateOf(bestMU) * 100)}% (games:
               {bestMU.gamesPlayed})
             </span>
             {worstMU && (
               <span className="stage-card-chip stage-card-chip-worst">
-                Worst MU: <b>{worstMU.opponentCharacter}</b> {Math.round(winRateOf(worstMU) * 100)}% (n=
+                Lowest win rate: <b>{worstMU.opponentCharacter}</b> {Math.round(winRateOf(worstMU) * 100)}% (games:
                 {worstMU.gamesPlayed})
               </span>
             )}

@@ -271,3 +271,21 @@
   display: inline-flex;
   align-items: center;
 }
+
+/* Play is a primary destination, above the analysis navigation. */
+.nav-play-feature {
+  padding: 0 0 16px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.liquid-shell .nav-item.nav-item-play {
+  background: var(--accent-muted);
+  border: 1px solid var(--border-muted);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  font-weight: 700;
+}
+.liquid-shell .nav-item.nav-item-play:hover {
+  background: var(--sidebar-active-bg);
+  border-color: var(--accent);
+}

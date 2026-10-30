@@ -177,6 +177,7 @@ build.env
 .superpowers/
 docs/superpowers/
 dogfood-output/
+.smoke-test/
 .mcp.json
 
 # Local design handoff inspection artifacts
@@ -193,6 +194,8 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+.directory
+screenshots/capture_current.png
 
 # Extraneous data files
 ct_subdomains.txt

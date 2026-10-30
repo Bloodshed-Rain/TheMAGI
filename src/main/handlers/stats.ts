@@ -1,4 +1,5 @@
 import {
+  getCharacterTechniqueExamples,
   getOverallRecord,
   getMatchupRecords,
   getStageRecords,
@@ -33,6 +34,9 @@ import {
 import type { SafeHandleFn } from "../ipc.js";
 
 export function registerStatsHandlers(safeHandle: SafeHandleFn): void {
+  safeHandle("stats:characterTechniqueExamples", (_e, character: string, key: string) =>
+    getCharacterTechniqueExamples(character, key),
+  );
   safeHandle("stats:overall", () => getOverallRecord());
   safeHandle("stats:matchups", () => getMatchupRecords());
   safeHandle("stats:stages", () => getStageRecords());

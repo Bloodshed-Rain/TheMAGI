@@ -54,8 +54,13 @@ import { registerStockTimelineHandlers } from "./handlers/stockTimeline.js";
 import { registerEmbeddedReplayHandlers } from "./handlers/embeddedReplay.js";
 import { registerCornermanHandlers } from "./handlers/cornerman.js";
 import { registerVoiceHandlers } from "./handlers/voice.js";
+import { registerPlayHandlers } from "./handlers/play.js";
+import { registerChatGPTHandlers } from "./handlers/chatgpt.js";
+
+import { registerSetupHandlers } from "./handlers/setup.js";
 
 export function setupIPC(): void {
+  registerSetupHandlers(safeHandle);
   registerConfigHandlers(safeHandle);
   registerDialogHandlers(safeHandle);
   registerImportHandlers(safeHandle);
@@ -68,4 +73,6 @@ export function setupIPC(): void {
   registerEmbeddedReplayHandlers(safeHandle);
   registerCornermanHandlers(safeHandle);
   registerVoiceHandlers(safeHandle);
+  registerPlayHandlers(safeHandle);
+  registerChatGPTHandlers(safeHandle);
 }

@@ -1,11 +1,16 @@
 import fs from "fs";
 import path from "path";
 import { type ProviderId, PROVIDER_BY_ID } from "./llmProviders";
+import type { PlayLayout } from "./playMode";
+import { writeConfigFile } from "./configFile";
 
 const DATA_DIR = path.join(require("os").homedir(), ".magi-melee");
 const CONFIG_PATH = path.join(DATA_DIR, "config.json");
 
 export interface Config {
+  setupCompletedAt: string | null;
+  setupDeferred: boolean | null;
+  setupWizardStep: number | null;
   targetPlayer: string | null;
   connectCode: string | null;
   replayFolder: string | null;
@@ -19,6 +24,11 @@ export interface Config {
   // Dolphin
   dolphinPath: string | null;
   meleeIsoPath: string | null;
+  playDolphinPath: string | null;
+  cornermanEnabled: boolean | null;
+  playLayout: PlayLayout | null;
+  playFocus: string | null;
+  playNotes: string | null;
   // UI
   theme: string | null;
   colorMode: string | null;
@@ -50,6 +60,9 @@ export interface Config {
 }
 
 const DEFAULTS: Config = {
+  setupCompletedAt: null,
+  setupDeferred: null,
+  setupWizardStep: null,
   targetPlayer: null,
   connectCode: null,
   replayFolder: null,
@@ -61,6 +74,11 @@ const DEFAULTS: Config = {
   azureEndpoint: null,
   dolphinPath: null,
   meleeIsoPath: null,
+  playDolphinPath: null,
+  cornermanEnabled: null,
+  playLayout: null,
+  playFocus: null,
+  playNotes: null,
   theme: null,
   colorMode: null,
   density: null,
@@ -169,7 +187,7 @@ export function loadConfig(): Config {
 
     if (keysMigrated || providerMigrated) {
       try {
-        fs.writeFileSync(CONFIG_PATH, JSON.stringify(withProvider, null, 2) + "\n");
+        writeConfigFile(CONFIG_PATH, withProvider);
       } catch {
         // Best-effort persistence — next load will retry the migration
       }
@@ -225,7 +243,7 @@ export function saveConfig(config: Partial<Config>): Config {
       merged.llmModelId = null;
     }
 
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2) + "\n");
+    writeConfigFile(CONFIG_PATH, merged);
     return merged;
   } catch (err) {
     throw new Error(`Failed to save config: ${err instanceof Error ? err.message : String(err)}`);

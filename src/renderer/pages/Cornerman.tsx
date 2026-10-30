@@ -8,11 +8,12 @@ import "../styles/rivals.css";
 
 export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
   const [status, setStatus] = useState<CornermanStatus | null>(null);
-  const [streaming, setStreaming] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
+  const streaming = useGlobalStore((s) => s.cornermanStream);
+  const isStreaming = Boolean(streaming);
+  const serviceError = useGlobalStore((s) => s.cornermanError);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [liveEvents, setLiveEvents] = useState<CornermanLiveEvent[]>([]);
+  const liveEvents = useGlobalStore((s) => s.cornermanLiveEvents);
 
   const cornermanHistory = useGlobalStore((s) => s.cornermanHistory);
   const liveStats = useCornermanLiveStats();
@@ -22,31 +23,9 @@ export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
       .cornermanStatus()
       .then(setStatus)
       .catch(() => {});
-    const offStream = window.clippi.onCornermanStream((chunk) => {
-      setIsStreaming(true);
-      setError(null);
-      setStreaming((prev) => prev + chunk);
-    });
-    const offCard = window.clippi.onCornermanCard((card) => {
-      setIsStreaming(false);
-      setStreaming("");
-      useGlobalStore.getState().addCornermanCard(card);
-    });
     const offUpdate = window.clippi.onCornermanSetUpdate((s) => setStatus(s));
-    const offLiveEvent = window.clippi.onCornermanLiveEvent((event) => {
-      setLiveEvents((prev) => [event, ...prev.filter((e) => e.id !== event.id)].slice(0, 8));
-    });
-    const offError = window.clippi.onCornermanError((message) => {
-      setIsStreaming(false);
-      setStreaming(""); // no stream-end event on the error path — drop the orphaned partial text
-      setError(message);
-    });
     return () => {
-      offStream();
-      offCard();
       offUpdate();
-      offLiveEvent();
-      offError();
     };
   }, []);
 
@@ -80,12 +59,6 @@ export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
     }
   }, []);
 
-  const showPopup = useCallback(() => {
-    window.clippi.cornermanOverlayShow().catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : String(err));
-    });
-  }, []);
-
   const active = status?.active ?? false;
   const inSet = active && (status?.gamesCount ?? 0) > 0;
 
@@ -106,9 +79,9 @@ export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
             Start Corner Session
           </button>
         )}
-        <button className="btn" onClick={showPopup} title="Bring up the Cornerman popup window">
-          Show Popup
-        </button>
+        <a className="btn" href="#/play">
+          Open Play Mode
+        </a>
         {inSet ? (
           <span>
             <strong>
@@ -126,7 +99,7 @@ export function Cornerman({ refreshKey: _refreshKey }: { refreshKey: number }) {
         )}
       </div>
 
-      {error && (
+      {(error || serviceError) && (
         <div className="card sessions-error" role="alert">
           {error}
         </div>

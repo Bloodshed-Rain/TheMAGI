@@ -1,7 +1,9 @@
-import { useCallback, useEffect, lazy, Suspense, useMemo, useState } from "react";
+import { useCallback, useEffect, lazy, Suspense, useMemo, useState, useRef } from "react";
+import { Gamepad2 } from "lucide-react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 
 const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
+const PlayMode = lazy(() => import("./pages/PlayMode").then((m) => ({ default: m.PlayMode })));
 const PerformanceLab = lazy(() => import("./pages/PerformanceLab").then((m) => ({ default: m.PerformanceLab })));
 const Sessions = lazy(() => import("./pages/Sessions").then((m) => ({ default: m.Sessions })));
 const Library = lazy(() => import("./pages/Library").then((m) => ({ default: m.Library })));
@@ -13,7 +15,6 @@ const Practice = lazy(() => import("./pages/Practice").then((m) => ({ default: m
 const Oracle = lazy(() => import("./pages/Oracle").then((m) => ({ default: m.Oracle })));
 const GameTheater = lazy(() => import("./pages/GameTheater").then((m) => ({ default: m.GameTheater })));
 const Cornerman = lazy(() => import("./pages/Cornerman").then((m) => ({ default: m.Cornerman })));
-const CornermanOverlay = lazy(() => import("./pages/CornermanOverlay").then((m) => ({ default: m.CornermanOverlay })));
 const ReplayPlayer = lazy(() => import("./components/ReplayPlayer").then((m) => ({ default: m.ReplayPlayer })));
 const CommandPalette = lazy(() => import("./components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
 
@@ -38,6 +39,11 @@ import { useReplayPlayerStore } from "./stores/useReplayPlayerStore";
 import { useOverallRecord } from "./hooks/queries";
 import { resolveLiquidAppearanceSettings } from "../liquidAppearance";
 
+const SetupWizard = lazy(() => import("./pages/SetupWizard").then((m) => ({ default: m.SetupWizard })));
+
+import { useCornermanCoach } from "./hooks/useCornermanCoach";
+import { shouldOfferSetup } from "../setupOnboarding";
+
 type Page =
   | "dashboard"
   | "performance"
@@ -49,6 +55,7 @@ type Page =
   | "cornerman"
   | "practice"
   | "oracle"
+  | "play"
   | "settings";
 
 interface NavItem extends LiquidNavItem {
@@ -68,11 +75,20 @@ const ANALYZE_ITEMS: NavItem[] = [
   { id: "oracle", label: "MAGI Oracle", path: "/oracle", Icon: OracleIcon },
 ];
 
-const SYSTEM_ITEMS: NavItem[] = [{ id: "settings", label: "Settings", path: "/settings", Icon: SettingsIcon }];
+const SYSTEM_ITEMS: NavItem[] = [
+  { id: "play", label: "Play Mode", path: "/play", Icon: Gamepad2 },
+  { id: "settings", label: "Settings", path: "/settings", Icon: SettingsIcon },
+];
 
 export function App() {
+  useCornermanCoach();
   const navigate = useNavigate();
   const location = useLocation();
+  const returnPath = useRef("/dashboard");
+  const initialPath = useRef(location.pathname);
+  useEffect(() => {
+    if (location.pathname !== "/play" && location.pathname !== "/overlay") returnPath.current = location.pathname;
+  }, [location.pathname]);
   const setColorMode = useGlobalStore((state) => state.setColorMode);
   const colorMode = useGlobalStore((state) => state.colorMode);
   const density = useGlobalStore((state) => state.density);
@@ -91,6 +107,8 @@ export function App() {
     async function loadTheme() {
       try {
         const config = await window.clippi.loadConfig();
+        if (shouldOfferSetup(config ?? {}) && !["/overlay", "/play", "/setup"].includes(initialPath.current))
+          navigate("/setup", { replace: true });
         const raw = config?.colorMode ?? "liquid";
 
         // Legacy id remap.
@@ -114,7 +132,7 @@ export function App() {
       }
     }
     loadTheme();
-  }, [setColorMode, setDensity, setLiquidAppearance]);
+  }, [navigate, setColorMode, setDensity, setLiquidAppearance]);
 
   useEffect(() => {
     document.body.setAttribute("data-density", density);
@@ -179,6 +197,8 @@ export function App() {
           <Route path="/cornerman" element={<Cornerman refreshKey={refreshKey} />} />
           <Route path="/practice" element={<Practice refreshKey={refreshKey} />} />
           <Route path="/oracle" element={<Oracle refreshKey={refreshKey} />} />
+          <Route path="/overlay" element={<Navigate to="/play" replace />} />
+          <Route path="/setup" element={<SetupWizard onImport={triggerRefresh} />} />
           <Route path="/settings" element={<Settings onImport={triggerRefresh} />} />
           <Route path="/game/:id" element={<GameTheater />} />
         </Routes>
@@ -187,10 +207,16 @@ export function App() {
     [location, refreshKey, triggerRefresh],
   );
 
-  if (location.pathname === "/overlay") {
+  if (location.pathname === "/play") {
     return (
-      <Suspense fallback={null}>
-        <CornermanOverlay />
+      <Suspense
+        fallback={
+          <div className="page-loading">
+            <div className="spinner" />
+          </div>
+        }
+      >
+        <PlayMode onExit={() => navigate(returnPath.current)} />
       </Suspense>
     );
   }

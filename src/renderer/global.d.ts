@@ -24,6 +24,9 @@ import type {
 import type { CornermanLiveEvent as LiveEvent } from "../cornermanLiveEvents";
 import type { ProviderId as LlmProviderId } from "../llm";
 import type { ProviderSpeechEvent, ProviderSpeechRequest } from "../providerVoice";
+import type { PlayBounds, PlayStatus, PlayCoachingSetup } from "../playMode";
+import type { PlayCursor } from "../playEdgePeek";
+import type { ChatGPTStatus, ChatGPTModel } from "../chatgptTypes";
 
 declare global {
   // Re-exported from the single source of truth (src/cornermanLiveStats.ts) so
@@ -58,6 +61,27 @@ declare global {
 
   interface Window {
     clippi: {
+      onCornermanSettingsChanged: (callback: () => void) => () => void;
+      getAppVersion: () => Promise<string>;
+      chatgptStatus: () => Promise<ChatGPTStatus>;
+      chatgptConnect: (options?: { profileId?: string; newProfile?: boolean; requestConsent?: boolean }) => Promise<ChatGPTStatus>;
+      chatgptCancel: () => Promise<boolean>;
+      chatgptSelect: (id: string) => Promise<ChatGPTStatus>;
+      chatgptDisconnect: () => Promise<{ status: ChatGPTStatus; remoteRevoked: boolean }>;
+      chatgptModels: () => Promise<ChatGPTModel[]>;
+      chatgptUsage: () => Promise<void>;
+      playCoachingSetup: () => Promise<PlayCoachingSetup>;
+      playPrepareCoaching: () => Promise<PlayCoachingSetup>;
+      playStatus: () => Promise<PlayStatus>;
+      playStart: (bounds: PlayBounds) => Promise<PlayStatus>;
+      playShow: (bounds: PlayBounds) => Promise<PlayStatus>;
+      playHide: () => Promise<PlayStatus>;
+      playStop: () => Promise<PlayStatus>;
+      playGameOnly: (active?: boolean) => Promise<boolean>;
+      onPlayCursor: (callback: (cursor: PlayCursor | null) => void) => () => void;
+      onPlayGameOnly: (callback: (active: boolean) => void) => () => void;
+      onPlayStatus: (callback: (status: PlayStatus) => void) => () => void;
+      setupStatus: () => Promise<import("../setupStatus").SetupStatus>;
       loadConfig: () => Promise<any>;
       saveConfig: (config: any) => Promise<any>;
       openFolder: () => Promise<string | null>;
@@ -144,6 +168,7 @@ declare global {
       getCharacterList: () => Promise<any[]>;
       getCharacterMatchups: (character: string) => Promise<any[]>;
       getCharacterStageStats: (character: string) => Promise<any[]>;
+      getCharacterTechniqueExamples: (character: string, key: string) => Promise<import("../characterTechniqueExamples").CharacterTechniqueExample[]>;
       getCharacterSignatureStats: (character: string) => Promise<any>;
       getCharacterGameStats: (character: string) => Promise<any[]>;
       getCharacterEventProfile: (character: string) => Promise<CharacterEventProfile>;
@@ -197,7 +222,7 @@ declare global {
         note: { content: string; author?: string; category?: string },
       ) => Promise<GameReviewNote>;
       openInDolphin: (replayPath: string) => Promise<boolean>;
-      openInDolphinAtFrame: (replayPath: string, frame: number) => Promise<boolean>;
+      openInDolphinAtFrame: (replayPath: string, frame: number, endFrame?: number) => Promise<boolean>;
       embedReplayOpen: (
         replayPath: string,
         bounds: { x: number; y: number; width: number; height: number },
@@ -237,11 +262,6 @@ declare global {
       cornermanStart: (replayFolder: string, targetPlayer: string) => Promise<CornermanStatus>;
       cornermanStop: () => Promise<CornermanStatus>;
       cornermanStatus: () => Promise<CornermanStatus>;
-      cornermanOverlayShow: () => Promise<boolean>;
-      cornermanOverlayDismiss: () => Promise<boolean>;
-      cornermanOverlayResize: (handle: string, deltaX: number, deltaY: number) => Promise<boolean>;
-      cornermanOverlayResizeEnd: () => Promise<boolean>;
-      cornermanOverlayReady: () => Promise<boolean>;
       cornermanLiveStatsLatest: () => Promise<CornermanLiveSnapshot | null>;
       onCornermanLiveStats: (callback: (snapshot: CornermanLiveSnapshot) => void) => () => void;
       onCornermanStream: (callback: (chunk: string) => void) => () => void;

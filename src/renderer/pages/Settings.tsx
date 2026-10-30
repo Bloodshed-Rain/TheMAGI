@@ -13,21 +13,13 @@ import {
   Zap,
 } from "lucide-react";
 import { Card } from "../components/ui/Card";
+import { ChatGPTConnection } from "../components/ChatGPTConnection";
 import { LiquidAppearanceControls } from "../components/LiquidAppearanceControls";
 import { PROVIDERS, PROVIDER_BY_ID, type ProviderId } from "../../llmProviders";
 import { useGlobalStore, type Density } from "../stores/useGlobalStore";
 import { THEMES, THEME_ORDER, applyTheme, getResolvedTheme, type ColorMode } from "../themes";
-import {
-  clampCornermanOverlayTransparency,
-  DEFAULT_CORNERMAN_OVERLAY_TRANSPARENCY,
-} from "../../cornermanOverlayTransparency";
-import {
-  normalizeCornermanPopupAutoHideSeconds,
-  resolveCornermanPopupSettings,
-  type CornermanPopupLiveAlertMode,
-} from "../../cornermanPopupSettings";
-import { MAX_OVERLAY_STATS, resolveCornermanLiveStatsSettings } from "../../cornermanLiveStatsSettings";
-import { LIVE_STAT_DEFS, type CornermanLiveStatId } from "../../cornermanLiveStats";
+import { resolveCornermanPopupSettings, type CornermanPopupLiveAlertMode } from "../../cornermanPopupSettings";
+import { resolveCornermanLiveStatsSettings } from "../../cornermanLiveStatsSettings";
 import {
   normalizeCornermanVoiceCooldownSeconds,
   resolveCornermanVoiceSettings,
@@ -42,6 +34,8 @@ interface Config {
   connectCode: string | null;
   replayFolder: string | null;
   dolphinPath: string | null;
+  playDolphinPath: string | null;
+  cornermanEnabled: boolean | null;
   meleeIsoPath: string | null;
   activeProvider: ProviderId | null;
   modelByProvider: Partial<Record<ProviderId, string>>;
@@ -82,7 +76,7 @@ interface FetchedModel {
   provider: ProviderId;
 }
 
-type SettingsSectionId = "profile" | "interface" | "cornerman" | "replays" | "playback" | "ai" | "data";
+type SettingsSectionId = "play" | "profile" | "interface" | "cornerman" | "replays" | "playback" | "ai" | "data";
 
 const SETTINGS_SECTIONS: {
   id: SettingsSectionId;
@@ -92,7 +86,8 @@ const SETTINGS_SECTIONS: {
 }[] = [
   { id: "profile", label: "Profile", description: "Tag and connect code", icon: UserCircle },
   { id: "interface", label: "Interface", description: "Theme and density", icon: Palette },
-  { id: "cornerman", label: "Cornerman", description: "Popup and alerts", icon: Bell },
+  { id: "play", label: "Play Mode settings", description: "Game paths & Cornerman", icon: Gamepad2 },
+  { id: "cornerman", label: "Cornerman", description: "Coaching, alerts, voice", icon: Bell },
   { id: "replays", label: "Replays", description: "Folder and imports", icon: FolderOpen },
   { id: "playback", label: "Playback", description: "Dolphin and ISO", icon: Gamepad2 },
   { id: "ai", label: "AI", description: "Provider, keys, models", icon: Zap },
@@ -100,6 +95,11 @@ const SETTINGS_SECTIONS: {
 ];
 
 const SETTINGS_SECTION_COPY: Record<SettingsSectionId, { eyebrow: string; title: string; description: string }> = {
+  play: {
+    eyebrow: "Play",
+    title: "Play Mode settings",
+    description: "Slippi Netplay, your game image, and integrated Cornerman coaching.",
+  },
   profile: {
     eyebrow: "Account",
     title: "Player Profile",
@@ -112,8 +112,8 @@ const SETTINGS_SECTION_COPY: Record<SettingsSectionId, { eyebrow: string; title:
   },
   cornerman: {
     eyebrow: "In-Game",
-    title: "Cornerman Popup",
-    description: "Control what can appear over play and how long it stays there.",
+    title: "Cornerman",
+    description: "Coaching and live alerts live inside Play Mode. Configure notifications and voice here.",
   },
   replays: {
     eyebrow: "Import",
@@ -139,6 +139,7 @@ const SETTINGS_SECTION_COPY: Record<SettingsSectionId, { eyebrow: string; title:
 
 /** Per-provider fallback when the dynamic fetch hasn't run yet (or no key set). */
 const FALLBACK_MODELS: Record<ProviderId, FetchedModel[]> = {
+  chatgpt: [],
   openai: [
     { id: "gpt-4o-mini", label: "GPT-4o Mini", provider: "openai" },
     { id: "gpt-4o", label: "GPT-4o", provider: "openai" },
@@ -164,11 +165,26 @@ interface SettingsProps {
 }
 
 export function Settings({ onImport }: SettingsProps) {
+  const [appVersion, setAppVersion] = useState("");
+  useEffect(() => {
+    let active = true;
+    void window.clippi
+      .getAppVersion()
+      .then((version) => {
+        if (active) setAppVersion(version);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
   const [config, setConfig] = useState<Config>({
     targetPlayer: null,
     connectCode: null,
     replayFolder: null,
     dolphinPath: null,
+    playDolphinPath: null,
+    cornermanEnabled: null,
     meleeIsoPath: null,
     activeProvider: null,
     modelByProvider: {},
@@ -226,26 +242,18 @@ export function Settings({ onImport }: SettingsProps) {
   const [speechVoices, setSpeechVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voicePreviewStatus, setVoicePreviewStatus] = useState<string | null>(null);
   const voicePreviewAdapter = useRef<CornermanSpeechAdapter | null>(null);
-  const [activeSection, setActiveSection] = useState<SettingsSectionId>("profile");
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>(() =>
+    new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("section") === "play" ? "play" : "profile",
+  );
   const setWatcherActive = useGlobalStore((state) => state.setWatcherActive);
   const colorMode = useGlobalStore((state) => state.colorMode);
   const setColorMode = useGlobalStore((state) => state.setColorMode);
   const density = useGlobalStore((state) => state.density);
   const setDensity = useGlobalStore((state) => state.setDensity);
   const popupSettings = resolveCornermanPopupSettings(config);
-  const popupTransparency = clampCornermanOverlayTransparency(config.cornermanOverlayTransparency);
   const liveStatsSettings = resolveCornermanLiveStatsSettings(config);
   const voiceSettings = resolveCornermanVoiceSettings(config);
 
-  const toggleOverlayStat = (id: CornermanLiveStatId) => {
-    const current = liveStatsSettings.overlayStatIds;
-    const next = current.includes(id)
-      ? current.filter((s) => s !== id)
-      : current.length < MAX_OVERLAY_STATS
-        ? [...current, id]
-        : current; // at the cap — ignore additional selections
-    setConfig({ ...config, cornermanOverlayStatIds: next });
-  };
   const activeSectionCopy = SETTINGS_SECTION_COPY[activeSection];
 
   // Load user config
@@ -517,13 +525,25 @@ export function Settings({ onImport }: SettingsProps) {
       <div className="page-header settings-page-header">
         <div>
           <h1>Settings</h1>
-          <p className="settings-page-subtitle">Profile, replays, Cornerman, AI, and local data.</p>
+          <p className="settings-page-subtitle">
+            Profile, replays, Cornerman, AI, and local data.{appVersion && ` · MAGI ${appVersion}`}
+          </p>
         </div>
         <button className="btn btn-primary settings-save-button" onClick={handleSave}>
           <Save size={14} aria-hidden="true" />
           {saved ? "Saved!" : "Save Settings"}
         </button>
       </div>
+
+      <button
+        className="btn"
+        style={{ marginBottom: 20 }}
+        onClick={() => {
+          window.location.hash = "/setup";
+        }}
+      >
+        Setup wizard
+      </button>
 
       <div className="settings-shell">
         <nav className="settings-nav" aria-label="Settings sections">
@@ -624,26 +644,10 @@ export function Settings({ onImport }: SettingsProps) {
             )}
 
             {activeSection === "cornerman" && (
-              <Card title="Popup Behavior">
-                <div className="settings-field">
-                  <label htmlFor="setting-cornerman-transparency">Transparency</label>
-                  <div className="settings-row settings-row-center">
-                    <input
-                      id="setting-cornerman-transparency"
-                      type="range"
-                      min="15"
-                      max="85"
-                      value={popupTransparency}
-                      onChange={(e) =>
-                        setConfig({
-                          ...config,
-                          cornermanOverlayTransparency: clampCornermanOverlayTransparency(Number(e.target.value)),
-                        })
-                      }
-                    />
-                    <span className="settings-mono-value">{popupTransparency}%</span>
-                  </div>
-                </div>
+              <Card title="Coaching & live alerts">
+                <p className="settings-help">
+                  Cornerman lives in Play Mode’s panels. Choose and arrange panels with Customize.
+                </p>
                 <div className="settings-field">
                   <label htmlFor="setting-cornerman-live-alerts">Live Alerts</label>
                   <select
@@ -659,49 +663,7 @@ export function Settings({ onImport }: SettingsProps) {
                     <option value="off">Do not show live alerts</option>
                   </select>
                 </div>
-                <div className="settings-field">
-                  <label htmlFor="setting-cornerman-autohide">Auto-hide after notification</label>
-                  <div className="settings-row settings-row-center">
-                    <input
-                      id="setting-cornerman-autohide"
-                      type="number"
-                      min="0"
-                      max="120"
-                      value={popupSettings.autoHideSeconds}
-                      onChange={(e) =>
-                        setConfig({
-                          ...config,
-                          cornermanPopupAutoHideSeconds: normalizeCornermanPopupAutoHideSeconds(Number(e.target.value)),
-                        })
-                      }
-                    />
-                    <span className="settings-mono-value">seconds</span>
-                  </div>
-                  <p className="settings-help">Use 0 to keep the popup open until dismissed.</p>
-                </div>
                 <div className="settings-toggle-list">
-                  <label className="settings-toggle">
-                    <input
-                      type="checkbox"
-                      checked={popupSettings.coachingCards}
-                      onChange={(e) => setConfig({ ...config, cornermanPopupCoachingCards: e.target.checked })}
-                    />
-                    <span>
-                      <strong>Between-game coaching cards</strong>
-                      <small>Show the generated adjustment in the popup.</small>
-                    </span>
-                  </label>
-                  <label className="settings-toggle">
-                    <input
-                      type="checkbox"
-                      checked={popupSettings.errors}
-                      onChange={(e) => setConfig({ ...config, cornermanPopupErrors: e.target.checked })}
-                    />
-                    <span>
-                      <strong>Popup errors</strong>
-                      <small>Show provider or analysis failures in the popup.</small>
-                    </span>
-                  </label>
                   <label className="settings-toggle">
                     <input
                       type="checkbox"
@@ -714,12 +676,6 @@ export function Settings({ onImport }: SettingsProps) {
                     </span>
                   </label>
                 </div>
-                {config.cornermanOverlayTransparency === null && (
-                  <p className="settings-help" style={{ marginTop: 10 }}>
-                    Default transparency is {DEFAULT_CORNERMAN_OVERLAY_TRANSPARENCY}%.
-                  </p>
-                )}
-
                 <div className="settings-subsection">
                   <h4 className="settings-subhead">Voice coaching</h4>
                   <div className="settings-toggle-list">
@@ -929,37 +885,7 @@ export function Settings({ onImport }: SettingsProps) {
                       </span>
                     </label>
                   </div>
-                  {liveStatsSettings.enabled && (
-                    <>
-                      <p className="settings-help" style={{ marginTop: 10 }}>
-                        Overlay shows up to {MAX_OVERLAY_STATS} ({liveStatsSettings.overlayStatIds.length}/
-                        {MAX_OVERLAY_STATS} chosen); the Cornerman page always shows everything.
-                      </p>
-                      <div className="settings-toggle-list">
-                        {LIVE_STAT_DEFS.map((def) => {
-                          const checked = liveStatsSettings.overlayStatIds.includes(def.id);
-                          const atCap = !checked && liveStatsSettings.overlayStatIds.length >= MAX_OVERLAY_STATS;
-                          return (
-                            <label
-                              className="settings-toggle"
-                              key={def.id}
-                              style={atCap ? { opacity: 0.5 } : undefined}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                disabled={atCap}
-                                onChange={() => toggleOverlayStat(def.id)}
-                              />
-                              <span>
-                                <strong>{def.label}</strong>
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
+                  <p className="settings-help">Select the stats shown in Play Mode under Customize.</p>
                 </div>
               </Card>
             )}
@@ -1039,6 +965,96 @@ export function Settings({ onImport }: SettingsProps) {
               </Card>
             )}
 
+            {activeSection === "play" && (
+              <Card title="Play Mode settings">
+                <p className="settings-help">
+                  Live play uses Slippi Netplay Dolphin. Replay review uses the separate Playback copy.
+                </p>
+                <div className="settings-field">
+                  <label htmlFor="play-setting-dolphin">Slippi Netplay Dolphin</label>
+                  <div className="settings-row">
+                    <input
+                      id="play-setting-dolphin"
+                      value={config.playDolphinPath ?? ""}
+                      placeholder="Auto-detect Slippi Launcher’s Netplay Dolphin"
+                      onChange={(e) => setConfig({ ...config, playDolphinPath: e.target.value || null })}
+                    />
+                    <button
+                      className="btn"
+                      onClick={async () => {
+                        const file = await window.clippi.openFileDialog("Select Slippi Netplay Dolphin", [
+                          { name: "Dolphin executable", extensions: ["exe", "AppImage", "*"] },
+                        ]);
+                        if (file) setConfig({ ...config, playDolphinPath: file });
+                      }}
+                    >
+                      Browse
+                    </button>
+                  </div>
+                </div>
+                <div className="settings-field">
+                  <label htmlFor="play-setting-iso">Melee game image</label>
+                  <div className="settings-row">
+                    <input
+                      id="play-setting-iso"
+                      value={config.meleeIsoPath ?? ""}
+                      placeholder="Choose your legally obtained game image"
+                      onChange={(e) => setConfig({ ...config, meleeIsoPath: e.target.value || null })}
+                    />
+                    <button
+                      className="btn"
+                      onClick={async () => {
+                        const file = await window.clippi.openFileDialog("Select Melee game image", [
+                          { name: "Game image", extensions: ["iso", "gcm", "rvz"] },
+                        ]);
+                        if (file) setConfig({ ...config, meleeIsoPath: file });
+                      }}
+                    >
+                      Browse
+                    </button>
+                  </div>
+                </div>
+                <div className="settings-field">
+                  <label htmlFor="play-setting-replays">Slippi replay output folder</label>
+                  <div className="settings-row">
+                    <input
+                      id="play-setting-replays"
+                      value={config.replayFolder ?? ""}
+                      onChange={(e) => setConfig({ ...config, replayFolder: e.target.value || null })}
+                    />
+                    <button
+                      className="btn"
+                      onClick={async () => {
+                        const folder = await window.clippi.openFolder();
+                        if (folder) setConfig({ ...config, replayFolder: folder });
+                      }}
+                    >
+                      Browse
+                    </button>
+                  </div>
+                  <p className="settings-help">Use the folder Dolphin writes to and enable replay saving in Dolphin.</p>
+                </div>
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={config.cornermanEnabled !== false}
+                    onChange={(e) => setConfig({ ...config, cornermanEnabled: e.target.checked })}
+                  />
+                  <span>
+                    <strong>Enable Cornerman in Play Mode</strong>
+                    <small>
+                      Show live-session controls and start tracking when Melee launches. Coaching and alerts appear in
+                      Play Mode panels.
+                    </small>
+                  </span>
+                </label>
+                <p className="settings-help">
+                  Save Settings to apply changes. Configure coaching providers under AI and voice and alert preferences
+                  under Cornerman.
+                </p>
+              </Card>
+            )}
+
             {activeSection === "playback" && (
               <Card title="Slippi Dolphin">
                 <div className="settings-field">
@@ -1108,6 +1124,33 @@ export function Settings({ onImport }: SettingsProps) {
                 <div className="provider-list">
                   {PROVIDERS.map((p) => {
                     const isActive = config.activeProvider === p.id;
+                    if (p.id === "chatgpt")
+                      return (
+                        <div key={p.id} className={`provider-option${isActive ? " provider-option-active" : ""}`}>
+                          <label className="provider-option-label">
+                            <input
+                              type="radio"
+                              name="active-provider"
+                              checked={isActive}
+                              onChange={() => setActiveProvider(p.id)}
+                            />
+                            ChatGPT plan{isActive && <span className="provider-active-pill">Active</span>}
+                          </label>
+                          <ChatGPTConnection
+                            onChanged={async () => {
+                              const saved = await window.clippi.loadConfig();
+                              setConfig((previous) => ({
+                                ...previous,
+                                activeProvider: saved.activeProvider,
+                                modelByProvider: {
+                                  ...previous.modelByProvider,
+                                  chatgpt: saved.modelByProvider.chatgpt,
+                                },
+                              }));
+                            }}
+                          />
+                        </div>
+                      );
                     const isSet = !!config.apiKeys[p.id];
                     const keyEdit = keyEdits[p.id] ?? "";
                     const fetched = dynamicModels?.[p.id] ?? [];

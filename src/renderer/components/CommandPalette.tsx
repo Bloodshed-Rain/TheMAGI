@@ -15,6 +15,7 @@ type Page =
   | "cornerman"
   | "practice"
   | "oracle"
+  | "play"
   | "settings";
 
 interface CommandItem {
@@ -172,6 +173,16 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
 
   const navCommands: CommandItem[] = useMemo(
     () => [
+      {
+        id: "nav-play",
+        label: "Enter Play Mode",
+        category: "navigate",
+        icon: <NavIcon />,
+        action: () => {
+          navigateTo("play");
+          close();
+        },
+      },
       {
         id: "nav-dashboard",
         label: "Dashboard",

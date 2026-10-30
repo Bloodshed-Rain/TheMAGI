@@ -17,8 +17,10 @@ export function useCornermanLiveStats(): CornermanLiveStatsState {
 
   useEffect(() => {
     let cancelled = false;
+    let seedAllowed = true;
 
-    const apply = (next: CornermanLiveSnapshot) =>
+    const apply = (next: CornermanLiveSnapshot) => {
+      seedAllowed = false;
       setState((prev) => {
         const current = prev.snapshot;
         // Straggler guard: a trailing FINAL from a different (older) game — e.g.
@@ -29,12 +31,13 @@ export function useCornermanLiveStats(): CornermanLiveStatsState {
         }
         return { snapshot: next, receivedAt: Date.now() };
       });
+    };
 
     // Seed only when empty, so a live emit that lands first always wins the race.
     window.clippi
       .cornermanLiveStatsLatest()
       .then((seed) => {
-        if (cancelled || !seed) return;
+        if (cancelled || !seedAllowed || !seed) return;
         setState((prev) => (prev.snapshot ? prev : { snapshot: seed, receivedAt: Date.now() }));
       })
       .catch(() => {});
@@ -49,6 +52,7 @@ export function useCornermanLiveStats(): CornermanLiveStatsState {
     // only on true session end: between games the session stays active, so the
     // FINAL freeze is preserved.
     const offUpdate = window.clippi.onCornermanSetUpdate((status) => {
+      seedAllowed = false;
       if (!status.active) setState({ snapshot: null, receivedAt: 0 });
     });
 

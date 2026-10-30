@@ -26,6 +26,44 @@ export function ratio(num: number, den: number): string {
 
 /** snake_case / kebab-case / SCREAMING keys → Title Case labels. */
 export function prettyLabel(value: string): string {
+  const labels: Record<string, string> = {
+    "punish-taken": "Hit back in time",
+    "punish-missed": "Missed a chance to hit back",
+    "unsafe-challenge": "Tried to hit back too soon",
+    "correct-hold": "Kept shielding safely",
+    pressured: "Still under pressure",
+    neutral: "No clear opening",
+    knockdown: "After a knockdown",
+    ledge: "At the ledge",
+    shield: "After shielding",
+    tech_in_place: "Recover in place",
+    tech_toward: "Roll toward the opponent",
+    tech_away: "Roll away",
+    getup_attack: "Get-up attack",
+    no_tech: "Missed the recovery input",
+    onstage: "Stayed on stage",
+    shallow: "Just offstage",
+    deep: "Far offstage",
+    high: "Above the ledge",
+    mid: "Near ledge height",
+    low: "Below the ledge",
+  };
+  if (labels[value]) return labels[value]!;
+  const moves: Record<string, string> = {
+    fair: "Forward air",
+    bair: "Back air",
+    uair: "Up air",
+    dair: "Down air",
+    nair: "Neutral air",
+    fsmash: "Forward smash",
+    usmash: "Up smash",
+    dsmash: "Down smash",
+    fthrow: "Forward throw",
+    bthrow: "Back throw",
+    uthrow: "Up throw",
+    dthrow: "Down throw",
+  };
+  if (moves[value.toLowerCase()]) return moves[value.toLowerCase()]!;
   return value
     .replace(/[_-]+/g, " ")
     .toLowerCase()

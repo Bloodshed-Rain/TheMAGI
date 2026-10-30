@@ -71,7 +71,7 @@ export function killActiveExternalDolphin(): void {
   }
 }
 
-function resolveDolphinPath(configured: string | null | undefined): string {
+export function resolveDolphinPath(configured: string | null | undefined): string {
   if (configured) {
     assertDolphinRunnable(configured);
     return configured;
@@ -101,7 +101,7 @@ function resolveDolphinPath(configured: string | null | undefined): string {
   );
 }
 
-function resolveIsoPath(config: { meleeIsoPath?: string | null }): string {
+export function resolveIsoPath(config: { meleeIsoPath?: string | null }): string {
   const home = require("os").homedir() as string;
 
   if (config.meleeIsoPath && fs.existsSync(config.meleeIsoPath)) {
@@ -143,10 +143,7 @@ function looksLikeFuseOrAppImageError(stderr: string, message: string): boolean 
   );
 }
 
-function spawnDetached(
-  dolphinPath: string,
-  args: string[],
-): ChildProcess {
+function spawnDetached(dolphinPath: string, args: string[]): ChildProcess {
   const { spawn } = require("child_process") as typeof import("child_process");
   return spawn(dolphinPath, args, {
     detached: true,
@@ -154,7 +151,7 @@ function spawnDetached(
   });
 }
 
-function launchDolphin(replayPath: string, startFrame?: number): true {
+function launchDolphin(replayPath: string, startFrame?: number, endFrame?: number): true {
   const safeReplayPath = validatePath(replayPath);
   const config = loadConfig();
   const dolphinPath = resolveDolphinPath(config.dolphinPath);
@@ -167,7 +164,7 @@ function launchDolphin(replayPath: string, startFrame?: number): true {
   // One Dolphin at a time: kill previous external before seek/open relaunch
   killActiveExternalDolphin();
 
-  const { seekFrame, commData } = buildExternalReplayComm(safeReplayPath, startFrame);
+  const { seekFrame, commData } = buildExternalReplayComm(safeReplayPath, startFrame, endFrame);
   console.log("[MAGI] Seek frame:", seekFrame);
 
   const commFile = path.join(require("os").tmpdir(), `magi-comm-${Date.now()}.json`);
@@ -328,8 +325,8 @@ export function registerDolphinHandlers(safeHandle: SafeHandleFn): void {
     return launchDolphin(replayPath);
   });
 
-  safeHandle("replay:openInDolphinAtFrame", async (_e, replayPath: string, frame: number) => {
-    return launchDolphin(replayPath, frame);
+  safeHandle("replay:openInDolphinAtFrame", async (_e, replayPath: string, frame: number, endFrame?: number) => {
+    return launchDolphin(replayPath, frame, endFrame);
   });
 }
 
