@@ -12,7 +12,7 @@ const version = pkg.version;
 assert.match(version, /^\d+\.\d+\.\d+$/, "Use a stable semantic version for this source candidate.");
 assert.equal(lock.version, version, "package-lock root version differs from package.json");
 assert.equal(lock.packages[""].version, version, "package-lock package version differs from package.json");
-assert.ok(read("README.md").includes(`Source version **${version}**`), "README source version differs");
+assert.ok(read("README.md").includes(`**Version ${version}**`), "README version differs");
 assert.ok(read("docs/USER_GUIDE.md").includes(`source version **${version}**`), "User-guide source version differs");
 assert.ok(read("site/index.html").includes(`feature tour reflects MAGI ${version}.`), "Website tour version differs");
 assert.ok(read("CHANGELOG.md").startsWith(`# Release notes\n\n## ${version} —`), "Current changelog entry differs");

@@ -14,4 +14,4 @@ For bug reports, include the MAGI version shown in Settings, operating system, s
 
 ## Releases
 
-Use a new semantic version for meaningful app changes. Keep package versions, the README source version, and the current changelog entry aligned. Verify Settings, packaged metadata, and artifact filenames before distributing. Local builds do not authorize publishing or tagging. See the [release process](docs/DEVELOPMENT.md#release-process).
+Use a new semantic version for meaningful app changes. Keep package versions, the README version, and the current changelog entry aligned. Verify Settings, packaged metadata, and artifact filenames before distributing. Local builds do not authorize publishing or tagging. See the [release process](docs/DEVELOPMENT.md#release-process).

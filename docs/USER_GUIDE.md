@@ -88,21 +88,6 @@ Example Oracle questions:
 - “Which opponent habits am I failing to punish?”
 - “What should I drill today if I only have 30 minutes?”
 
-### Development API keys
-
-For development, copy `.env.example` to `key.env` and fill only the providers you use:
-
-```bash
-OPENAI_API_KEY=
-AZURE_OPENAI_API_KEY=
-AZURE_OPENAI_ENDPOINT=
-OPENROUTER_API_KEY=
-ANTHROPIC_API_KEY=
-GEMINI_API_KEY=
-```
-
-`key.env` is ignored by Git and is never bundled into release builds. Released builds accept credentials through Settings.
-
 ## Replay Playback
 
 MAGI launches Slippi Dolphin from the replay path stored during import and can seek to specific frames from stock markers, highlights, or coaching timestamps.

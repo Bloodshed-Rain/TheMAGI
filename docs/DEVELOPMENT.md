@@ -23,6 +23,19 @@ npm run dev
 
 `electron-rebuild` compiles native dependencies such as `better-sqlite3` and `koffi` for Electron's ABI. Run it again after changing Electron versions or when startup reports a native module version mismatch.
 
+### Development API keys
+
+For development, copy `.env.example` to `key.env` and fill only the providers you use. The file is ignored by Git and is not bundled into releases. Released builds accept credentials through Settings.
+
+```bash
+OPENAI_API_KEY=
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_ENDPOINT=
+OPENROUTER_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+```
+
 ### Commands
 
 | Command                  | Purpose                                                         |
@@ -208,7 +221,7 @@ npm run verify:release
 
 ## Release Process
 
-1. Select the semantic version for the app changes. Update `package.json`, both root/package version entries in `package-lock.json`, the README source version, the user-guide version, the website feature-tour version, and `CHANGELOG.md` together. Label unpublished work as unreleased.
+1. Select the semantic version for the app changes. Update `package.json`, both root/package version entries in `package-lock.json`, the README version, the user-guide version, the website feature-tour version, and `CHANGELOG.md` together. Label unpublished work as unreleased.
 2. Run `npm run verify:docs`, `npm run verify:release`, `npm run typecheck`, `npm test`, `npm run lint`, and `npm run format:check`. The documentation checks validate local links and source version consistency; they do not certify packaged artifacts or live AI providers.
 3. Build locally with the platform-specific build command. These commands use `--publish never`. Confirm the packaged version, version shown in Settings, executable metadata, and installer/portable filenames all agree. Test a fresh setup and an existing-data upgrade, plus native game/replay hosting on Windows and external playback on other supported platforms.
 4. Review the README, website feature tour, screenshots, and platform requirements against the build users will receive. A download of an older published version must not be described as containing newer source features. Verify that release assets include the promised operating systems and architectures.
