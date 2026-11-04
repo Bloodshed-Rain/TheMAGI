@@ -21,6 +21,8 @@ npx electron-rebuild
 npm run dev
 ```
 
+If npm reports that install scripts were blocked (`npm warn install-scripts`), the packages that need them (better-sqlite3, electron, electron-winstaller, esbuild, koffi) are pre-approved in `package.json` under `allowScripts`; run `npm install-scripts ls` to confirm and `npm ci` again if the list is not empty. Without those scripts the Electron binary is never downloaded and any test that imports `electron` fails with "Electron failed to install correctly".
+
 `electron-rebuild` compiles native dependencies such as `better-sqlite3` and `koffi` for Electron's ABI. Run it again after changing Electron versions or when startup reports a native module version mismatch.
 
 ### Development API keys

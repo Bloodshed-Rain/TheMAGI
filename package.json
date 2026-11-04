@@ -171,5 +171,12 @@
   },
   "overrides": {
     "esbuild": "^0.28.2"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.8.0": true,
+    "electron@41.10.7": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.28.2": true,
+    "koffi@2.16.2": true
   }
 }

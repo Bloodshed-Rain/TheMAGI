@@ -8,7 +8,7 @@ MAGI (Melee Analysis through Generative Intelligence) is an Electron + React des
 
 ## Commands
 
-- **Install**: `npm ci` then `npx electron-rebuild` (rebuilds `better-sqlite3` and `koffi` against the Electron ABI — required before `npm run dev` will boot)
+- **Install**: `npm ci` then `npx electron-rebuild` (rebuilds `better-sqlite3` and `koffi` against the Electron ABI — required before `npm run dev` will boot). Newer npm blocks package install scripts unless approved; `package.json` `allowScripts` pre-approves the five native/binary packages. If `npm install-scripts ls` still lists blocked packages, the Electron binary is missing and `electron`-importing tests fail.
 - **Dev mode**: `npm run dev` — runs `scripts/dev.js`: compiles main/preload via `tsc -p tsconfig.main.json`, starts the Vite renderer server, then spawns Electron with `VITE_DEV_SERVER_URL` set. Also auto-loads `key.env` into `process.env`.
 - **Build**: `npm run build` — compiles main process TS, builds renderer via Vite, packages with electron-builder
 - **Platform builds**: `npm run build:linux`, `build:win`, `build:mac`
