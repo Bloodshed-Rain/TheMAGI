@@ -1,21 +1,22 @@
 import { isKenCombo } from "./kenCombo";
 import { State, type ConversionType, type FramesType, type ItemUpdateType } from "@slippi/slippi-js/node";
 
-import { frameToTimestamp, getMoveName, isOffstage, moveIdToName, SHIELD_BREAK_FLY } from "./pipeline/helpers";
+import { frameToTimestamp, getMoveName, moveIdToName, SHIELD_BREAK_FLY } from "./pipeline/helpers";
+import { isDownwardOffstageKill, isOffstageKill, percentAtFinalHit } from "./pipeline/killEvidence";
 import {
   countMoveId,
+  countThrows,
   hasAdjacentSequence,
   hasSequence,
+  hasShineGrab,
   hasTriplePattern,
   maxConsecutive,
   MOVE_BAIR,
-  MOVE_BTHROW,
   MOVE_DAIR,
   MOVE_DSMASH,
   MOVE_FAIR,
   MOVE_FSMASH,
   MOVE_FTHROW,
-  MOVE_GRAB,
   MOVE_SHINE,
   MOVE_DTHROW,
   MOVE_NEUTRAL_B,
@@ -151,20 +152,31 @@ function lastMoveId(conversion: ConversionType): number | null {
   return conversion.moves[conversion.moves.length - 1]?.moveId ?? null;
 }
 
-function throwCount(conversion: ConversionType): number {
-  const throwIds = [MOVE_FTHROW, MOVE_UTHROW, MOVE_DTHROW, MOVE_BTHROW];
-  return conversion.moves.filter((m) => throwIds.includes(m.moveId)).length;
-}
+/** Luigi's Super Jump Punch sweetspot deals 25% fresh; the sourspot deals 1%. */
+const LUIGI_SHORYUKEN_MIN_DAMAGE = 8;
 
-function victimOffstageAtEnd(
+/**
+ * Offstage-kill evidence needs frames + stage: the final hit landed with the
+ * victim offstage and the death did not go off the top (killEvidence.ts).
+ * Without frames nothing offstage-related is claimed.
+ */
+function offstageKill(
   conversion: ConversionType,
   frames: FramesType | undefined,
   stageId: number | undefined,
 ): boolean {
-  if (!frames || stageId == null || conversion.endFrame == null) return false;
-  const victimPost = frames[conversion.endFrame]?.players[conversion.playerIndex]?.post;
-  if (!victimPost) return false;
-  return isOffstage(victimPost.positionX ?? 0, victimPost.positionY ?? 0, stageId);
+  if (!frames || stageId == null) return false;
+  return isOffstageKill(conversion, frames, stageId);
+}
+
+function spikeKill(
+  conversion: ConversionType,
+  frames: FramesType | undefined,
+  stageId: number | undefined,
+  moveId: number,
+): boolean {
+  if (!frames || stageId == null) return false;
+  return isDownwardOffstageKill(conversion, frames, stageId, moveId);
 }
 
 function makeConversionEvent({
@@ -248,9 +260,11 @@ export function detectLiveConversionEvents({
     const victimName = shortActor(victim);
     const startedAt = frameToTimestamp(conversion.startFrame);
     const startPercent = Math.round(conversion.startPercent);
+    const killPercent = Math.round(percentAtFinalHit(conversion));
     const killed = conversion.didKill ? " kill" : "";
-    const offstageKill = conversion.didKill && victimOffstageAtEnd(conversion, frames, stageId);
+    const isOffstageFinish = offstageKill(conversion, frames, stageId);
     const last = lastMoveId(conversion);
+    const lastMove = conversion.moves[conversion.moves.length - 1];
     const addCandidate = (
       candidate: Omit<Parameters<typeof makeConversionEvent>[0], "actor" | "victim" | "conversion">,
     ) => {
@@ -271,12 +285,12 @@ export function detectLiveConversionEvents({
 
     if (actor.character === "Fox") {
       const shineCount = countMoveId(conversion.moves, MOVE_SHINE);
-      const endedWithUpsmash = hasSequence(conversion.moves, MOVE_SHINE, MOVE_USMASH);
-      if (conversion.didKill && last === MOVE_SHINE && offstageKill) {
+      const endedWithUpsmash = hasAdjacentSequence(conversion.moves, MOVE_SHINE, MOVE_USMASH);
+      if (last === MOVE_SHINE && isOffstageFinish) {
         addCandidate({
           type: "shine-spike",
           title: "Shine Spike",
-          body: `${actorName} shined ${victimName} offstage at ${startPercent}%.`,
+          body: `${actorName} shined ${victimName} offstage at ${killPercent}%.`,
           importance: "high",
           priority: 122,
         });
@@ -290,11 +304,11 @@ export function detectLiveConversionEvents({
           priority: endedWithUpsmash || conversion.didKill ? 112 : 78,
         });
       }
-      if (conversion.didKill && hasSequence(conversion.moves, MOVE_UTHROW, MOVE_UAIR)) {
+      if (conversion.didKill && last === MOVE_UAIR && hasSequence(conversion.moves, MOVE_UTHROW, MOVE_UAIR)) {
         addCandidate({
           type: "upthrow-upair",
           title: "Upthrow Upair Kill",
-          body: `${actorName} closed it with upthrow -> upair at ${startPercent}%.`,
+          body: `${actorName} closed it with upthrow -> upair at ${killPercent}%.`,
           importance: "high",
           priority: 104,
         });
@@ -320,7 +334,7 @@ export function detectLiveConversionEvents({
           priority: conversion.didKill ? 108 : 76,
         });
       }
-      if (hasAdjacentSequence(conversion.moves, MOVE_SHINE, MOVE_GRAB)) {
+      if (hasShineGrab(conversion.moves)) {
         addCandidate({
           type: "shine-grab",
           title: "Shine Grab",
@@ -329,11 +343,11 @@ export function detectLiveConversionEvents({
           priority: 58,
         });
       }
-      if (conversion.didKill && last === MOVE_SHINE && offstageKill) {
+      if (last === MOVE_SHINE && isOffstageFinish) {
         addCandidate({
           type: "shine-spike",
           title: "Shine Spike",
-          body: `${actorName} shined ${victimName} offstage at ${startPercent}%.`,
+          body: `${actorName} shined ${victimName} offstage at ${killPercent}%.`,
           importance: "high",
           priority: 121,
         });
@@ -341,11 +355,11 @@ export function detectLiveConversionEvents({
     }
 
     if (actor.character === "Marth") {
-      if (throwCount(conversion) >= 2) {
+      if (countThrows(conversion.moves) >= 2) {
         addCandidate({
           type: "chain-grab",
           title: conversion.didKill ? "Chain Grab Kill" : "Chain Grab",
-          body: `${actorName} chained ${throwCount(conversion)} throws for ${damage}%.`,
+          body: `${actorName} chained ${countThrows(conversion.moves)} throws for ${damage}%.`,
           importance: conversion.didKill ? "high" : "info",
           priority: conversion.didKill ? 106 : 70,
         });
@@ -354,7 +368,7 @@ export function detectLiveConversionEvents({
         addCandidate({
           type: "fsmash-kill",
           title: "F-Smash Kill",
-          body: `${actorName} killed ${victimName} with fsmash at ${startPercent}%.`,
+          body: `${actorName} killed ${victimName} with fsmash at ${killPercent}%.`,
           importance: "high",
           priority: 92,
         });
@@ -362,11 +376,11 @@ export function detectLiveConversionEvents({
     }
 
     if (actor.character === "Falcon") {
-      if (conversion.didKill && hasSequence(conversion.moves, MOVE_DAIR, MOVE_FAIR)) {
+      if (conversion.didKill && last === MOVE_FAIR && hasAdjacentSequence(conversion.moves, MOVE_DAIR, MOVE_FAIR)) {
         addCandidate({
           type: "stomp-knee",
           title: "Stomp Knee",
-          body: `${actorName} hit stomp -> knee for the kill at ${startPercent}%.`,
+          body: `${actorName} hit stomp -> knee for the kill at ${killPercent}%.`,
           importance: "high",
           priority: 116,
         });
@@ -374,7 +388,7 @@ export function detectLiveConversionEvents({
         addCandidate({
           type: "knee-kill",
           title: "Knee Kill",
-          body: `${actorName} killed ${victimName} with knee at ${startPercent}%.`,
+          body: `${actorName} killed ${victimName} with knee at ${killPercent}%.`,
           importance: "high",
           priority: 88,
         });
@@ -382,21 +396,22 @@ export function detectLiveConversionEvents({
     }
 
     if (actor.character === "Sheik") {
-      const startsThrow = [MOVE_DTHROW, MOVE_FTHROW, MOVE_UTHROW].includes(conversion.moves[0]?.moveId ?? -1);
+      // Live data has no tech-state scan, so this is a throw follow-up, not a verified tech chase.
+      const startsThrow = [MOVE_DTHROW, MOVE_FTHROW].includes(conversion.moves[0]?.moveId ?? -1);
       if (startsThrow && conversion.moves.length >= 3) {
         addCandidate({
           type: "tech-chase",
-          title: conversion.didKill ? "Tech Chase Kill" : "Tech Chase",
+          title: conversion.didKill ? "Throw Follow-up Kill" : "Throw Follow-up",
           body: `${actorName} got ${conversion.moves.length} hits from a throw for ${damage}%.`,
           importance: conversion.didKill ? "high" : "info",
           priority: conversion.didKill ? 102 : 66,
         });
       }
-      if (conversion.didKill && last === MOVE_FAIR && (offstageKill || startPercent < 70)) {
+      if (last === MOVE_FAIR && isOffstageFinish && killPercent < 60) {
         addCandidate({
           type: "fair-gimp",
           title: "Fair Gimp",
-          body: `${actorName} cleaned up ${victimName} with fair at ${startPercent}%.`,
+          body: `${actorName} cleaned up ${victimName} offstage with fair at ${killPercent}%.`,
           importance: "high",
           priority: 110,
         });
@@ -404,13 +419,13 @@ export function detectLiveConversionEvents({
     }
 
     if (actor.character === "Puff" || actor.character === "Jigglypuff") {
-      if (conversion.didKill && conversion.moves.some((m) => m.moveId === MOVE_SHINE)) {
-        const restIndex = conversion.moves.findIndex((m) => m.moveId === MOVE_SHINE);
+      if (conversion.didKill && last === MOVE_SHINE) {
+        const restIndex = conversion.moves.length - 1;
         const setup = restIndex > 0 ? moveName(conversion.moves[restIndex - 1]!.moveId) : "raw";
         addCandidate({
           type: "rest-kill",
           title: "Rest Kill",
-          body: `${actorName} hit ${setup} -> rest at ${startPercent}%.`,
+          body: `${actorName} hit ${setup} -> rest at ${killPercent}%.`,
           importance: "high",
           priority: 120,
         });
@@ -432,7 +447,7 @@ export function detectLiveConversionEvents({
         addCandidate({
           type: "dsmash-kill",
           title: "Downsmash Kill",
-          body: `${actorName} killed ${victimName} with downsmash at ${startPercent}%.`,
+          body: `${actorName} killed ${victimName} with downsmash at ${killPercent}%.`,
           importance: "high",
           priority: 92,
         });
@@ -465,7 +480,7 @@ export function detectLiveConversionEvents({
         addCandidate({
           type: "charge-shot",
           title: "Charge Shot Kill",
-          body: `${actorName} killed ${victimName} with charge shot at ${startPercent}%.`,
+          body: `${actorName} killed ${victimName} with charge shot at ${killPercent}%.`,
           importance: "high",
           priority: 108,
         });
@@ -473,7 +488,7 @@ export function detectLiveConversionEvents({
         addCandidate({
           type: "up-b-kill",
           title: "Up-B Kill",
-          body: `${actorName} killed ${victimName} with up-B at ${startPercent}%.`,
+          body: `${actorName} killed ${victimName} with up-B at ${killPercent}%.`,
           importance: "high",
           priority: 90,
         });
@@ -485,7 +500,7 @@ export function detectLiveConversionEvents({
         addCandidate({
           type: "thunder-kill",
           title: "Thunder Kill",
-          body: `${actorName} killed ${victimName} with thunder at ${startPercent}%.`,
+          body: `${actorName} killed ${victimName} with thunder at ${killPercent}%.`,
           importance: "high",
           priority: 110,
         });
@@ -503,18 +518,23 @@ export function detectLiveConversionEvents({
         addCandidate({
           type: "upsmash-kill",
           title: "Upsmash Kill",
-          body: `${actorName} killed ${victimName} with upsmash at ${startPercent}%.`,
+          body: `${actorName} killed ${victimName} with upsmash at ${killPercent}%.`,
           importance: "high",
           priority: 88,
         });
       }
     }
 
-    if (actor.character === "Luigi" && conversion.didKill && last === MOVE_UP_B) {
+    if (
+      actor.character === "Luigi" &&
+      conversion.didKill &&
+      last === MOVE_UP_B &&
+      (lastMove?.damage ?? 0) >= LUIGI_SHORYUKEN_MIN_DAMAGE
+    ) {
       addCandidate({
         type: "shoryuken",
         title: "Shoryuken",
-        body: `${actorName} killed ${victimName} with up-B at ${startPercent}%.`,
+        body: `${actorName} killed ${victimName} with the up-B sweetspot at ${killPercent}%.`,
         importance: "high",
         priority: 112,
       });
@@ -525,15 +545,15 @@ export function detectLiveConversionEvents({
         addCandidate({
           type: "ganon-stomp",
           title: "Ganon Stomp",
-          body: `${actorName} killed ${victimName} with stomp at ${startPercent}%.`,
+          body: `${actorName} killed ${victimName} with stomp at ${killPercent}%.`,
           importance: "high",
           priority: 110,
         });
-      } else if (conversion.didKill && conversion.moves.some((m) => m.moveId === MOVE_SIDE_B)) {
+      } else if (conversion.didKill && last === MOVE_SIDE_B) {
         addCandidate({
           type: "ganon-side-b",
-          title: "Side-B Kill",
-          body: `${actorName} killed ${victimName} with side-B at ${startPercent}%.`,
+          title: "Gerudo Dragon Kill",
+          body: `${actorName} killed ${victimName} with side-B at ${killPercent}%.`,
           importance: "high",
           priority: 100,
         });
@@ -541,19 +561,20 @@ export function detectLiveConversionEvents({
     }
 
     if ((actor.character === "Mario" || actor.character === "Doc") && conversion.didKill) {
-      if (last === MOVE_FAIR && offstageKill) {
+      // Mario's fair is a meteor smash; Doc's is not, so only Mario gets a spike call.
+      if (actor.character === "Mario" && spikeKill(conversion, frames, stageId, MOVE_FAIR)) {
         addCandidate({
           type: "spike-kill",
-          title: `${actor.character} Fair Spike`,
-          body: `${actorName} spiked ${victimName} with fair at ${startPercent}%.`,
+          title: "Mario Fair Spike",
+          body: `${actorName} spiked ${victimName} with fair at ${killPercent}%.`,
           importance: "high",
           priority: 110,
         });
-      } else if (conversion.moves.some((m) => m.moveId === MOVE_SIDE_B) && offstageKill) {
+      } else if (last === MOVE_SIDE_B && isOffstageFinish) {
         addCandidate({
           type: "cape-gimp",
           title: "Cape Gimp",
-          body: `${actorName} turned ${victimName} around offstage at ${startPercent}%.`,
+          body: `${actorName} caped ${victimName} offstage at ${killPercent}%.`,
           importance: "high",
           priority: 106,
         });
@@ -570,21 +591,21 @@ export function detectLiveConversionEvents({
       });
     }
 
-    if (conversion.didKill && offstageKill) {
+    if (isOffstageFinish) {
       addCandidate({
-        type: startPercent < 70 ? "edgeguard-kill" : "spike-kill",
-        title: startPercent < 70 ? "Gimp" : "Edgeguard Kill",
-        body: `${actorName} finished ${victimName} offstage from ${startPercent}%.`,
+        type: "edgeguard-kill",
+        title: killPercent < 70 ? "Gimp" : "Edgeguard Kill",
+        body: `${actorName} finished ${victimName} offstage at ${killPercent}%.`,
         importance: "high",
-        priority: startPercent < 70 ? 84 : 74,
+        priority: killPercent < 70 ? 84 : 74,
       });
     }
 
-    if (conversion.didKill && last === MOVE_DAIR && offstageKill) {
+    if (spikeKill(conversion, frames, stageId, MOVE_DAIR)) {
       addCandidate({
         type: "spike-kill",
         title: "Spike Kill",
-        body: `${actorName} spiked ${victimName} with dair at ${startPercent}%.`,
+        body: `${actorName} spiked ${victimName} with dair at ${killPercent}%.`,
         importance: "high",
         priority: 90,
       });

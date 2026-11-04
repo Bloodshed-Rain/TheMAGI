@@ -208,8 +208,11 @@ describe("detectLiveConversionEvents", () => {
       ],
       players,
       frames: framesWithPosts({
+        170: {
+          0: { positionX: 95, positionY: -20, stocksRemaining: 3 },
+        },
         180: {
-          0: { positionX: 95, positionY: -20, stocksRemaining: 2 },
+          0: { positionX: 224, positionY: 30, stocksRemaining: 2, actionStateId: 2 },
         },
       }),
       stageId: 31,
@@ -218,6 +221,72 @@ describe("detectLiveConversionEvents", () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe("shine-spike");
+  });
+
+  it("does not call a center-stage shine kill a shine spike just because the victim ends at the blast zone", () => {
+    const events = detectLiveConversionEvents({
+      conversions: [
+        conversion({
+          playerIndex: 0,
+          startPercent: 18,
+          endFrame: 180,
+          moves: [{ playerIndex: 1, frame: 170, moveId: MOVE_SHINE, hitCount: 1, damage: 3 }],
+          didKill: true,
+        }),
+      ],
+      players,
+      frames: framesWithPosts({
+        170: { 0: { positionX: 5, positionY: 0, stocksRemaining: 3 } },
+        180: { 0: { positionX: 224, positionY: 30, stocksRemaining: 2, actionStateId: 2 } },
+      }),
+      stageId: 31,
+      seenKeys: new Set(),
+    });
+    expect(events.map((e) => e.type)).not.toContain("shine-spike");
+    expect(events.map((e) => e.type)).not.toContain("edgeguard-kill");
+  });
+
+  it("only calls a dair spike when the victim died off the bottom from an offstage hit", () => {
+    const spiked = detectLiveConversionEvents({
+      conversions: [
+        conversion({
+          playerIndex: 0,
+          startPercent: 40,
+          endFrame: 180,
+          moves: [{ playerIndex: 1, frame: 170, moveId: MOVE_DAIR, hitCount: 1, damage: 12 }],
+          didKill: true,
+        }),
+      ],
+      players: [players[0], { ...players[1], character: "Marth" }],
+      frames: framesWithPosts({
+        170: { 0: { positionX: -90, positionY: -25, stocksRemaining: 3 } },
+        180: { 0: { positionX: -60, positionY: -110, stocksRemaining: 2, actionStateId: 0 } },
+      }),
+      stageId: 31,
+      seenKeys: new Set(),
+    });
+    expect(spiked[0]?.type).toBe("spike-kill");
+
+    const sideDeath = detectLiveConversionEvents({
+      conversions: [
+        conversion({
+          playerIndex: 0,
+          startPercent: 40,
+          endFrame: 180,
+          moves: [{ playerIndex: 1, frame: 170, moveId: MOVE_DAIR, hitCount: 1, damage: 12 }],
+          didKill: true,
+        }),
+      ],
+      players: [players[0], { ...players[1], character: "Marth" }],
+      frames: framesWithPosts({
+        170: { 0: { positionX: -90, positionY: -25, stocksRemaining: 3 } },
+        180: { 0: { positionX: -224, positionY: 40, stocksRemaining: 2, actionStateId: 1 } },
+      }),
+      stageId: 31,
+      seenKeys: new Set(),
+    });
+    expect(sideDeath.map((e) => e.type)).not.toContain("spike-kill");
+    expect(sideDeath.map((e) => e.type)).toContain("edgeguard-kill");
   });
 
   it("alerts on Falco pillar combos", () => {

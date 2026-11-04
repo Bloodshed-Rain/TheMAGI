@@ -58,35 +58,29 @@ CI runs type checking, tests, lint, and formatting on pull requests and pushes t
 
 ## Historical Replay Backfill
 
-New imports automatically populate MAGI's detailed event tables. Games imported before those tables were introduced need a one-time backfill for the full Character analytics suite, including measured DI, recovery routes, shield decisions, habit instances, and whiff-punish data.
+New imports automatically populate MAGI's detailed event tables. Games imported before those tables were introduced, or parsed by older event detectors, need a backfill for the full Character analytics suite and for AI coaching history, including measured DI, recovery routes, shield decisions, habit instances, and whiff-punish data.
 
-Close MAGI before running the backfill. The command is safe to rerun: each game's event rows are replaced transactionally, and the replay hash is checked before data is attached to an existing database row.
+Each game records the detector version that wrote its event rows. A plain run processes games with no event data and games parsed by an older detector version; `--force` reprocesses everything. Until a game is reprocessed, coaching history leaves out its death verdicts and habit punish rates instead of mixing old and new definitions.
 
-**PowerShell:**
+The backfill re-derives everything a parse produces for a game: the event tables, `game_stats`, character signature stats, and highlights. Run it after upgrading past a detector change (see [melee-accuracy.md](melee-accuracy.md)) so older games stop carrying counts from the previous definitions.
 
-```powershell
-$env:ELECTRON_RUN_AS_NODE = "1"
-npx electron --require tsx/cjs src/backfill-cli.ts
-Remove-Item Env:ELECTRON_RUN_AS_NODE
-```
-
-**macOS / Linux:**
+Close MAGI before running the backfill. The command is safe to rerun: each game's derived rows are replaced transactionally, and the replay hash is checked before data is attached to an existing database row.
 
 ```bash
-ELECTRON_RUN_AS_NODE=1 npx electron --require tsx/cjs src/backfill-cli.ts
+npm run backfill
 ```
 
-Append either option to the platform-specific command above before clearing `ELECTRON_RUN_AS_NODE`:
+`scripts/backfill.js` sets `ELECTRON_RUN_AS_NODE=1` and launches `src/backfill-cli.ts` through Electron's Node, so the same command works in cmd.exe, PowerShell, and POSIX shells. Pass CLI options after `--`:
 
 ```bash
 # Process only the first 25 candidates as a smoke test
-npx electron --require tsx/cjs src/backfill-cli.ts --limit 25
+npm run backfill -- --limit 25
 
-# Rebuild event rows for every imported game
-npx electron --require tsx/cjs src/backfill-cli.ts --force
+# Rebuild derived rows for every imported game
+npm run backfill -- --force
 ```
 
-Keep `ELECTRON_RUN_AS_NODE=1` set when using either option. Missing replay files and files whose current hash no longer matches the imported replay are reported and skipped rather than misattributed.
+Missing replay files and files whose current hash no longer matches the imported replay are reported and skipped rather than misattributed.
 
 ## CLI Workflows
 

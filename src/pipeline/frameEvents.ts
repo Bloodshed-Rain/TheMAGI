@@ -58,7 +58,9 @@ const SPECIAL_STATE_START = 341;
 // ── Tunables (v1 heuristics — documented, revisit with real-data validation)
 const ATTACK_MERGE_GAP_FRAMES = 3; // multihits / jab strings merge into one instance
 const ACTIONABLE_SCAN_CAP_FRAMES = 90; // give up finding endlag end after this
-const PUNISH_WINDOW_FRAMES = 45; // conversion-against within this window ⇒ option punished
+const PUNISH_WINDOW_FRAMES = 45; // minimum window after the option starts
+const POST_OPTION_PUNISH_FRAMES = 20; // ...extended to this many frames after the option ends
+const OPTION_END_SCAN_CAP = 150; // give up locating the option's end after this
 const PRESSURED_DX_UNITS = 32; // opponent within this horizontal range ⇒ contested
 const PRESSURED_DY_UNITS = 45;
 const CORNER_FRACTION = 0.7; // |x| beyond this fraction of ledge X ⇒ corner zone
@@ -87,8 +89,33 @@ export interface ConversionRecord {
   moves: { frame: number; moveId: number; damage: number }[];
 }
 
-/** Measured-DI grade for a death (from the actual stick input). */
-export type DeathVerdict = "NO_DI" | "WRONG_DI" | "OK_DI" | "GOOD_DI" | "SD" | "UNKNOWN";
+/**
+ * Version of the stored per-instance event definitions. Bump whenever a
+ * detector change alters what an already-persisted row means; games stamped
+ * with an older version are re-parsed by a plain (non --force) backfill, and
+ * cross-game aggregates that depend on the changed fields only read current
+ * games.
+ *   1 — original v10-v14 detectors (games.events_version NULL).
+ *   2 — death verdicts anchored at dying-state entry + FAILED_RECOVERY;
+ *       DeadDown (state 0) counted as a death; resource faults skip hitstun
+ *       launch frames; habit `punished` = hit or grabbed from the option's
+ *       start until 20 frames after it ends (min 45), not only a NEW conversion.
+ *   3 — offstage boundary derived from the real ledge x per stage (Battlefield
+ *       68.4 / Dreamland 77.27 were swapped before), which moves recovery
+ *       spans, whiff exclusions and resource faults on those stages; KneeBend
+ *       no longer counts as airborne. Signature stats and highlights are
+ *       rebuilt by the same backfill (move-id table and kill evidence fixes).
+ */
+export const FRAME_EVENTS_VERSION = 3;
+
+/**
+ * Measured-DI grade for a death (from the actual stick input).
+ * FAILED_RECOVERY: no hit in the final window before death, but the
+ * opponent's kill conversion was still alive — launched by an earlier hit and
+ * never made it back. No DI input is graded for it.
+ * SD: no hit in the final window and no live kill conversion.
+ */
+export type DeathVerdict = "NO_DI" | "WRONG_DI" | "OK_DI" | "GOOD_DI" | "FAILED_RECOVERY" | "SD" | "UNKNOWN";
 
 export interface StockRecord {
   victimSlot: PlayerSlot;
@@ -821,7 +848,17 @@ function toConversionRecords(conversions: ConversionType[], p0Index: number): Co
   });
 }
 
-function toStockRecords(
+/**
+ * A stock was lost. slippi-js sets endFrame (and deathAnimation, the action
+ * state on the stock-loss frame) only when stocksRemaining decrements, so
+ * endFrame != null is the death signal. deathAnimation 0 is DeadDown — a
+ * bottom blast-zone death — not a sentinel.
+ */
+export function stockWasLost(stock: Pick<StockType, "endFrame">): boolean {
+  return stock.endFrame != null;
+}
+
+export function toStockRecords(
   stocks: StockType[],
   conversions: ConversionType[],
   playerIndex: number,
@@ -830,8 +867,8 @@ function toStockRecords(
   return stocks
     .filter((s) => s.playerIndex === playerIndex)
     .map((stock) => {
-      // Same death detection as playerSummary: deathAnimation can be 0 for
-      // real deaths, so also accept a kill conversion ending on this frame.
+      // Kill attribution: a didKill conversion against this player ending on
+      // the stock-loss frame (absent for self-destructs).
       let killingConversion: ConversionType | undefined;
       if (stock.endFrame != null) {
         killingConversion = conversions.find(
@@ -842,17 +879,14 @@ function toStockRecords(
             Math.abs(c.endFrame - (stock.endFrame ?? 0)) < 10,
         );
       }
-      const died = (stock.deathAnimation != null && stock.deathAnimation !== 0) || killingConversion != null;
+      const died = stockWasLost(stock);
 
       const lastMove =
         killingConversion && killingConversion.moves.length > 0
           ? killingConversion.moves[killingConversion.moves.length - 1]
           : undefined;
 
-      const direction =
-        died && stock.deathAnimation != null && stock.deathAnimation !== 0
-          ? (getDeathDirection(stock.deathAnimation) ?? null)
-          : null;
+      const direction = died && stock.deathAnimation != null ? (getDeathDirection(stock.deathAnimation) ?? null) : null;
 
       const endPercent = stock.endPercent ?? stock.currentPercent;
 
@@ -875,6 +909,57 @@ function toStockRecords(
         finalHitFrame: null,
       };
     });
+}
+
+/**
+ * Last frame of the punish window for an option that started at `start`:
+ * POST_OPTION_PUNISH_FRAMES after the player is actionable again, never
+ * shorter than PUNISH_WINDOW_FRAMES from the start. Long options (ledge
+ * rolls — slower again at 100%+ — getup rolls, tech rolls) are punished at
+ * their END; a fixed 45-frame window from the start closed before a ledge
+ * roll finished and made rolls look nearly unpunishable. The end is measured
+ * (first actionable frame), not taken from a frame-data table.
+ */
+function habitPunishWindowEnd(frames: FramesType, playerIndex: number, start: number, lastFrame: number): number {
+  let optionEnd: number | null = null;
+  for (let f = start + 1; f <= Math.min(start + OPTION_END_SCAN_CAP, lastFrame); f++) {
+    const s = frames[f]?.players[playerIndex]?.post?.actionStateId;
+    if (s != null && isActionable(s)) {
+      optionEnd = f;
+      break;
+    }
+  }
+  const end = Math.max(start + PUNISH_WINDOW_FRAMES, (optionEnd ?? start) + POST_OPTION_PUNISH_FRAMES);
+  return Math.min(end, lastFrame);
+}
+
+/**
+ * A defensive option was punished when the player was hit or grabbed between
+ * the option's first frame and the end of its punish window (see
+ * habitPunishWindowEnd), or a conversion against them started in that window
+ * (covers command grabs outside the capture states).
+ *
+ * Frame-based on purpose: a tech chase or ledge trap usually CONTINUES the
+ * conversion that caused the knockdown / offstage situation — slippi-js only
+ * starts its 45-frame reset counter once the victim is back in a grounded
+ * control state, and teching, lying down and hanging on ledge are not — so
+ * "a new conversion started" alone misses most knockdown and ledge punishes.
+ */
+export function isHabitPunished(
+  habit: Pick<HabitInstance, "playerSlot" | "frame">,
+  frames: FramesType,
+  playerIndex: number,
+  conversionRecords: ConversionRecord[],
+  lastFrame: number,
+): boolean {
+  const windowEnd = habitPunishWindowEnd(frames, playerIndex, habit.frame, lastFrame);
+  for (let f = habit.frame; f <= windowEnd; f++) {
+    const s = frames[f]?.players[playerIndex]?.post?.actionStateId;
+    if (s != null && (isDamaged(s) || isGrabbed(s))) return true;
+  }
+  return conversionRecords.some(
+    (c) => c.attackerSlot !== habit.playerSlot && c.startFrame >= habit.frame && c.startFrame <= windowEnd,
+  );
 }
 
 // ── Entry point ───────────────────────────────────────────────────────
@@ -920,15 +1005,11 @@ export function extractFrameEvents(
     ...extractHabitInstances(frames, lastFrame, p1Index, p0Index, stageId, 1),
   ];
 
-  // Punished = a conversion against this player began within the punish
-  // window after the chosen option came out.
+  const indexBySlot: [number, number] = [p0Index, p1Index];
   const habits: HabitInstance[] = rawHabits
     .map((h) => ({
       ...h,
-      punished: conversionRecords.some(
-        (c) =>
-          c.attackerSlot !== h.playerSlot && c.startFrame >= h.frame && c.startFrame <= h.frame + PUNISH_WINDOW_FRAMES,
-      ),
+      punished: isHabitPunished(h, frames, indexBySlot[h.playerSlot], conversionRecords, lastFrame),
     }))
     .sort((a, b) => a.frame - b.frame);
 

@@ -22,8 +22,9 @@ function loadEnvFile(): void {
 loadEnvFile();
 
 import { loadConfig } from "../config";
-import { getDb, closeDb, getPlayerHistory } from "../db";
+import { getDb, closeDb } from "../db";
 import { processGame, assembleUserPrompt, SYSTEM_PROMPT } from "../pipeline";
+import { buildCoachingContext } from "../coachingContext";
 import { callLLM } from "../llm";
 import { setAnalysisGenerator } from "../replayAnalyzer";
 import { llmQueue } from "../llmQueue";
@@ -202,9 +203,10 @@ app.whenReady().then(() => {
         result.gameSummary.players.find((p) => p.tag.toLowerCase() !== "unknown")?.tag ??
         result.gameSummary.players[0].tag;
     }
-    // Query player history for contextual coaching
-    const playerHistory = getPlayerHistory(targetTag) ?? undefined;
-    const userPrompt = assembleUserPrompt([result], targetTag, playerHistory);
+    // Lifetime profile + measured recurring patterns for contextual coaching.
+    // (A replay already in the DB contributes 1 game to its own history window — negligible.)
+    const { playerHistory, patterns } = buildCoachingContext([result], targetTag);
+    const userPrompt = assembleUserPrompt([result], targetTag, playerHistory, patterns);
     // Queue the API call — waits its turn, respects rate limits
     const analysisText = await llmQueue.enqueue(() =>
       callLLM({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }),

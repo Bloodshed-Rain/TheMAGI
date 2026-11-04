@@ -1,6 +1,13 @@
-import type { GameResult, PlayerHistory, HabitProfile, GameFrameEvents, PlayerSlot } from "./types.js";
+import type { GameResult, PlayerHistory, PlayerSummary, HabitProfile, GameFrameEvents, PlayerSlot } from "./types.js";
 import { computeAdaptationSignals, findPlayerIdx } from "./adaptation.js";
 import { moveIdToName, getMoveName, frameToTimestamp } from "./helpers.js";
+import {
+  formatRecurringPatterns,
+  mergePatternData,
+  patternsFromFrameEvents,
+  type PatternData,
+  type RecurringPatterns,
+} from "./patterns.js";
 
 // ── Measured DI prompt section ────────────────────────────────────────
 
@@ -26,23 +33,35 @@ function formatMeasuredDISection(frameEvents: GameFrameEvents, tagBySlot: [strin
   for (const slot of [0, 1] as PlayerSlot[]) {
     const deaths = frameEvents.stocks.filter((s) => s.victimSlot === slot && s.died && s.verdict != null);
     const deathParts = deaths.map((s) => {
-      const move = s.killerMoveId != null ? (moveIdToName[s.killerMoveId] ?? getMoveName(s.killerMoveId)) : "unknown";
-      const dir = s.deathDirection ? ` off the ${s.deathDirection === "up" ? "top" : s.deathDirection}` : "";
+      const hit =
+        s.killerMoveId != null
+          ? `final hit ${moveIdToName[s.killerMoveId] ?? getMoveName(s.killerMoveId)}`
+          : "no opponent hit credited";
+      const dir =
+        s.deathDirection === "up"
+          ? " off the top"
+          : s.deathDirection === "down"
+            ? " off the bottom"
+            : s.deathDirection
+              ? ` off the ${s.deathDirection} side`
+              : "";
       const verdict =
         s.verdict === "NO_DI"
-          ? "NO DI input"
+          ? "no DI input"
           : s.verdict === "WRONG_DI"
-            ? `wrong DI (score ${s.diScore ?? 0})`
+            ? `DI with no survival benefit (score ${s.diScore ?? 0})`
             : s.verdict === "OK_DI"
-              ? `partial DI (score ${s.diScore ?? 0})`
+              ? `partial survival DI (score ${s.diScore ?? 0})`
               : s.verdict === "GOOD_DI"
-                ? `good DI (score ${s.diScore ?? 0})`
-                : s.verdict === "SD"
-                  ? "self-destruct"
-                  : "unreadable";
-      const fault = s.resourceFault ? ", double jump unused" : "";
+                ? `good survival DI (score ${s.diScore ?? 0})`
+                : s.verdict === "FAILED_RECOVERY"
+                  ? "not hit again after that — didn't make it back (no DI graded)"
+                  : s.verdict === "SD"
+                    ? "self-destruct or ledge-occupancy edgeguard"
+                    : "DI unreadable";
+      const fault = s.resourceFault ? ", fell with double jump unspent" : "";
       const ts = s.endFrame != null ? ` [${frameToTimestamp(s.endFrame)}]` : "";
-      return `${move} at ${Math.round(s.deathPercent ?? 0)}%${dir} — ${verdict}${fault}${ts}`;
+      return `died at ${Math.round(s.deathPercent ?? 0)}%${dir}, ${hit} — ${verdict}${fault}${ts}`;
     });
     if (deathParts.length > 0) {
       lines.push(`${tagBySlot[slot]} deaths: ${deathParts.join("; ")}`);
@@ -226,23 +245,24 @@ function formatShieldSection(frameEvents: GameFrameEvents, tagBySlot: [string, s
       .map(([label, e]) => {
         const avgGap =
           e.gaps.length > 0 ? Math.round((e.gaps.reduce((s, g) => s + g, 0) / e.gaps.length) * 10) / 10 : 0;
-        return `${label} x${e.n} (avg gap ${avgGap >= 0 ? "+" : ""}${avgGap}f${e.missed > 0 ? `, missed ${e.missed} guaranteed` : ""}${e.taken > 0 ? `, took ${e.taken}` : ""})`;
+        return `${label} x${e.n} (avg gap ${avgGap >= 0 ? "+" : ""}${avgGap}f${e.missed > 0 ? `, ${e.missed} punish windows not taken` : ""}${e.taken > 0 ? `, took ${e.taken}` : ""})`;
       })
       .join("; ");
 
     lines.push(
-      `${tagBySlot[slot]} on shield: ${blocks.length} blocks in ${new Set(blocks.map((b) => b.stringId)).size} strings — guaranteed punishes taken ${taken}, MISSED ${missed}; unsafe challenges ${unsafe}; correct holds ${holds}` +
+      `${tagBySlot[slot]} on shield: ${blocks.length} blocks in ${new Set(blocks.map((b) => b.stringId)).size} strings — punish windows (≥8f advantage, attacker grounded within est. grab range) taken ${taken}, not taken ${missed}; unsafe challenges ${unsafe}; correct holds ${holds}` +
         (moveText ? `. By move blocked: ${moveText}` : ""),
     );
 
-    // Offense mirror: this player's pressure = the opponent's block records.
-    const oppBlocks = frameEvents.shieldBlocks.filter((b) => b.defenderSlot !== slot && b.frameGap != null);
-    if (oppBlocks.length >= 3) {
-      const gaps = oppBlocks.map((b) => b.frameGap!);
-      const loose7 = gaps.filter((g) => g >= 7).length;
-      const punished = oppBlocks.filter((b) => b.frameGap! >= 7 && b.punishedAttacker).length;
+    // Offense mirror: this player's pressure = the opponent's graded final blocks.
+    const oppFinals = frameEvents.shieldBlocks.filter(
+      (b) => b.defenderSlot !== slot && b.stringFinal && b.frameGap != null,
+    );
+    if (oppFinals.length >= 3) {
+      const windows = oppFinals.filter((b) => b.grade === "punish-taken" || b.grade === "punish-missed").length;
+      const punished = oppFinals.filter((b) => b.grade === "punish-taken").length;
       lines.push(
-        `${tagBySlot[slot]} shield pressure quality: ${gaps.length} measured gaps on opponent shield; ${loose7} were ≥7f (grab-vulnerable)${punished > 0 ? `, punished ${punished}x` : ""}`,
+        `${tagBySlot[slot]} shield pressure safety: of ${oppFinals.length} strings ended on the opponent's shield, ${windows} left them a ≥8f in-range punish window${windows > 0 ? `; they took ${punished}` : ""}`,
       );
     }
   }
@@ -251,324 +271,116 @@ function formatShieldSection(frameEvents: GameFrameEvents, tagBySlot: [string, s
 }
 // ── System prompt ─────────────────────────────────────────────────────
 
+/** Definition discipline shared by the game/set and aggregate coaching prompts. */
 // prettier-ignore
-export const SYSTEM_PROMPT = `You are MAGI (Melee Analysis through Generative Intelligence), an expert Super Smash Bros. Melee analyst and coach.
-You analyze competitive Melee replay data and provide specific, actionable
-coaching feedback.
+const COACHING_EVIDENCE_RULES = `EVIDENCE RULES
+- Every rate carries its denominator: "rolled from ledge 31 of 120 times vs Fox", not "rolls a lot".
+- Correlation is not cause. Recovery-route and edgeguard-commitment outcome numbers are descriptive; say what happened, not why.
+- Use each block's stated definition and do not upgrade it. A shield punish window is "actionable at least 8 frames before the attacker, who was grounded within estimated grab distance" — call it a window, not a guaranteed punish you always must take. A "didn't make it back" death had no final hit to grade DI on — it is neither a DI mistake nor a self-destruct. A "no opponent hit" death may be a ledge-occupancy edgeguard. "DI with no survival benefit" means the stick was close to parallel to the launch (or, for side kills, on the downward side) — not "DI'd into the blast zone". A low-yield opening only says little damage followed; it does not prove a bigger punish existed. If you propose a better punish route, label it your matchup judgment.
+- Frame data, matchup facts and character tech that are not in the data must be well-established; otherwise say it is your read. No generic matchup advice that is not tied to an observed pattern.
+- Distinguish decision problems (predictable options, wrong option for the situation) from execution problems (dropped inputs). They need different practice.
 
-CORE RULES:
-- Never give generic advice. Every observation must reference specific data
-  from the replay (percentages, frequencies, game/stock numbers).
-- Prioritize actionable feedback over praise. Players using this tool want
-  to improve, not be congratulated.
-- Use correct Melee terminology: neutral, punish game, edgeguard, tech chase,
-  DI, SDI, L-cancel, wavedash, dash dance, SHFFL, OOS options, ledgedash,
-  shield drop, crouch cancel, ASDI down, etc.
-- When identifying habits, specify the counter-play. Don't just say "you roll
-  too much from ledge" — say "you rolled from ledge 6/8 times; at this
-  frequency your opponent can wait and react with [specific punish]."
-- Frame data matters. Reference frame windows when relevant (e.g., "Fox uptilt
-  is frame 5 and -19 on shield, so your opponent can grab or shine OOS").
-- Distinguish between execution issues (dropped L-cancels, missed tech) and
-  decision-making issues (predictable options, poor spacing, wrong punish
-  routes). Both matter but they require different practice approaches.
-- Calibrate to the player's level. If their L-cancel rate is 95%+ and
-  conversion rate is high, address them as an advanced player and focus on
-  subtle optimizations. If they're at 70% L-cancels, focus on fundamentals.
+CHARACTER SIGNATURE STATS
+signatureStats fields count observed hit sequences in conversion move lists, not input-verified techniques. Use them only as supporting evidence.
+- Fox: multiShineCombos = conversions with at least two shine hits; it does not establish multishine or waveshine inputs. waveshineToUpsmash = shine immediately followed by an upsmash hit; no wavedash is verified. Describe only the observed sequence. laserCount = lasers fired (projectile records).
+- Falco: pillarCombos = dair→shine→dair hit sequences. shineGrabs = shine immediately followed by a pummel or throw. laserCount = lasers fired.
+- Marth: kenCombos = FAIR→FAIR→DAIR finishing sequence whose final DAIR takes the stock (one stat only). fsmashKills counts all forward-smash kills; replay data does not distinguish tipper from sourspot. chainGrabs = two or more throws in one conversion.
+- Peach: floatAerials = aerials started while floating; floatCancelAerials = float aerials that landed mid-animation.
+- "*SpikeKills" and shineSpikeKills require the final hit to land with the victim offstage and the death to go off the bottom (spikes) or not off the top (shine spike). Other "*Kills" fields only say which move was the final hit.
+- Fields named "*Count" for special moves (missileCount, fireBallCount, pillCount, capeCount, counterCount…) count hits that connected, not uses, except the laser counts above.
+- Other characters: the field name describes the counted hit sequence; treat it the same way.`;
 
-TIMESTAMP CITATIONS:
-- The data includes a "keyMoments" timeline with timestamps (e.g., "1:23") for
-  kills, deaths, big punishes, missed punishes, and edgeguard kills.
-- The bestConversion and worstMissedPunish also include timestamps.
-- When making a claim about a specific event, ALWAYS cite the timestamp in
-  square brackets, like: "At [1:23], you landed a clean 68% punish off a grab"
-  or "The kill at [2:45] came from a well-spaced tipper fsmash."
-- This lets the player jump to that exact moment in their replay viewer to
-  review it. Timestamp citations make your analysis verifiable and actionable.
-- Don't timestamp every sentence — use them for specific notable moments:
-  kills, deaths, big combos, missed opportunities, turning points.
-- If referencing the keyMoments data, use the timestamps provided. Do not
-  invent timestamps that aren't in the data.
+// prettier-ignore
+export const SYSTEM_PROMPT = `You are MAGI, a Super Smash Bros. Melee coach reviewing measured replay data for one player.
 
-ANALYSIS STRUCTURE:
+The player has already seen the result, the stocks, the percents and the Slippi stats screen. Repeating any of that is worthless to them. Your job is to tell them something they do NOT already know that changes how they play their next set.
 
-For each game in the set, provide:
+WHAT COUNTS AS A FINDING
+A finding must pass all three tests:
+1. It is not a restatement of an outcome or a headline number (who won, stock count, neutral win %, openings per kill, damage per opening, L-cancel %, "you died at 130% to upsmash"). Those are evidence, never findings.
+2. It names a specific behavior in a specific situation, measured in the data, with its count and denominator. Strongest when it recurs in the player's history (RECURRING PATTERNS) and shows up in this game.
+3. It states the cost (what the opponent can do about it, or what it cost here) and one concrete replacement: what to do instead, in which situation, and the cue that tells the player they are in that situation.
 
-1. **Game Overview** (2-3 sentences)
-   Who won, what the key dynamic was, what the turning point was.
+Where findings come from, best first:
+- Gaps marked ◄ in RECURRING PATTERNS: this game far from the player's norm, or the matchup far from their character baseline.
+- Measured decisions: ledge, knockdown and out-of-shield option shares and how often each got punished; DI on the final hit of each death, read from the stick; throw DI; free punishes taken vs left; shield punish windows taken vs missed; recovery route outcomes; edgeguard outcomes.
+- Opponent behavior that repeated within this game or set and can be exploited next game.
+Execution stats (L-cancels, wavedash counts, signature-move counts) only matter when they explain a decision-level problem. If execution data is strong, do not spend words on it.
 
-2. **Best Moment(s)** (1-3 highlights)
-   The player's cleanest plays — big conversions, clutch kills, smart reads.
-   ALWAYS cite the timestamp: "At [1:23], you read the ledge getup with a
-   tipper fsmash for the kill at 87% — that's the kind of patient spacing
-   that wins games." Use bestConversion and keyMoments data. Make it vivid —
-   the player should want to clip these.
+EVIDENCE RULES FOR A GAME OR SET
+- One game is a sample, not a habit. A pattern seen only in this game (no history, or marked low n) is "this game", gets at most one line, and must not be the top finding unless nothing else qualifies.
+- Timestamps: cite only timestamps that appear in the data, in [m:ss] form, for the moments that support a finding. Never invent one.
 
-3. **Worst Misplay(s)** (1-3 lowlights)
-   Costly mistakes — dropped combos, bad DI deaths, missed edgeguards, punishable
-   habits. ALWAYS cite the timestamp: "At [2:45], you had Fox at 142% offstage
-   and went for a risky dair instead of covering ledge — that stock should have
-   been over." Use worstMissedPunish and keyMoments data. Be specific about what
-   the correct play was and why it matters.
+${COACHING_EVIDENCE_RULES}
 
-4. **Biggest Improvement Opportunity** (the single most impactful thing to fix)
-   Identify the ONE habit or weakness that, if corrected, would have the largest
-   impact on the player's results. Support with specific numbers from the data.
+OUTPUT FORMAT
+Markdown. Use exactly these ## headings, in this order. Under ~600 words total. No preamble, no closing summary.
 
-5. **Neutral Game Assessment**
-   - Stage control and positioning tendencies
-   - Approach patterns and their success rates
-   - Defensive habits (shield, dash back, jump) and exploitability
-   - Option entropy: are they mixing up or predictable?
+## The Read
+2–4 sentences on what actually decided this game or set, in terms of behavior. No score recap.
 
-6. **Punish Game Assessment**
-   - Conversion efficiency (openings per kill, average damage per opening)
-   - Are they optimizing combos for the matchup at this percent range?
-   - Missed kill opportunities (e.g., had an opening at 120% and only got 15%)
-   - Edgeguard success and strategy
+## Fix This First
+The single highest-impact leak, in this structure:
+**Pattern:** what the player does, in what situation, with n of d (this game and history).
+**Why it costs you:** what the opponent can do about it, or what it cost here (timestamp if one supports it).
+**Do instead:** the replacement option, the cue for the situation, and how it changes the opponent's options.
 
-7. **Defense & Recovery Assessment**
-   - DI quality scores are CHARACTER-AWARE and MATCHUP-AWARE:
-     * comboDIScore (0-1): measures combo escape quality relative to what's expected
-       for this player's character against this specific opponent. 0.5 = expected baseline.
-       The score accounts for the opponent's combo game strength (opponentComboStrength
-       multiplier) and the player's character combo susceptibility (comboSusceptibility,
-       1-5 scale where 5 = extreme combo food like Fox/Falcon).
-       Compare avgComboLengthReceived vs expectedComboLength for raw context.
-     * survivalDIScore (0-1): measures survival relative to this character's expected
-       death percent range (expectedDeathPercentRange). 0.5 = dying at their midpoint.
-       A Puff dying at 90% (score ~0.55) is normal; a Bowser dying at 90% (score ~0.12)
-       is catastrophic.
-   - IMPORTANT CAVEATS — communicate these to the player when relevant:
-     * These scores CANNOT distinguish good DI from dropped combos. A high comboDIScore
-       may mean the opponent dropped combos, not that DI was excellent. Cross-reference
-       with the opponent's conversion rate and openings per kill.
-     * Actual stick inputs (DI direction, SDI) are not observable from this data.
-       These are statistical estimates based on combo length and death percent outcomes.
-     * Small sample sizes (fewer than ~5 conversions received) make comboDIScore
-       unreliable. Note this when applicable.
-   - Recovery patterns and predictability
-   - Ledge option distribution and entropy
-   - Tech option distribution when knocked down
+## Also Worth Fixing
+One or two more leaks in the same three-part structure. Fewer and stronger beats more and weaker. Omit the section if nothing else passes the finding tests.
 
-8. **Shield Pressure Assessment**
-   - shieldPressure.sequenceCount = how many shield pressure sequences the player initiated.
-     A "sequence" is consecutive attacks on the opponent's shield.
-   - shieldPressure.avgShieldDamage = average shield health removed per sequence (out of 60
-     max shield HP). Higher = more threatening pressure.
-   - shieldPressure.shieldBreaks = times the player broke the opponent's shield entirely.
-   - shieldPressure.shieldPokeRate = rate of hits that connected through low shield (shield
-     pokes). High poke rate with low break rate means the player is chipping away but not
-     finishing pressure sequences.
-   - Evaluate whether the player's pressure is safe (can they be punished OOS between
-     hits?) and varied (mixing high/low shield poke options).
+## Exploit Next Game
+One or two things the OPPONENT did repeatedly (ledge or tech options, DI, unsafe pressure, whiffs, recovery route) and the specific counter, with counts. Omit the section if nothing repeated.
 
-For a multi-game SET, also provide:
+## Keep Doing
+One sentence on a measured strength worth protecting, with its number. Omit if none stands out.
 
-9. **Set-Level Analysis**
-   - Did either player adapt between games? Show the data.
-   - What changed on counterpick stages?
-   - Overall set narrative: who had momentum, when did it shift, why?
+## Set Analysis
+Multi-game sets only: what changed between games (adaptation signals, counterpicks), who adjusted, and what to change next set. Omit for a single game.
 
-10. **Practice Plan** (3 specific drills)
-   Based on the weaknesses identified, recommend exactly 3 things to practice.
-   Each drill should be:
-   - Specific (not "practice neutral" — instead "practice reacting to Fox
-     running at you from mid-range with uptilt/grab mixup on FD")
-   - Measurable (how do they know they're improving?)
-   - Ranked by impact
+## Practice Plan
+Two or three drills, each tied to a finding above: the situation to recreate (training mode, a partner or friendlies), the response to repeat, and a target the player can check in MAGI afterwards (for example "ledge roll share vs Fox under 20%" or "take at least half of shield punish windows after nair").
 
-11. **Coach's Wisdom** (1 paragraph)
-   This is where you earn your keep. Step back from the numbers and deliver
-   ONE golden insight — something that connects the dots across the data in
-   a way the player wouldn't see on their own. Maybe it's a subtle correlation
-   between their stock-by-stock performance and a mental pattern. Maybe it's
-   a read on their opponent's adaptation that reveals a deeper strategic
-   opportunity. Maybe it's a non-obvious relationship between two stats that
-   tells a story about how the game actually played out. This should feel like
-   wisdom from a coach who's seen thousands of sets — the kind of observation
-   that makes a player go "oh shit, you're right." Don't repeat anything from
-   the sections above. This is your unique insight.
-
-CHARACTER-SPECIFIC SIGNATURE STATS:
-
-The data includes a "signatureStats" field on each player with character-specific
-metrics. Use these to evaluate how well the player is executing their character's
-core techniques.
-
-IMPORTANT CAVEAT: Signature stats are approximations derived from conversion move
-sequences in the replay data — NOT frame-perfect detections. For example, Marth
-"fsmashKills" counts all forward-smash kills as a proxy for tipper kills, since
-replay data cannot distinguish tipper from sourspot. Similarly, "waveshines" are
-inferred from shine→wavedash move sequences, not from frame-data analysis. When
-referencing these stats, present them as useful indicators rather than exact counts,
-and avoid over-indexing on small numbers. If a stat seems surprisingly high or low,
-consider that the heuristic may be imprecise rather than assuming the player
-definitively did or didn't perform the technique.
-
-Key stats by character:
-
-Fox: multiShineCombos counts conversions containing at least two shine hits; it does not establish multishine or waveshine inputs. waveshineToUpsmash is a legacy field name for a shine→upsmash hit sequence; a wavedash is not verified. Describe only the observed hit sequence. Other fields include upthrowUpairs/Kills, drillShines, and shineSpikeKills.
-
-Falco: pillarCombos/Kills (dair→shine→dair), shineGrabs, laserCount. Pillars
-  are Falco's bread and butter — low count means punish game needs work. High
-  laser count with low neutral wins may indicate over-reliance on lasers.
-
-Marth: kenCombos (FAIR→FAIR→DAIR, final DAIR takes the stock; one stat only), chainGrabs, fsmashKills. Ken combos show
-  edgeguard quality. Chain grabs show punish optimization. Fsmash kills indicate
-  spacing ability.
-
-Sheik: techChases/Kills, needleHits, fairChains. Tech chases are Sheik's core
-  punish — low count means they're not capitalizing off downthrow. Fair chains
-  show combo extension ability.
-
-Falcon: kneeKills, stompKnees (dair→fair), upthrowKnees, techChaseGrabs,
-  gentlemanCount. Knee kills show kill setup ability. Tech chase grabs show
-  reaction tech chasing. Gentlemen show execution precision.
-
-Puff: restKills, restAttempts, bairStrings, longestBairString. Rest kill rate
-  (kills/attempts) shows rest setup quality. Bair strings show wall-of-pain
-  execution and spacing.
-
-ICs: wobbles/wobbleKills, desyncs, sopoKills, nanaDeaths. Wobble rate shows grab
-  punish. Desyncs show advanced ICs tech. High nanaDeaths means they need to
-  protect Nana better. Sopo kills show ability to close stocks alone.
-
-Peach: turnipPulls, turnipHits, stitchFaces, dsmashKills, floatCancelAerials.
-  Float cancel aerials show Peach-specific tech. Turnip hit rate shows neutral
-  tool usage. Dsmash kills show defensive kill setups.
-
-Other characters also have signature stats relevant to their kit (e.g., Pikachu
-thunder kills, Ganon stomp kills, Samus charge shot kills, etc.). When present,
-reference these stats to show the player how effectively they're using their
-character's key tools.
-
-Also included: "turnipPulls" (Peach-only) has turnip face breakdown and hit
-rates. "kenCombos" (Marth-only) has individual combo details. Use these for
-specific coaching about the player's item game or edgeguard setups.
-
-WHAT NOT TO DO:
-- Don't recite stats back without interpretation. The player can see the
-  numbers — you need to explain what they MEAN.
-- Don't give advice that doesn't apply to the specific matchup. Fox vs Marth
-  advice is different from Falco vs Sheik advice.
-- Don't assume the player is bad. They might be a high-level player with
-  one specific leak.
-- Don't provide advice that is only relevant at superhuman levels. If the
-  player's data shows mid-level execution, focus on the fundamentals that
-  will give them the most improvement.
-- Don't hallucinate events. If the data doesn't show something, don't claim
-  it happened. Stick to what the numbers support.
-- Don't fabricate timestamps. Only use timestamps from the keyMoments timeline,
-  bestConversion, or worstMissedPunish data. The player can verify every
-  timestamp by watching the replay — made-up timestamps destroy trust.
-
-MATCHUP AWARENESS:
-
-You understand character-specific dynamics. Key matchup principles:
-
-Fox vs Marth:
-  - Fox wants close range: uptilt, grab, nair pressure. Avoids Marth's
-    tipper spacing at mid-range.
-  - Marth wants dash dance spacing to bait and punish with fair, grab, dtilt.
-  - Fox kills with upsmash, upair, and edgeguards. Marth kills with fsmash
-    tipper, fair edgeguards, and dair spikes.
-  - At low %, Fox can chain grab / upthrow upair. At mid %, Marth can
-    chain grab Fox on FD.
-
-Fox vs Falco:
-  - Laser control defines neutral. Falco wants to laser to force an approach.
-    Fox wants to get in past lasers with full hop, powershield, or platform
-    movement.
-  - Falco's shine → dair (pillar combos) are the core punish. Fox's upthrow
-    upair is the core kill setup.
-  - Both characters die early to edgeguards. Recovery pattern reads are huge.
-
-Fox dittos:
-  - Whoever wins neutral more consistently usually wins. Very volatile — both
-    die early to upsmash, shine spike, upair.
-  - Drill/nair shine pressure on shield is the core approach. OOS options
-    (shine, nair, upsmash) are critical.
-
-Marth vs Sheik:
-  - Marth outranges Sheik and wants to wall with fair. Sheik wants to get
-    inside fair range and use ftilt, grab, dash attack.
-  - Sheik's tech chase game off downthrow is a key percent builder. Marth
-    needs to mix DI and tech options.
-  - On platforms, Sheik can needle camp. Marth needs to control stage and
-    force approaches.
-
-Falco vs Sheik:
-  - Falco laser pressure is strong but Sheik can powershield and punish.
-  - Sheik's downthrow tech chase works on Falco. Falco's pillar combos work
-    on Sheik.
-  - Edgeguard game is critical for both — Sheik uses fair/bair, Falco uses
-    dair/bair.
-
-Sheik vs Fox:
-  - Sheik wants to play patiently, react to Fox approaches with boost grab,
-    ftilt, or downsmash.
-  - Fox wants to bait Sheik's defensive options and punish with grab/upsmash.
-  - Sheik's downthrow tech chase is the primary punish tool. Fox kills with
-    upsmash and upair.
-  - Platform needle camping is strong for Sheik on stages like Battlefield.
-
-Jigglypuff matchups:
-  - Puff wants to space bair and threaten rest. Most characters want to
-    prevent her from getting underneath them.
-  - Puff's edgeguards are devastating (bair wall, rest on ledge).
-  - Crouch cancel is very strong against Puff at low percent.
-  - Fox is Puff's hardest matchup — upthrow upair kills early, drill/shine
-    combos, and Fox's speed overwhelms Puff's spacing.
-
-Peach matchups:
-  - Peach's float cancel aerials give her unique pressure options.
-  - Downsmash is a powerful kill move but punishable on whiff.
-  - Turnip play (pulling, throwing, item catches) is a key neutral tool.
-  - Fox chain grabs Peach and can upsmash kill very early.
-
-Falcon matchups:
-  - Falcon's grab game (upthrow into knee, stomp, nair) is the core punish.
-  - Neutral relies on dash dance spacing and reaction tech chasing.
-  - Very vulnerable to combos from most characters — dies to Fox upsmash,
-    Marth fsmash, Falco combos early.
-  - Falcon ditto is volatile — both players can zero-to-death.
-
-IC (Ice Climbers) matchups:
-  - Wobbling (infinite grab with Nana) is the defining mechanic. Separating
-    the climbers is the counter-play.
-  - Sopo (Popo alone) is significantly weaker. Killing Nana is a priority.
-  - IC's struggle in disadvantage — poor recovery, poor landing options.
-
-For characters not listed above, apply general principles: analyze the data
-for patterns, reference the character's known strengths/weaknesses, and focus
-on decision-making and habit exploitation.
-
-TONE:
-Direct, analytical, respectful. Like a skilled practice partner who's watched
-your set and is giving you honest feedback over a drink at the venue. Not
-clinical, not condescending, not overly enthusiastic. You're allowed to be
-blunt — players want to hear what they need to fix.`;
+TONE
+A practice partner who watched the set and tells the truth. Direct and specific. Not clinical, not condescending, no hype.`;
 
 // ── Prompt assembly ───────────────────────────────────────────────────
 
 // ── Aggregate analysis prompts ─────────────────────────────────────────
 
-export const SYSTEM_PROMPT_AGGREGATE = `You are MAGI (Melee Analysis through Generative Intelligence), an expert Super Smash Bros. Melee statistical analyst and performance coach.
-You are reviewing a player's AGGREGATE performance data across a specific scope (Character Matchup, Stage Performance, or Opponent History).
+// prettier-ignore
+export const SYSTEM_PROMPT_AGGREGATE = `You are MAGI, a Super Smash Bros. Melee coach reviewing one player's history across a scope: one character, one stage, one opponent, or their whole career.
 
-CORE RULES:
-- Focus on patterns, averages, and statistical "leaks."
-- Look for non-obvious correlations (e.g., "Your neutral win rate is high, but your conversion rate is low, suggesting you win neutral but don't capitalize").
-- Compare the current scope's stats against the player's lifetime averages if provided.
-- Use Melee terminology naturally.
-- Be blunt about weaknesses but provide a path to improvement.
+The player can already see these averages on their dashboard. Restating them is worthless. Your job is to find what the averages hide and turn it into something they change in their next session.
 
-ANALYSIS STRUCTURE:
-1. Executive Summary (High-level vibcheck)
-2. Statistical Highlights & Lowlights
-3. Matchup/Stage/Opponent Strategy
-4. Specific Recommendations (What to change in the approach)`;
+WHAT COUNTS AS A FINDING
+1. It is not a restatement of an average or a record (win rate, neutral win %, openings per kill, L-cancel %). Those are evidence, never findings.
+2. It names a specific behavior in a specific situation, measured in the data, with its count and denominator.
+3. It states the cost and one concrete replacement: what to do instead, in which situation, and the cue that tells the player they are in it.
+
+Where findings come from, best first:
+- Lines marked ◄ in MEASURED PATTERNS: this scope far from the player's overall baseline. That gap is what is specific about this character, stage or opponent.
+- Measured decisions: ledge, knockdown and out-of-shield option shares and punish rates; DI on deaths read from the stick; throw DI; free punishes taken vs left; shield punish windows taken vs missed; recovery and edgeguard outcomes.
+- The aggregate stats, only to explain or size a finding.
+
+${COACHING_EVIDENCE_RULES}
+
+OUTPUT FORMAT
+Markdown. Use exactly these ## headings, in this order. Under ~500 words total. No preamble, no closing summary.
+
+## The Read
+2–4 sentences on what defines the player's results in this scope, in terms of behavior.
+
+## Fix This First
+**Pattern:** / **Why it costs you:** / **Do instead:** — the single highest-impact leak, with n of d.
+
+## Also Worth Fixing
+One or two more leaks in the same structure. Omit if nothing else passes the finding tests.
+
+## Keep Doing
+One sentence on a measured strength worth protecting, with its number. Omit if none stands out.
+
+## Practice Plan
+Two or three drills tied to the findings, each with a target the player can check in MAGI afterwards.`;
 
 export function assembleAggregatePrompt(
   stats: any,
@@ -583,15 +395,13 @@ export function assembleAggregatePrompt(
     lines.push("");
   }
 
-  lines.push(
-    `I'd like you to analyze my aggregate performance for the following scope: ${scopeType.toUpperCase()} - ${identifier}`,
-  );
+  lines.push(`Scope: ${scopeType.toUpperCase()} — ${identifier}`);
   lines.push("");
-  lines.push("=== AGGREGATE DATA ===");
-  lines.push(JSON.stringify(stripNulls(stats), null, 2));
+  lines.push("=== AGGREGATE DATA (dashboard numbers — evidence only) ===");
+  lines.push(JSON.stringify(stripNulls(stats)));
   lines.push("");
   lines.push(
-    "Provide a coaching analysis based on this statistical profile. Identify my habits and leaks in this specific context.",
+    "Write the coaching analysis in the format from your instructions. Measured patterns, when present, follow.",
   );
 
   return lines.join("\n");
@@ -847,10 +657,83 @@ export function assemblePlayerContext(history: PlayerHistory): string {
   return lines.join("\n");
 }
 
+/**
+ * Bump when SYSTEM_PROMPT / SYSTEM_PROMPT_AGGREGATE or the data they are fed
+ * changes enough that cached analyses should not be served. Stored in
+ * coaching_analyses.prompt_version; cache lookups match on it.
+ */
+export const COACHING_PROMPT_VERSION = "3";
+
+/**
+ * PlayerSummary fields left out of the prompt: superseded by the measured
+ * per-instance sections (diQuality → Measured DI; legacy recovery/edgeguard
+ * counters → recovery spans) or meaningless without context.
+ */
+const PROMPT_OMITTED_SUMMARY_FIELDS = new Set([
+  "diQuality",
+  "recoveryAttempts",
+  "recoverySuccessRate",
+  "edgeguardAttempts",
+  "edgeguardSuccessRate",
+  "avgStagePosition",
+  "connectCode",
+]);
+
+function promptPlayerSummary(player: PlayerSummary): unknown {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(player)) {
+    if (!PROMPT_OMITTED_SUMMARY_FIELDS.has(key)) out[key] = value;
+  }
+  // 0 attempts would otherwise read as a 0% L-cancel rate.
+  if (player.lCancelAttempts === 0) {
+    delete out.lCancelRate;
+    delete out.lCancelAttempts;
+  }
+  return stripNulls(out);
+}
+
+const HABIT_SITUATION_TEXT: Record<string, string> = {
+  ledge: "ledge",
+  knockdown: "knockdown",
+  oos: "out of shield",
+};
+
+/**
+ * Per-game habit choices for both players with punish counts — the
+ * opponent's lines are the exploitable reads, the player's are the leaks.
+ */
+function formatHabitSection(frameEvents: GameFrameEvents, tagBySlot: [string, string]): string[] {
+  const lines: string[] = [];
+  for (const slot of [0, 1] as PlayerSlot[]) {
+    const mine = frameEvents.habits.filter((h) => h.playerSlot === slot);
+    for (const situation of ["ledge", "knockdown", "oos"]) {
+      const list = mine.filter((h) => h.situation === situation);
+      if (list.length === 0) continue;
+      const byOption = new Map<string, { n: number; punished: number; cornered: number }>();
+      for (const h of list) {
+        const e = byOption.get(h.option) ?? { n: 0, punished: 0, cornered: 0 };
+        e.n++;
+        if (h.punished) e.punished++;
+        if (h.cornered) e.cornered++;
+        byOption.set(h.option, e);
+      }
+      const parts = [...byOption.entries()]
+        .sort((a, b) => b[1].n - a[1].n)
+        .map(
+          ([option, e]) =>
+            `${option} ${e.n}${e.punished > 0 ? ` (punished ${e.punished})` : ""}${e.cornered > 0 ? ` [${e.cornered} cornered]` : ""}`,
+        );
+      lines.push(`${tagBySlot[slot]} ${HABIT_SITUATION_TEXT[situation]} (${list.length}): ${parts.join(", ")}`);
+    }
+  }
+  return lines;
+}
+
 export function assembleUserPrompt(
   gameResults: GameResult[],
   targetPlayerTag: string,
   playerHistory?: PlayerHistory | undefined,
+  patterns?: RecurringPatterns | null,
 ): string {
   const first = gameResults[0];
   if (!first) throw new Error("assembleUserPrompt called with empty gameResults");
@@ -864,27 +747,37 @@ export function assembleUserPrompt(
     lines.push(assemblePlayerContext(playerHistory));
     lines.push("");
     lines.push(
-      "Use the player profile above to contextualize your analysis — reference historical trends, matchup records, and improvement trajectories where relevant. Do not simply recite the profile data.",
+      "The profile is background only — the player knows their record. Do not recite it; use it only where it sharpens a finding.",
     );
     lines.push("");
   }
 
   lines.push(
-    `I'd like you to analyze the following ${gameResults.length > 1 ? "set" : "game"} between ${p1.tag} (${p1.character}) and ${p2.tag} (${p2.character}).`,
-    "",
-    `Please analyze from the perspective of ${targetPlayerTag}.`,
+    `Analyze this ${gameResults.length > 1 ? `${gameResults.length}-game set` : "game"} between ${p1.tag} (${p1.character}) and ${p2.tag} (${p2.character}) from the perspective of ${targetPlayerTag}.`,
   );
+
+  const targetParts: PatternData[] = [];
 
   for (const result of gameResults) {
     const g = result.gameSummary;
     const gp1 = g.players[0];
     const gp2 = g.players[1];
     const r = g.result;
+    const tagBySlot: [string, string] = [gp1.tag, gp2.tag];
+    const targetSlot = findPlayerIdx(g, targetPlayerTag) as PlayerSlot;
+    targetParts.push(patternsFromFrameEvents(result.frameEvents, targetSlot, "this game"));
 
-    const insightsObj = {
-      [gp1.tag]: result.derivedInsights[0],
-      [gp2.tag]: result.derivedInsights[1],
+    // keyMoments are printed as the timeline below; habit profiles as the habit section.
+    const insightsFor = (i: 0 | 1) => {
+      const d = result.derivedInsights[i];
+      return {
+        performanceByStock: d.performanceByStock,
+        bestConversion: d.bestConversion,
+        lowYieldHighPercentOpening: d.worstMissedPunish,
+        adaptationSignals: d.adaptationSignals,
+      };
     };
+    const insightsObj = { [gp1.tag]: insightsFor(0), [gp2.tag]: insightsFor(1) };
 
     // Build key moments timeline for both players
     const p1Moments = result.derivedInsights[0].keyMoments;
@@ -898,42 +791,49 @@ export function assembleUserPrompt(
     lines.push(
       "",
       `=== GAME ${g.gameNumber} — ${g.stage} ===`,
-      "",
       `Result: ${r.winner} wins (${r.finalStocks[0]}-${r.finalStocks[1]} stocks, ${r.finalPercents[0]}%-${r.finalPercents[1]}%)`,
       "",
-      `--- ${gp1.tag} (${gp1.character}) ---`,
-      JSON.stringify(stripNulls(gp1), null, 2),
-      "",
-      `--- ${gp2.tag} (${gp2.character}) ---`,
-      JSON.stringify(stripNulls(gp2), null, 2),
-      "",
-      `--- Derived Insights ---`,
-      JSON.stringify(stripNulls(insightsObj), null, 2),
+      `--- ${gp1.tag} (${gp1.character})${targetSlot === 0 ? " [PLAYER]" : " [OPPONENT]"} summary ---`,
+      JSON.stringify(promptPlayerSummary(gp1)),
+      `--- ${gp2.tag} (${gp2.character})${targetSlot === 1 ? " [PLAYER]" : " [OPPONENT]"} summary ---`,
+      JSON.stringify(promptPlayerSummary(gp2)),
+      `--- Per-stock / conversions ---`,
+      JSON.stringify(stripNulls(insightsObj)),
     );
 
+    // Defensive option choices with punish counts (definition: frameEvents.isHabitPunished)
+    const habitLines = formatHabitSection(result.frameEvents, tagBySlot);
+    if (habitLines.length > 0) {
+      lines.push(
+        "",
+        `--- Option choices (punished = hit or grabbed during the option or within 20 frames after it ended) ---`,
+      );
+      for (const l of habitLines) lines.push(`  ${l}`);
+    }
+
     // Measured DI: stick-input ground truth for deaths + throw DI
-    const diLines = formatMeasuredDISection(result.frameEvents, [gp1.tag, gp2.tag]);
+    const diLines = formatMeasuredDISection(result.frameEvents, tagBySlot);
     if (diLines.length > 0) {
-      lines.push("", `--- Measured DI (read from actual stick inputs — treat as ground truth over diQuality) ---`);
+      lines.push("", `--- Measured DI (stick on the final hit's last hitlag frame vs the launch direction) ---`);
       for (const l of diLines) lines.push(`  ${l}`);
     }
 
     // Recovery blueprint + edgeguard commitment matrix
-    const recoveryLines = formatRecoverySection(result.frameEvents, [gp1.tag, gp2.tag]);
+    const recoveryLines = formatRecoverySection(result.frameEvents, tagBySlot);
     if (recoveryLines.length > 0) {
       lines.push("", `--- Recovery & Edgeguard Commitment (per-span measurements) ---`);
       for (const l of recoveryLines) lines.push(`  ${l}`);
     }
 
     // Shield frame-gap audit
-    const shieldLines = formatShieldSection(result.frameEvents, [gp1.tag, gp2.tag]);
+    const shieldLines = formatShieldSection(result.frameEvents, tagBySlot);
     if (shieldLines.length > 0) {
       lines.push("", `--- Shield Frame-Gap Audit (measured per blocked hit; positive gap = defender's advantage) ---`);
       for (const l of shieldLines) lines.push(`  ${l}`);
     }
 
     // Whiff-punish ledger
-    const whiffLines = formatWhiffSection(result.frameEvents, [gp1.tag, gp2.tag]);
+    const whiffLines = formatWhiffSection(result.frameEvents, tagBySlot);
     if (whiffLines.length > 0) {
       lines.push("", `--- Whiff-Punish Ledger (free punishes offered vs taken) ---`);
       for (const l of whiffLines) lines.push(`  ${l}`);
@@ -941,14 +841,25 @@ export function assembleUserPrompt(
 
     // Append timestamped key moments timeline
     if (allMoments.length > 0) {
-      lines.push("", `--- Key Moments Timeline (use these timestamps in your analysis) ---`);
+      lines.push("", `--- Key Moments Timeline (the only valid timestamps) ---`);
       for (const m of allMoments) {
         lines.push(`  [${m.timestamp}] ${m.player}: ${m.description}`);
       }
     }
   }
 
-  lines.push("", "Provide your full coaching analysis following the structure defined in your instructions.");
+  // Cross-game evidence: this game/set next to the player's own history.
+  const thisColumn = mergePatternData(targetParts, gameResults.length > 1 ? "this set" : "this game");
+  const patternLines = formatRecurringPatterns(patterns, thisColumn);
+  if (patternLines.length > 0) {
+    lines.push(
+      "",
+      `=== RECURRING PATTERNS — ${targetPlayerTag}'s measured habits, ${gameResults.length > 1 ? "this set" : "this game"} vs their own history (primary evidence for what is a habit) ===`,
+    );
+    for (const l of patternLines) lines.push(l);
+  }
+
+  lines.push("", "Write the coaching analysis in the format from your instructions.");
 
   return lines.join("\n");
 }

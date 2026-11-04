@@ -30,6 +30,8 @@ export interface PlayerSummary {
   /** Rate at which edgeguard situations ended in opponent death */
   edgeguardSuccessRate: number;
   lCancelRate: number;
+  /** Aerial landings where L-cancel success/fail was recorded. lCancelRate is 0 (not "0%") when this is 0. */
+  lCancelAttempts: number;
   wavedashCount: number;
   dashDanceFrames: number;
   moveUsage: { move: string; count: number; hitRate: number }[];
@@ -136,18 +138,20 @@ export type CharacterSignatureStats =
 
 export interface FoxSignatureStats {
   character: "Fox";
-  /** Conversions where shine (down b) appears 2+ times, indicating multi-shine combos */
+  /** Conversions where shine (down b) connected 2+ times; no multishine input is verified */
   multiShineCombos: number;
-  /** Conversions with shine → usmash (21 → 11) */
+  /** Conversions with shine immediately followed by usmash (21 → 11); the wavedash is not verified */
   waveshineToUpsmash: number;
-  /** Conversions starting with uthrow (54) and containing uair (16) */
+  /** Conversions with uthrow (55) followed by uair (16) */
   upthrowUpairs: number;
-  /** Same but the conversion killed */
+  /** Same, and the uair took the stock */
   upthrowUpairKills: number;
-  /** Conversions with dair (17) → shine (21) sequence */
+  /** Conversions with dair (17) → shine (21) adjacent */
   drillShines: number;
-  /** Conversions ending in shine that killed while opponent was offstage */
+  /** Shine was the final hit, landed with the victim offstage, and the death was not off the top */
   shineSpikeKills: number;
+  /** Lasers fired (item spawns of Fox's laser, type 54) */
+  laserCount: number;
 }
 
 export interface FalcoSignatureStats {
@@ -156,15 +160,15 @@ export interface FalcoSignatureStats {
   pillarCombos: number;
   /** Pillar combos that killed */
   pillarKills: number;
-  /** Conversions with shine → grab sequence */
+  /** Conversions with shine immediately followed by a pummel or throw (the grab that connected) */
   shineGrabs: number;
-  /** Count of neutral b (laser) usage from move data */
+  /** Lasers fired (item spawns of Falco's laser, type 55) */
   laserCount: number;
 }
 
 export interface SheikSignatureStats {
   character: "Sheik";
-  /** Conversions with 3+ moves starting from a throw (dthrow or fthrow) */
+  /** Conversions with a dthrow/fthrow, 3+ hits, and the victim in a down/tech state inside the window */
   techChases: number;
   /** Tech chases that killed */
   techChaseKills: number;
@@ -178,21 +182,21 @@ export interface FalconSignatureStats {
   character: "Falcon";
   /** Conversions ending with fair (knee) that killed */
   kneeKills: number;
-  /** Conversions with dair → fair (stomp to knee) */
+  /** Conversions with dair immediately followed by fair (stomp → knee) */
   stompKnees: number;
-  /** Conversions with uthrow → ... → fair that killed */
+  /** Conversions containing uthrow whose final hit was a fair that killed */
   upthrowKnees: number;
-  /** Conversions starting with grab where opponent was in tech/down state */
+  /** Grabs that connected within 20 frames of the opponent being in a down/tech state */
   techChaseGrabs: number;
-  /** Jab1 → jab2 → jab3 without transitioning to rapid jab */
+  /** Entries into the third jab (ATTACK_JAB3) — the gentleman */
   gentlemanCount: number;
 }
 
 export interface PuffSignatureStats {
   character: "Puff";
-  /** Conversions ending with down b (rest) that killed */
+  /** Conversions whose final hit was rest (down b) and that killed */
   restKills: number;
-  /** Conversions containing down b (rest) total */
+  /** Conversions in which rest connected */
   restAttempts: number;
   /** Conversions with 3+ consecutive bairs */
   bairStrings: number;
@@ -204,7 +208,7 @@ export interface PuffSignatureStats {
 
 export interface IcClimbersSignatureStats {
   character: "ICs";
-  /** Conversions with 8+ pummel hits (moveId 51) — wobble detection */
+  /** Conversions with 8+ pummel records (moveId 52) — extended grab / wobble proxy */
   wobbles: number;
   /** Wobbles that killed */
   wobbleKills: number;
@@ -220,9 +224,9 @@ export interface MarthSignatureStats {
   character: "Marth";
   /** Reused from existing Ken combo detection */
   kenCombos: number;
-  /** Conversions with 2+ throws (chain grabs) */
+  /** Conversions with 2+ throws (ids 53-56; pummels excluded) */
   chainGrabs: number;
-  /** Conversions ending with fsmash that killed */
+  /** Conversions ending with fsmash that killed (tipper vs sourspot is not distinguished) */
   fsmashKills: number;
 }
 
@@ -236,13 +240,16 @@ export interface PeachSignatureStats {
   stitchFaces: number;
   /** Conversions ending with dsmash that killed */
   dsmashKills: number;
-  /** Float cancel aerials — detected via heuristic (short airborne state after float) */
+  /** Aerials started while floating (entries into action states 344-348) */
+  floatAerials: number;
+  /** Float aerials that landed mid-animation (344-348 → Landing 42): float cancels */
   floatCancelAerials: number;
 }
 
 export interface SamusSignatureStats {
   character: "Samus";
   chargeShotKills: number;
+  /** Missile (side b) hits that connected */
   missileCount: number;
   upBKills: number;
   dairKills: number;
@@ -266,20 +273,25 @@ export interface LuigiSignatureStats {
 
 export interface MarioSignatureStats {
   character: "Mario";
+  /** Cape (side b) hits that connected */
   capeCount: number;
+  /** Fireball (neutral b) hits that connected */
   fireBallCount: number;
   fsmashKills: number;
   upSmashKills: number;
+  /** Fair kills that landed offstage and sent the victim off the bottom */
   fairSpikeKills: number;
 }
 
 export interface DocSignatureStats {
   character: "Doc";
+  /** Pill (neutral b) hits that connected */
   pillCount: number;
   fsmashKills: number;
   upBKills: number;
   dairKills: number;
-  fairSpikeKills: number;
+  /** Fair kills (Doc's fair is not a meteor smash, so no spike claim is made) */
+  fairKills: number;
 }
 
 export interface YoshiSignatureStats {

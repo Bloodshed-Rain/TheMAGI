@@ -4,6 +4,11 @@
  */
 
 export type SectionType =
+  | "read"
+  | "fix-first"
+  | "also-fix"
+  | "exploit"
+  | "keep"
   | "overview"
   | "highlights"
   | "lowlights"
@@ -40,6 +45,13 @@ export interface SectionMeta {
 
 /** Keyword patterns → section type mapping. Order matters: first match wins. */
 const SECTION_CLASSIFIERS: Array<{ pattern: RegExp; type: SectionType }> = [
+  // Current coaching format (SYSTEM_PROMPT v2)
+  { pattern: /^the\s*read\b/i, type: "read" },
+  { pattern: /fix\s*this\s*first/i, type: "fix-first" },
+  { pattern: /also\s*worth\s*fixing/i, type: "also-fix" },
+  { pattern: /exploit\s*next\s*game/i, type: "exploit" },
+  { pattern: /^keep\s*doing/i, type: "keep" },
+  // Earlier formats (cached analyses)
   { pattern: /game\s*overview/i, type: "overview" },
   { pattern: /executive\s*summary|high[- ]?level|vibcheck|vibe/i, type: "executive-summary" },
   { pattern: /best\s*moment|highlight/i, type: "highlights" },
@@ -122,6 +134,34 @@ export function parseCoachingSections(text: string, streaming = false): Coaching
 
 /** Visual metadata for each section type */
 export const SECTION_META: Record<SectionType, SectionMeta> = {
+  read: {
+    label: "The Read",
+    color: "var(--accent)",
+    iconPath: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z",
+    iconPath2: "M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0-6 0",
+  },
+  "fix-first": {
+    label: "Top Priority",
+    color: "var(--red)",
+    iconPath: "M12 12m-10 0a10 10 0 1 0 20 0 10 10 0 1 0-20 0",
+    iconPath2: "M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0-6 0",
+  },
+  "also-fix": {
+    label: "Next Fixes",
+    color: "var(--yellow)",
+    iconPath: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
+  },
+  exploit: {
+    label: "Opponent Read",
+    color: "var(--secondary)",
+    iconPath: "M12 12m-10 0a10 10 0 1 0 20 0 10 10 0 1 0-20 0",
+    iconPath2: "M22 12h-4M6 12H2M12 6V2M12 22v-4",
+  },
+  keep: {
+    label: "Keep Doing",
+    color: "var(--green)",
+    iconPath: "M6 9l6-6 6 6M6 15l6 6 6-6",
+  },
   overview: {
     label: "Overview",
     color: "var(--text)",

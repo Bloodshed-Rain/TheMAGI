@@ -3,10 +3,12 @@ import fs from "fs";
 import { pipeline } from "stream/promises";
 import { loadConfig } from "../../config.js";
 import { EVENT_SAMPLE_GUARDS, type CharacterBlurbResult } from "../../characterEventProfile.js";
+import { buildCoachingContext } from "../../coachingContext.js";
 import {
   getDb,
   insertCoachingAnalysis,
   getPlayerHistory,
+  getPatternData,
   getGamesBySession,
   getGameById,
   getAggregateStats,
@@ -23,6 +25,7 @@ import {
   findPlayerIdx,
   assembleUserPrompt,
   SYSTEM_PROMPT,
+  COACHING_PROMPT_VERSION,
   assembleAggregatePrompt,
   SYSTEM_PROMPT_AGGREGATE,
   SYSTEM_PROMPT_CHARACTER_BLURB,
@@ -33,6 +36,7 @@ import {
   stripNulls,
   type GameResult,
 } from "../../pipeline/index.js";
+import { formatRecurringPatterns } from "../../pipeline/patterns.js";
 import { callLLM, callLLMStream, getActiveModelId, isUsableLLMResponse, type LLMConfig } from "../../llm.js";
 import { llmQueue } from "../../llmQueue.js";
 import { parsePool } from "../../parsePool.js";
@@ -61,10 +65,15 @@ export function resolveLLMConfig(): LLMConfig {
   };
 }
 
-/** Shared multi-game analysis logic used by both analyze:run and analyze:recent */
+/**
+ * Shared multi-game analysis logic used by analyze:run, analyze:recent and
+ * session scope. `excludeGameIds` = DB rows for the games being analyzed, so
+ * the recurring-pattern history does not count them twice.
+ */
 function runMultiGameAnalysis(
   gameResults: GameResult[],
   targetPlayer: string,
+  excludeGameIds: number[] = [],
 ): { targetTag: string; userPrompt: string } {
   const firstGame = gameResults[0]!.gameSummary;
   const targetTag =
@@ -82,11 +91,34 @@ function runMultiGameAnalysis(
     lastResult.derivedInsights[lastP1Idx].adaptationSignals = p1Signals;
   }
 
-  // Query player history for contextual coaching
-  const playerHistory = getPlayerHistory(targetTag) ?? undefined;
-
-  const userPrompt = assembleUserPrompt(gameResults, targetTag, playerHistory);
+  const { playerHistory, patterns } = buildCoachingContext(gameResults, targetTag, excludeGameIds);
+  const userPrompt = assembleUserPrompt(gameResults, targetTag, playerHistory, patterns);
   return { targetTag, userPrompt };
+}
+
+/** Aggregate scopes get the same measured-pattern block: the scope vs the player's overall baseline. */
+function aggregatePatternLines(scope: string, id: string): string {
+  try {
+    const scoped =
+      scope === "character"
+        ? getPatternData({ label: `${id} games`, character: id })
+        : scope === "stage"
+          ? getPatternData({ label: `on ${id}`, stage: id })
+          : scope === "opponent"
+            ? getPatternData({ label: "vs this opponent", opponentKey: id })
+            : null;
+    const baseline = getPatternData({ label: "all your games" });
+    const lines = formatRecurringPatterns({ matchup: scoped, character: baseline });
+    if (lines.length === 0) return "";
+    return [
+      "",
+      `=== MEASURED PATTERNS — ${scope === "career" ? "all games" : "this scope vs your overall baseline"} (primary evidence for habits) ===`,
+      ...lines,
+    ].join("\n");
+  } catch (err) {
+    console.warn("[coaching] aggregate patterns unavailable:", err instanceof Error ? err.message : err);
+    return "";
+  }
 }
 
 export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
@@ -97,22 +129,22 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     const llmConfig = resolveLLMConfig();
     const win = getMainWindow();
 
-    // Check DB cache for single replays — skip LLM if already analyzed
-    if (safePaths.length === 1) {
-      const db = getDb();
-      const fileHash = await hashFileAsync(safePaths[0]!);
-      const existingGame = db.prepare("SELECT id FROM games WHERE replay_hash = ?").get(fileHash) as
-        | { id: number }
-        | undefined;
-      if (existingGame) {
-        const cachedAnalysis = db
-          .prepare(
-            "SELECT analysis_text FROM coaching_analyses WHERE game_id = ? AND scope = 'game' ORDER BY created_at DESC LIMIT 1",
-          )
-          .get(existingGame.id) as { analysis_text: string } | undefined;
-        if (cachedAnalysis) {
-          return cachedAnalysis.analysis_text;
-        }
+    const db = getDb();
+    const fileHashes = await Promise.all(safePaths.map((p) => hashFileAsync(p)));
+    const existingIds = fileHashes.map(
+      (h) =>
+        (db.prepare("SELECT id FROM games WHERE replay_hash = ?").get(h) as { id: number } | undefined)?.id ?? null,
+    );
+
+    // Check DB cache for single replays — skip LLM if already analyzed with the current prompt
+    if (safePaths.length === 1 && existingIds[0] != null) {
+      const cachedAnalysis = db
+        .prepare(
+          "SELECT analysis_text FROM coaching_analyses WHERE game_id = ? AND scope = 'game' AND prompt_version = ? ORDER BY created_at DESC LIMIT 1",
+        )
+        .get(existingIds[0], COACHING_PROMPT_VERSION) as { analysis_text: string } | undefined;
+      if (cachedAnalysis) {
+        return cachedAnalysis.analysis_text;
       }
       // Not cached — fall through to streaming path
     }
@@ -124,7 +156,11 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       throw new Error("No games to analyze.");
     }
 
-    const { targetTag, userPrompt } = runMultiGameAnalysis(gameResults, targetPlayer);
+    const { targetTag, userPrompt } = runMultiGameAnalysis(
+      gameResults,
+      targetPlayer,
+      existingIds.filter((id): id is number => id != null),
+    );
 
     // Use streaming when a window is available to receive chunks
     const analysis = await llmQueue.enqueue(() =>
@@ -145,12 +181,11 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     }
 
     // Persist game data for each replay so stats/trends/dedup work
-    const db = getDb();
     const gameIds: number[] = [];
     for (let i = 0; i < gameResults.length; i++) {
       const gameResult = gameResults[i]!;
       const filePath = safePaths[i]!;
-      const fileHash = await hashFileAsync(filePath);
+      const fileHash = fileHashes[i] ?? (await hashFileAsync(filePath));
 
       const existing = db.prepare("SELECT id FROM games WHERE replay_hash = ?").get(fileHash) as
         | { id: number }
@@ -175,7 +210,16 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       }
     }
 
-    insertCoachingAnalysis(gameIds[0] ?? null, null, llmConfig.modelId || "pollinations", analysis);
+    insertCoachingAnalysis(
+      gameIds[0] ?? null,
+      null,
+      llmConfig.modelId || "pollinations",
+      analysis,
+      undefined,
+      undefined,
+      undefined,
+      COACHING_PROMPT_VERSION,
+    );
 
     return analysis;
   });
@@ -186,24 +230,27 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     const win = getMainWindow();
     const db = getDb();
 
-    // Check cache for ALL scopes (ignore model_used to reuse any past analysis)
+    // Check cache for ALL scopes (ignore model_used to reuse any past analysis),
+    // but only analyses written with the current coaching prompt.
     let cachedCandidates: { analysis_text: string }[];
     if (scope === "game") {
       cachedCandidates = db
         .prepare(
-          "SELECT analysis_text FROM coaching_analyses WHERE game_id = ? AND scope = 'game' ORDER BY created_at DESC LIMIT 10",
+          "SELECT analysis_text FROM coaching_analyses WHERE game_id = ? AND scope = 'game' AND prompt_version = ? ORDER BY created_at DESC LIMIT 10",
         )
-        .all(Number(id)) as { analysis_text: string }[];
+        .all(Number(id), COACHING_PROMPT_VERSION) as { analysis_text: string }[];
     } else if (scope === "session") {
       cachedCandidates = db
-        .prepare("SELECT analysis_text FROM coaching_analyses WHERE session_id = ? ORDER BY created_at DESC LIMIT 10")
-        .all(Number(id)) as { analysis_text: string }[];
+        .prepare(
+          "SELECT analysis_text FROM coaching_analyses WHERE session_id = ? AND prompt_version = ? ORDER BY created_at DESC LIMIT 10",
+        )
+        .all(Number(id), COACHING_PROMPT_VERSION) as { analysis_text: string }[];
     } else {
       cachedCandidates = db
         .prepare(
-          "SELECT analysis_text FROM coaching_analyses WHERE scope = ? AND scope_identifier = ? ORDER BY created_at DESC LIMIT 10",
+          "SELECT analysis_text FROM coaching_analyses WHERE scope = ? AND scope_identifier = ? AND prompt_version = ? ORDER BY created_at DESC LIMIT 10",
         )
-        .all(scope, String(id)) as { analysis_text: string }[];
+        .all(scope, String(id), COACHING_PROMPT_VERSION) as { analysis_text: string }[];
     }
     const cached = cachedCandidates.find((entry) => isUsableLLMResponse(entry.analysis_text));
     if (cached) return cached.analysis_text;
@@ -217,15 +264,20 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       const game = getGameById(Number(id));
       if (!game) throw new Error("Game not found");
       const result = await parsePool.parse(game.replay_path, 1);
-      const playerHistory = getPlayerHistory(targetPlayer || game.player_tag) ?? undefined;
-      userPrompt = assembleUserPrompt([result], targetPlayer || game.player_tag, playerHistory);
+      const tag = targetPlayer || game.player_tag;
+      const { playerHistory, patterns } = buildCoachingContext([result], tag, [game.id]);
+      userPrompt = assembleUserPrompt([result], tag, playerHistory, patterns);
       gameIdForCache = game.id;
     } else if (scope === "session") {
       const sessionId = Number(id);
       const games = getGamesBySession(sessionId);
       if (games.length === 0) throw new Error("No games found for session");
       const gameResults = await parsePool.parseMany(games.map((g) => g.replay_path));
-      const { userPrompt: prompt } = runMultiGameAnalysis(gameResults, targetPlayer || "");
+      const { userPrompt: prompt } = runMultiGameAnalysis(
+        gameResults,
+        targetPlayer || "",
+        games.map((g) => g.id),
+      );
       userPrompt = prompt;
       sessionIdForCache = sessionId;
     } else if (["character", "stage", "opponent", "career"].includes(scope)) {
@@ -240,12 +292,9 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
 
       const playerHistory = getPlayerHistory(targetPlayer || "") ?? undefined;
       systemPrompt = SYSTEM_PROMPT_AGGREGATE;
-      userPrompt = assembleAggregatePrompt(
-        stats,
-        scope as any,
-        scope === "career" ? "Lifetime" : String(id),
-        playerHistory,
-      );
+      userPrompt =
+        assembleAggregatePrompt(stats, scope as any, scope === "career" ? "Lifetime" : String(id), playerHistory) +
+        aggregatePatternLines(scope, String(id));
     } else {
       throw new Error(`Invalid analysis scope: ${scope}`);
     }
@@ -283,6 +332,8 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       analysis,
       scope,
       String(id),
+      undefined,
+      COACHING_PROMPT_VERSION,
     );
     return analysis;
   });
@@ -455,7 +506,11 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
 
     const gameResults = await parsePool.parseMany(paths);
 
-    const { userPrompt } = runMultiGameAnalysis(gameResults, targetPlayer);
+    const { userPrompt } = runMultiGameAnalysis(
+      gameResults,
+      targetPlayer,
+      games.map((g) => g.id),
+    );
     const win = getMainWindow();
     const analysis = await llmQueue.enqueue(() =>
       callLLMStream({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }, (chunk) => {
@@ -471,7 +526,16 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     } catch {
       // ignore
     }
-    insertCoachingAnalysis(games[0]?.id ?? null, null, llmConfig.modelId || "pollinations", analysis);
+    insertCoachingAnalysis(
+      games[0]?.id ?? null,
+      null,
+      llmConfig.modelId || "pollinations",
+      analysis,
+      undefined,
+      undefined,
+      undefined,
+      COACHING_PROMPT_VERSION,
+    );
 
     return analysis;
   });

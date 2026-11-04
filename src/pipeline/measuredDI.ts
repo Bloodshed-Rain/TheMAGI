@@ -8,8 +8,8 @@
 //  - computeDeathVerdicts: for every death, read the DI input on the last
 //    hitlag frame of the final hit, compare it against the perpendicular of
 //    the observed launch trajectory, and issue a verdict
-//    (NO_DI / WRONG_DI / OK_DI / GOOD_DI / SD / UNKNOWN) plus a
-//    resource-fault flag (died offstage with the double jump unspent).
+//    (NO_DI / WRONG_DI / OK_DI / GOOD_DI / FAILED_RECOVERY / SD / UNKNOWN)
+//    plus a resource-fault flag (died offstage with the double jump unspent).
 //  - extractThrowDIRecords: victim-side throw DI — stick sector at release,
 //    normalized by the thrower's facing direction, per throw type.
 //
@@ -20,6 +20,14 @@
 //    directionally sound. Treat scores as a grading aid, not physics truth.
 //  - hitlagRemaining only exists on slp spec ≥ 3.8.0 replays; older files
 //    use an entry-frame fallback with looser timing.
+//  - The final-hit search is anchored at the frame the victim ENTERED a
+//    dying state, not at the stock-loss frame. slippi-js decrements the
+//    stock when the death animation ends — a Star KO spends 100+ frames in
+//    DeadUpStar first, which used to push the real hit out of the lookback
+//    window and mislabel the death "SD".
+//  - No hit in the final window splits two ways: the opponent's kill
+//    conversion was still alive at death (launched by an earlier hit, never
+//    made it back) ⇒ FAILED_RECOVERY; no live kill conversion ⇒ SD.
 
 import { State, Frames, type FramesType } from "@slippi/slippi-js/node";
 
@@ -93,6 +101,55 @@ function findLastHitlagFrame(
   return fallbackEntry != null ? Math.min(fallbackEntry + 2, endFrame) : null;
 }
 
+function isDyingState(s: number): boolean {
+  return s >= State.DYING_START && s <= State.DYING_END;
+}
+
+/**
+ * First frame of the dying-state run that ends at the stock-loss frame.
+ * Falls back to the stock-loss frame when the victim is not in a dying state
+ * there (malformed/truncated replays).
+ */
+function findDeathEntryFrame(frames: FramesType, victimIndex: number, searchStart: number, endFrame: number): number {
+  let entry = endFrame;
+  for (let f = endFrame; f >= searchStart; f--) {
+    const s = frames[f]?.players[victimIndex]?.post?.actionStateId;
+    if (s == null || !isDyingState(s)) break;
+    entry = f;
+  }
+  return entry;
+}
+
+/**
+ * Fell to death offstage holding an unused double jump (from the final hit to
+ * death). Only frames where a jump was possible count: the DamageFly/hitstun
+ * launch states (DAMAGE_START..DAMAGE_END) and thrown states are skipped, so
+ * a direct blast-zone kill is never blamed on an unspent jump. Conservative —
+ * drifting in DamageFly after hitstun has ended is not counted either.
+ */
+function computeResourceFault(
+  frames: FramesType,
+  victimIndex: number,
+  fromFrame: number,
+  toFrame: number,
+  stageId: number,
+): boolean {
+  let offstageWithJump = 0;
+  let usedDoubleJump = false;
+  for (let f = fromFrame; f <= toFrame; f++) {
+    const post = frames[f]?.players[victimIndex]?.post;
+    if (!post) continue;
+    const s = post.actionStateId ?? 0;
+    if (s === JUMP_AERIAL_F || s === JUMP_AERIAL_B) usedDoubleJump = true;
+    if ((s >= State.DAMAGE_START && s <= State.DAMAGE_END) || isThrownState(s) || isDyingState(s)) continue;
+    const airborne = post.isAirborne === true || isAirborne(s);
+    if (airborne && isOffstage(post.positionX ?? 0, post.positionY ?? 0, stageId) && (post.jumpsRemaining ?? 0) > 0) {
+      offstageWithJump++;
+    }
+  }
+  return offstageWithJump >= RESOURCE_FAULT_MIN_FRAMES && !usedDoubleJump;
+}
+
 export function computeDeathVerdicts(
   stocks: StockRecord[],
   frames: FramesType,
@@ -105,20 +162,30 @@ export function computeDeathVerdicts(
   for (const stock of stocks) {
     if (!stock.died || stock.endFrame == null) continue;
     const victimIndex = indexBySlot[stock.victimSlot];
-    const endFrame = Math.min(stock.endFrame, lastFrame);
+    const stockEnd = Math.min(stock.endFrame, lastFrame);
+    // Everything after the dying-state entry is death animation — anchor there.
+    const endFrame = findDeathEntryFrame(frames, victimIndex, stock.startFrame, stockEnd);
     const searchStart = Math.max(stock.startFrame, endFrame - FINAL_HIT_LOOKBACK_FRAMES);
 
     const L = findLastHitlagFrame(frames, victimIndex, searchStart, endFrame);
 
     if (L == null) {
+      // killerMoveId is set only when a didKill conversion against this player
+      // ended on the stock-loss frame, i.e. the opponent's punish never reset.
+      const earlierHit =
+        stock.killerMoveId != null ? findLastHitlagFrame(frames, victimIndex, stock.startFrame, endFrame) : null;
+      const failedRecovery = stock.killerMoveId != null;
       out.set(`${stock.victimSlot}:${stock.stockNumber}`, {
-        verdict: "SD",
+        verdict: failedRecovery ? "FAILED_RECOVERY" : "SD",
         diScore: null,
         diStickX: null,
         diStickY: null,
         launchAngleDeg: null,
-        resourceFault: false,
-        finalHitFrame: null,
+        resourceFault:
+          failedRecovery && earlierHit != null
+            ? computeResourceFault(frames, victimIndex, earlierHit, endFrame, stageId)
+            : false,
+        finalHitFrame: earlierHit,
       });
       continue;
     }
@@ -146,20 +213,7 @@ export function computeDeathVerdicts(
         ? Math.round((Math.atan2(launchY, launchX) * 180) / Math.PI)
         : null;
 
-    // Resource fault: fell to death offstage holding an unused double jump.
-    let offstageWithJump = 0;
-    let usedDoubleJump = false;
-    for (let f = L; f <= endFrame; f++) {
-      const post = frames[f]?.players[victimIndex]?.post;
-      if (!post) continue;
-      const s = post.actionStateId ?? 0;
-      if (s === JUMP_AERIAL_F || s === JUMP_AERIAL_B) usedDoubleJump = true;
-      const airborne = post.isAirborne === true || isAirborne(s);
-      if (airborne && isOffstage(post.positionX ?? 0, post.positionY ?? 0, stageId) && (post.jumpsRemaining ?? 0) > 0) {
-        offstageWithJump++;
-      }
-    }
-    const resourceFault = offstageWithJump >= RESOURCE_FAULT_MIN_FRAMES && !usedDoubleJump;
+    const resourceFault = computeResourceFault(frames, victimIndex, L, endFrame, stageId);
 
     let verdict: DeathVerdict;
     let diScore: number | null = null;

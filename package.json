@@ -1,6 +1,6 @@
 {
   "name": "magi-melee",
-  "version": "1.10.1",
+  "version": "1.11.0",
   "description": "Local-first Melee replay analysis, live Play Mode, and optional AI coaching",
   "main": "src/main/entry.js",
   "engines": {
@@ -21,7 +21,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "verify:release": "node scripts/verify-release.cjs",
-    "verify:docs": "node scripts/verify-docs.cjs"
+    "verify:docs": "node scripts/verify-docs.cjs",
+    "backfill": "node scripts/backfill.js"
   },
   "keywords": [
     "melee",

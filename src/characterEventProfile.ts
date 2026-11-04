@@ -147,7 +147,7 @@ export const EVENT_SAMPLE_GUARDS = {
 // the profile builder in db.ts normalizes stored strings to these keys, and if
 // the pipeline's vocabulary differs, THIS file is updated so both sides agree.
 // Renderer code should treat unknown strings as valid (append after known keys).
-export const DI_VERDICT_ORDER = ["NO_DI", "WRONG_DI", "OK_DI", "GOOD_DI", "SD", "UNKNOWN"] as const;
+export const DI_VERDICT_ORDER = ["NO_DI", "WRONG_DI", "OK_DI", "GOOD_DI", "FAILED_RECOVERY", "SD", "UNKNOWN"] as const;
 export const HABIT_SITUATION_ORDER = ["knockdown", "ledge", "oos"] as const;
 export const RECOVERY_ROUTE_ORDER = ["high", "mid", "low"] as const;
 export const EDGEGUARD_DEPTH_ORDER = ["onstage", "ledge", "shallow", "deep"] as const;

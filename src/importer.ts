@@ -8,6 +8,7 @@ import {
   computeAdaptationSignals,
   assembleUserPrompt,
   SYSTEM_PROMPT,
+  COACHING_PROMPT_VERSION,
   type GameResult,
   type GameSummary,
   type GameFrameEvents,
@@ -31,10 +32,12 @@ import {
   insertShieldBlocks,
   insertWhiffEvents,
   insertHabitInstances,
+  setGameEventsVersion,
   createSession,
   updateSession,
-  getPlayerHistory,
 } from "./db";
+import { FRAME_EVENTS_VERSION } from "./pipeline/frameEvents";
+import { buildCoachingContext } from "./coachingContext";
 
 // ── File hashing ─────────────────────────────────────────────────────
 
@@ -183,6 +186,8 @@ export function persistFrameEvents(gameId: number, frameEvents: GameFrameEvents,
       punished: h.punished,
     })),
   );
+
+  setGameEventsVersion(gameId, FRAME_EVENTS_VERSION);
 }
 
 // ── Import result ────────────────────────────────────────────────────
@@ -765,8 +770,9 @@ export async function importAndAnalyze(
     lastResult.derivedInsights[lastP1Idx].adaptationSignals = p1Signals;
   }
 
-  const playerHistory = getPlayerHistory(targetTag) ?? undefined;
-  const userPrompt = assembleUserPrompt(gameResults, targetTag, playerHistory);
+  const excludeGameIds = filesToAnalyze.map((f) => f.gameId).filter((id): id is number => id != null);
+  const { playerHistory, patterns } = buildCoachingContext(gameResults, targetTag, excludeGameIds);
+  const userPrompt = assembleUserPrompt(gameResults, targetTag, playerHistory, patterns);
   const userCfg = loadConfig();
   const llmConfig: LLMConfig = {
     modelId: getActiveModelId(userCfg),
@@ -782,7 +788,16 @@ export async function importAndAnalyze(
   });
 
   if (batchResult.sessionId) {
-    insertCoachingAnalysis(null, batchResult.sessionId, llmConfig.modelId || "pollinations", analysis);
+    insertCoachingAnalysis(
+      null,
+      batchResult.sessionId,
+      llmConfig.modelId || "pollinations",
+      analysis,
+      undefined,
+      undefined,
+      undefined,
+      COACHING_PROMPT_VERSION,
+    );
   }
 
   return { batchResult, analysis };

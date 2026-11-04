@@ -12,6 +12,7 @@ const VERDICT_LABELS: Record<string, string> = {
   WRONG_DI: "Steered toward danger",
   OK_DI: "Some helpful steering",
   GOOD_DI: "Helpful steering",
+  FAILED_RECOVERY: "Didn't make it back after a hit",
   SD: "Self-destruct",
 };
 
@@ -20,6 +21,7 @@ const VERDICT_CLASSES: Record<string, string> = {
   WRONG_DI: "death-report-c-wrong-di",
   OK_DI: "death-report-c-ok-di",
   GOOD_DI: "death-report-c-good-di",
+  FAILED_RECOVERY: "death-report-c-failed-recovery",
   SD: "death-report-c-sd",
 };
 

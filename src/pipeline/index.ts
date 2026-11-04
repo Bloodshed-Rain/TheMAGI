@@ -6,7 +6,9 @@ export { buildDerivedInsights } from "./derivedInsights.js";
 export { computeAdaptationSignals, findPlayerIdx } from "./adaptation.js";
 export { classifyGameResult } from "./helpers.js";
 export { detectHighlights } from "./highlights.js";
-export { extractFrameEvents } from "./frameEvents.js";
+export { extractFrameEvents, FRAME_EVENTS_VERSION } from "./frameEvents.js";
+export { patternsFromFrameEvents, mergePatternData, formatRecurringPatterns } from "./patterns.js";
+export type { PatternData, RecurringPatterns } from "./patterns.js";
 export { computeDeathVerdicts, extractThrowDIRecords, DI_DEADZONE } from "./measuredDI.js";
 export { extractRecoverySpans } from "./recoveryEvents.js";
 export { extractShieldBlocks } from "./shieldEvents.js";
@@ -22,6 +24,7 @@ export {
   assembleUserPrompt,
   assemblePlayerContext,
   SYSTEM_PROMPT,
+  COACHING_PROMPT_VERSION,
   assembleAggregatePrompt,
   SYSTEM_PROMPT_AGGREGATE,
   SYSTEM_PROMPT_CHARACTER_BLURB,

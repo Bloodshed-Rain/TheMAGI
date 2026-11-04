@@ -139,9 +139,10 @@ export function classifyGameResult(
 // ── Action state classification ───────────────────────────────────────
 
 export function isAirborne(actionState: number): boolean {
-  // Aerial states, falling, jumping, air dodge
+  // Aerial states, falling, jumping, air dodge. CONTROLLED_JUMP_START (24) is
+  // KneeBend — the grounded jumpsquat — so the jump range starts one past it.
   return (
-    (actionState >= State.CONTROLLED_JUMP_START && actionState <= State.CONTROLLED_JUMP_END) ||
+    (actionState > State.CONTROLLED_JUMP_START && actionState <= State.CONTROLLED_JUMP_END) ||
     (actionState >= State.FALL && actionState <= State.FALL_BACKWARD) ||
     actionState === State.DAMAGE_FALL ||
     actionState === State.AIR_DODGE ||
@@ -177,25 +178,9 @@ export function isOffstage(posX: number, posY: number, stageId: number): boolean
   return Math.abs(posX) > bounds.x || posY < bounds.yMin;
 }
 
-export function stageBounds(stageId: number): {
-  x: number;
-  yMin: number;
-} {
-  // Approximate blast zone / ledge boundaries for common stages
-  const map: Record<number, { x: number; yMin: number }> = {
-    2: { x: 63, yMin: -10 }, // Fountain of Dreams
-    3: { x: 88, yMin: -10 }, // Pokemon Stadium
-    8: { x: 56, yMin: -10 }, // Yoshi's Story
-    28: { x: 68, yMin: -10 }, // Dreamland
-    31: { x: 86, yMin: -10 }, // Battlefield
-    32: { x: 86, yMin: -10 }, // Final Destination
-  };
-  return map[stageId] ?? { x: 80, yMin: -10 };
-}
-
 // Exact ledge X coordinate per legal stage (edge of the main platform).
-// Unlike stageBounds (rough blast-zone-ish mix), these are the real ledge
-// positions — use for corner/positioning math, not for offstage detection.
+// These are the real ledge positions; stageBounds derives its horizontal
+// offstage boundary from them so every consumer agrees on "past the edge".
 export const STAGE_LEDGE_X: Record<number, number> = {
   2: 63.35, // Fountain of Dreams
   3: 87.75, // Pokemon Stadium
@@ -204,6 +189,24 @@ export const STAGE_LEDGE_X: Record<number, number> = {
   31: 68.4, // Battlefield
   32: 85.57, // Final Destination
 };
+
+/** Below this y a player is under the main platform's surface (ledge hangs sit lower still). */
+export const STAGE_OFFSTAGE_Y_MIN = -10;
+
+/**
+ * Offstage boundary: |x| beyond the stage's ledge, or y below the main
+ * platform. Earlier versions carried a separate hand-typed table whose
+ * Battlefield (86) and Dreamland (68) entries were swapped relative to the
+ * real ledges (68.4 / 77.27), which marked standing-on-Dreamland frames as
+ * offstage and left Battlefield's first 17 units past the ledge "onstage".
+ */
+export function stageBounds(stageId: number): {
+  x: number;
+  yMin: number;
+} {
+  const ledge = STAGE_LEDGE_X[stageId];
+  return { x: ledge ?? 80, yMin: STAGE_OFFSTAGE_Y_MIN };
+}
 
 // Detect "knockdown" — player is in a downed/missed-tech state
 export function isKnockdown(actionState: number): boolean {
@@ -249,7 +252,12 @@ export const FULL_SHIELD_SIZE = 60;
 /** Minimum shield size at which attacks can "poke" through shield gaps. */
 export const SHIELD_POKE_THRESHOLD = 15;
 
-// Move ID → human name mapping (slippi-js uses numeric move IDs in conversions)
+// Move ID → human name mapping. The ids are slippi-js's `lastAttackLanded`
+// values (its moves table, verified against the installed library in
+// tests/moveIds.test.ts). A grab itself never appears in a conversion's move
+// list — it deals no damage — so the grab family starts at the pummel. Earlier
+// versions had this block shifted by one (50 "grab" … 55 "dthrow"), which
+// mislabeled every throw and made pummel/getup-attack ids read as throws.
 export const moveIdToName: Record<number, string> = {
   1: "misc",
   2: "jab",
@@ -272,10 +280,13 @@ export const moveIdToName: Record<number, string> = {
   19: "side b",
   20: "up b",
   21: "down b",
-  50: "grab",
-  51: "pummel",
-  52: "fthrow",
-  53: "bthrow",
-  54: "uthrow",
-  55: "dthrow",
+  50: "getup attack",
+  51: "getup attack",
+  52: "pummel",
+  53: "fthrow",
+  54: "bthrow",
+  55: "uthrow",
+  56: "dthrow",
+  61: "ledge attack",
+  62: "ledge attack",
 };

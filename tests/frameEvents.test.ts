@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest";
 import path from "path";
 import fs from "fs";
 import { processGame } from "../src/pipeline";
-import type { GameFrameEvents } from "../src/pipeline";
+import type { GameFrameEvents, ConversionRecord } from "../src/pipeline";
+import type { FramesType, StockType } from "@slippi/slippi-js/node";
+import { isHabitPunished, stockWasLost, toStockRecords } from "../src/pipeline/frameEvents";
 
 const TEST_REPLAYS_DIR = path.resolve(__dirname, "fixtures");
 
@@ -121,12 +123,12 @@ describe("frameEvents: habit instances", () => {
     }
   });
 
-  it("punished flags are backed by a conversion against the player", () => {
-    for (const h of events.habits.filter((x) => x.punished)) {
-      const backing = events.conversions.some(
+  it("every option followed by a new conversion against the player is punished (superset of the v1 rule)", () => {
+    for (const h of events.habits) {
+      const newConversion = events.conversions.some(
         (c) => c.attackerSlot !== h.playerSlot && c.startFrame >= h.frame && c.startFrame <= h.frame + 45,
       );
-      expect(backing).toBe(true);
+      if (newConversion) expect(h.punished).toBe(true);
     }
   });
 
@@ -177,5 +179,92 @@ describe("frameEvents: neutral segments", () => {
         expect(seg.startFrame).toBeGreaterThan(events.neutralSegments[i - 1]!.endFrame);
       }
     }
+  });
+});
+
+// ── Synthetic-frame regression tests (v2 event definitions) ───────────
+
+type SyntheticPost = { actionStateId: number; positionX?: number; positionY?: number };
+
+/** Minimal FramesType stand-in: frames[f].players[idx].post for one player index. */
+function syntheticFrames(length: number, playerIndex: number, postAt: (f: number) => SyntheticPost): FramesType {
+  const frames: Record<number, unknown> = {};
+  for (let f = 0; f < length; f++) {
+    frames[f] = { frame: f, players: { [playerIndex]: { pre: {}, post: { positionX: 0, positionY: 0, ...postAt(f) } } } };
+  }
+  return frames as unknown as FramesType;
+}
+
+const STANDING = 14; // Wait
+const DAMAGE_HI = 75; // DamageHi1 (State.DAMAGE_START)
+const CAPTURE_PULLED_HI = 223; // State.CAPTURE_START
+
+describe("frameEvents v2: habit punished = hit or grabbed within 45f", () => {
+  const habit = { playerSlot: 0 as const, frame: 100 };
+
+  it("POSITIVE: hit inside the window with no NEW conversion (tech chase continuing a punish)", () => {
+    const frames = syntheticFrames(300, 0, (f) => ({ actionStateId: f === 120 ? DAMAGE_HI : STANDING }));
+    expect(isHabitPunished(habit, frames, 0, [], 299)).toBe(true);
+  });
+
+  it("POSITIVE: grabbed inside the window", () => {
+    const frames = syntheticFrames(300, 0, (f) => ({ actionStateId: f === 130 ? CAPTURE_PULLED_HI : STANDING }));
+    expect(isHabitPunished(habit, frames, 0, [], 299)).toBe(true);
+  });
+
+  it("POSITIVE: a conversion against the player starting inside the window still counts", () => {
+    const frames = syntheticFrames(300, 0, () => ({ actionStateId: STANDING }));
+    const conv = { attackerSlot: 1, startFrame: 110 } as ConversionRecord;
+    expect(isHabitPunished(habit, frames, 0, [conv], 299)).toBe(true);
+  });
+
+  it("NEGATIVE: hit after the window closes", () => {
+    const frames = syntheticFrames(300, 0, (f) => ({ actionStateId: f === 150 ? DAMAGE_HI : STANDING }));
+    expect(isHabitPunished(habit, frames, 0, [], 299)).toBe(false);
+  });
+
+  it("NEGATIVE: never hit, and the player's OWN conversion in the window does not count", () => {
+    const frames = syntheticFrames(300, 0, () => ({ actionStateId: STANDING }));
+    const own = { attackerSlot: 0, startFrame: 110 } as ConversionRecord;
+    expect(isHabitPunished(habit, frames, 0, [own], 299)).toBe(false);
+  });
+});
+
+describe("frameEvents v2: stock death detection", () => {
+  const base = { playerIndex: 0, startFrame: 0, startPercent: 0, currentPercent: 40, count: 4 };
+
+  it("POSITIVE: deathAnimation 0 (DeadDown) with no kill conversion is a bottom-blast-zone death", () => {
+    const stock = { ...base, endFrame: 500, endPercent: 40, deathAnimation: 0 } as unknown as StockType;
+    const [rec] = toStockRecords([stock], [], 0, 0);
+    expect(stockWasLost(stock)).toBe(true);
+    expect(rec!.died).toBe(true);
+    expect(rec!.deathDirection).toBe("down");
+    expect(rec!.killerMoveId).toBeNull();
+  });
+
+  it("NEGATIVE: a stock that survived to game end (no endFrame) is not a death", () => {
+    const stock = { ...base, endFrame: undefined, endPercent: undefined, deathAnimation: undefined } as unknown as StockType;
+    const [rec] = toStockRecords([stock], [], 0, 0);
+    expect(stockWasLost(stock)).toBe(false);
+    expect(rec!.died).toBe(false);
+    expect(rec!.deathDirection).toBeNull();
+  });
+});
+
+describe("frameEvents v2: punish window extends past long options", () => {
+  const CLIFF_ROLL_SLOW = 258;
+  // Ledge roll from frame 100, actionable again at frame 160.
+  const roll = (hitAt: number | null) =>
+    syntheticFrames(400, 0, (f) => ({
+      actionStateId: hitAt != null && f === hitAt ? DAMAGE_HI : f >= 100 && f < 160 ? CLIFF_ROLL_SLOW : STANDING,
+    }));
+  const habit = { playerSlot: 0 as const, frame: 100 };
+
+  it("POSITIVE: hit right as the roll ends (outside a fixed 45f window) is punished", () => {
+    expect(isHabitPunished(habit, roll(170), 0, [], 399)).toBe(true);
+  });
+
+  it("NEGATIVE: hit well after the roll ended (>20f) is not attributed to the roll", () => {
+    expect(isHabitPunished(habit, roll(190), 0, [], 399)).toBe(false);
   });
 });
