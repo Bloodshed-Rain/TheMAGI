@@ -5,6 +5,7 @@ import type { ProviderSpeechEvent, ProviderSpeechRequest } from "../providerVoic
 import type { PlayBounds, PlayStatus, PlayCoachingSetup } from "../playMode";
 import type { ChatGPTStatus, ChatGPTModel } from "../chatgptTypes";
 import type { PlayCursor } from "../playEdgePeek";
+import type { CareerAnalysisResult } from "../careerAnalysis";
 
 const api = {
   onCornermanSettingsChanged: (callback: () => void) => {
@@ -67,14 +68,14 @@ const api = {
     ipcRenderer.invoke("analyze:run", replayPaths, targetPlayer, streamId),
   analyzeRecent: (count: number, targetPlayer: string, streamId?: string) =>
     ipcRenderer.invoke("analyze:recent", count, targetPlayer, streamId),
-  analyzeTrends: (trendSummary: string) => ipcRenderer.invoke("analyze:trends", trendSummary),
   analyzeScoped: (scope: string, id: string | number, targetPlayer?: string, streamId?: string) =>
     ipcRenderer.invoke("analyze:scoped", scope, id, targetPlayer, streamId),
   generateDossier: (opponentKey: string, targetPlayer?: string, streamId?: string) =>
     ipcRenderer.invoke("analyze:dossier", opponentKey, targetPlayer, streamId),
-  analyzeDiscovery: (streamId?: string) => ipcRenderer.invoke("analyze:discovery", streamId),
   analyzeCharacterBlurb: (character: string, force?: boolean) =>
     ipcRenderer.invoke("analyze:characterBlurb", character, force),
+  analyzeCareer: (force?: boolean, streamId?: string): Promise<CareerAnalysisResult> =>
+    ipcRenderer.invoke("analyze:career", force, streamId),
   analyzeSession: (date: string, force?: boolean) => ipcRenderer.invoke("llm:analyzeSession", date, force),
   generatePracticePlan: (weaknessSummary: string) => ipcRenderer.invoke("llm:generatePracticePlan", weaknessSummary),
   listPracticePlans: () => ipcRenderer.invoke("llm:listPracticePlans"),

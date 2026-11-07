@@ -40,7 +40,7 @@ Not every stat has a clip. Keep your original replay files where MAGI can find t
 
 Your replays can tell you much more than whether you won.
 
-- **Dashboard:** get a quick look at your results, recent form, stats, and highlights.
+- **Dashboard:** get a quick look at your results, recent form, stats, and highlights, plus MAGI's read on your whole record of games.
 - **Library:** find a game by opponent, character, stage, or result.
 - **Characters:** see how each character is doing, including matchups, stages, L-cancels, punish stats, recovery habits, and more. Open a stat to learn what it means or find replay examples where available.
 - **Sessions and Trends:** look back over a night of games or see how your play has changed over time.
@@ -115,6 +115,6 @@ The [setup guide](docs/USER_GUIDE.md) covers playing, replay review, coaching, a
 
 Want to help build MAGI? Start with the [developer guide](docs/DEVELOPMENT.md) and [contribution guide](CONTRIBUTING.md).
 
-**Version 1.11.0** · [What's changed](CHANGELOG.md) · [MIT License](LICENSE)
+**Version 1.12.0** · [What's changed](CHANGELOG.md) · [MIT License](LICENSE)
 
 MAGI stands for *Melee Analysis through Generative Intelligence*.

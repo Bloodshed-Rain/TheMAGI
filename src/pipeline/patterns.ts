@@ -404,6 +404,10 @@ function compareRate(
   let gameN = 0;
   let matchupRate: number | null = null;
   let charRate: number | null = null;
+  // Flag wording names the columns, so the same block reads correctly for
+  // "vs Fox" vs "all Marth" and for "last 30 games" vs "all games".
+  let matchupLabel = "matchup";
+  let charLabel = "character baseline";
 
   for (const col of columns) {
     const v = pick(col.data);
@@ -416,8 +420,13 @@ function compareRate(
       gameRate = r;
       gameN = v.d;
     } else if (v.d >= minHistoryN) {
-      if (matchupRate == null && col !== columns[columns.length - 1]) matchupRate = r;
-      else charRate = r;
+      if (matchupRate == null && col !== columns[columns.length - 1]) {
+        matchupRate = r;
+        matchupLabel = col.data.label;
+      } else {
+        charRate = r;
+        charLabel = col.data.label;
+      }
     }
   }
   if (parts.length === 0) return null;
@@ -427,7 +436,7 @@ function compareRate(
     flags.push(`this game ${gameRate > usual ? "+" : ""}${gameRate - usual} pts vs usual`);
   }
   if (matchupRate != null && charRate != null && Math.abs(matchupRate - charRate) >= MATCHUP_DEVIATION_POINTS) {
-    flags.push(`matchup ${matchupRate > charRate ? "+" : ""}${matchupRate - charRate} pts vs character baseline`);
+    flags.push(`${matchupLabel} ${matchupRate > charRate ? "+" : ""}${matchupRate - charRate} pts vs ${charLabel}`);
   }
   return { text: parts.join(" · "), flags };
 }
@@ -554,7 +563,7 @@ export function formatRecurringPatterns(
         : `Scope: ${scope}. Death verdicts and punish rates use only games parsed with the current detectors (${current}).`,
     );
     lines.push(
-      "Each line reads: this game · matchup history · character history. ◄ marks a gap large enough to matter; 'low n' means too few samples to call a habit.",
+      `Each line reads: ${columns.map((c) => c.data.label).join(" · ")}. ◄ marks a gap large enough to matter; 'low n' means too few samples to call a habit.`,
     );
   } else {
     lines.push("No stored history for this player yet — everything below is one sample, not an established habit.");
@@ -704,4 +713,42 @@ export function formatRecurringPatterns(
 
   while (lines.at(-1) === "") lines.pop();
   return lines;
+}
+
+/**
+ * Compact one-line-per-scope comparison for the career prompt (one row per
+ * matchup or per character). Each cell is the same rate the main block shows,
+ * under the same sample guards: a cell below its guard prints the raw fraction
+ * marked "low n", and a row with nothing measurable is omitted.
+ */
+export function formatPatternBreakdown(rows: PatternData[]): string[] {
+  const out: string[] = [];
+  const cell = (n: number, d: number, min: number): string | null => {
+    if (d === 0) return null;
+    return d < min ? `${n}/${d} (low n)` : `${pct(n, d)}% of ${d}`;
+  };
+  for (const p of rows) {
+    const parts: string[] = [];
+    const punishedOf = p.habits.reduce((s, h) => s + h.punishedOf, 0);
+    const punished = p.habits.reduce((s, h) => s + h.punished, 0);
+    const habitCell = cell(punished, punishedOf, EVENT_SAMPLE_GUARDS.habitSituationMin);
+    if (habitCell) parts.push(`ledge/knockdown/OOS options punished ${habitCell}`);
+    const noDI = cell(p.deaths.verdicts.NO_DI ?? 0, p.deaths.total, EVENT_SAMPLE_GUARDS.deathVerdictMin);
+    if (noDI) parts.push(`deaths with no DI input ${noDI}`);
+    const capture = cell(p.whiffCapture.punished, p.whiffCapture.opportunities, EVENT_SAMPLE_GUARDS.whiffCaptureMin);
+    if (capture) parts.push(`their punishable whiffs you punished ${capture}`);
+    const shield = cell(
+      p.shieldDefense.taken,
+      p.shieldDefense.taken + p.shieldDefense.missed,
+      EVENT_SAMPLE_GUARDS.shieldGradeMin,
+    );
+    if (shield) parts.push(`shield punish windows you took ${shield}`);
+    const recovery = cell(p.recovery.died, p.recovery.spans, EVENT_SAMPLE_GUARDS.recoveryRouteMin);
+    if (recovery) parts.push(`your recoveries ending in death ${recovery}`);
+    const edgeguard = cell(p.edgeguard.kills, p.edgeguard.opportunities, EVENT_SAMPLE_GUARDS.recoveryRouteMin);
+    if (edgeguard) parts.push(`their recoveries you killed ${edgeguard}`);
+    if (parts.length === 0) continue;
+    out.push(`  ${p.label} (${p.games} games): ${parts.join("; ")}`);
+  }
+  return out;
 }

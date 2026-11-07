@@ -771,8 +771,8 @@ export async function importAndAnalyze(
   }
 
   const excludeGameIds = filesToAnalyze.map((f) => f.gameId).filter((id): id is number => id != null);
-  const { playerHistory, patterns } = buildCoachingContext(gameResults, targetTag, excludeGameIds);
-  const userPrompt = assembleUserPrompt(gameResults, targetTag, playerHistory, patterns);
+  const { background, patterns } = buildCoachingContext(gameResults, targetTag, excludeGameIds);
+  const userPrompt = assembleUserPrompt(gameResults, targetTag, background, patterns);
   const userCfg = loadConfig();
   const llmConfig: LLMConfig = {
     modelId: getActiveModelId(userCfg),

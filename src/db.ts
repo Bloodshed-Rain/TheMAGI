@@ -1511,6 +1511,8 @@ export interface AggregateStatsParams {
   opponentCharacter?: string;
   stage?: string;
   opponentKey?: string;
+  /** Games to leave out — typically the game(s) being analyzed. */
+  excludeGameIds?: number[];
 }
 
 /**
@@ -1536,6 +1538,10 @@ export function getAggregateStats(filters: AggregateStatsParams): AggregateStats
   if (filters.opponentKey) {
     conditions.push("(g.opponent_tag = ? OR g.opponent_connect_code = ?)");
     params.push(filters.opponentKey, filters.opponentKey);
+  }
+  if (filters.excludeGameIds && filters.excludeGameIds.length > 0) {
+    conditions.push("g.id NOT IN (SELECT value FROM json_each(?))");
+    params.push(JSON.stringify(filters.excludeGameIds));
   }
 
   const where = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
@@ -1819,13 +1825,10 @@ interface DeepInsightsRow {
   avg_damage_per_opening: number;
   recovery_success_rate: number;
   edgeguard_success_rate: number;
-  power_shield_count: number;
   wavedash_count: number;
   shield_pressure_sequences: number;
   shield_pressure_avg_damage: number;
   shield_poke_rate: number;
-  di_survival_score: number;
-  di_combo_score: number;
   avg_death_percent: number;
   total_damage_dealt: number;
   ledge_entropy: number;
@@ -1835,20 +1838,36 @@ interface DeepInsightsRow {
   is_win: number;
 }
 
-/** Deep insights data for AI pattern recognition */
+/** Fewer decisive games than this and pairwise correlations are not reported at all. */
+export const DEEP_INSIGHTS_CORRELATION_MIN_GAMES = 20;
+/** Weakest |Pearson r| reported; anything under it is noise at these sample sizes. */
+export const DEEP_INSIGHTS_CORRELATION_MIN_R = 0.25;
+
 export interface DeepInsightsData {
+  /** Decisive games (wins + losses) every number below is computed over. */
+  gamesAnalyzed: number;
+  wins: number;
+  losses: number;
+  /** Empty when gamesAnalyzed < DEEP_INSIGHTS_CORRELATION_MIN_GAMES. */
   correlations: { metricA: string; metricB: string; coefficient: number }[];
   situationalAverages: {
     label: string;
+    games: number;
     metrics: Record<string, number>;
   }[];
   winLossDiffs: Record<string, number>;
 }
 
+/**
+ * Per-game stat relationships across every decisive game, for the career
+ * prompt. Only exact per-game measurements take part: the labeled
+ * approximation `power_shield_count` and the pre-measured-DI proxy scores
+ * `di_survival_score` / `di_combo_score` are left out so no insight is built
+ * on a heuristic. Everything here is descriptive — no control for opponent.
+ */
 export function getDeepInsightsData(): DeepInsightsData {
   const db = getDb();
 
-  // 1. Fetch raw data — pull all meaningful stat columns for pairwise correlation
   const rows = db
     .prepare(
       `
@@ -1856,9 +1875,8 @@ export function getDeepInsightsData(): DeepInsightsData {
       gs.neutral_win_rate, gs.l_cancel_rate, gs.conversion_rate,
       gs.openings_per_kill, gs.avg_damage_per_opening,
       gs.recovery_success_rate, gs.edgeguard_success_rate,
-      gs.power_shield_count, gs.wavedash_count,
+      gs.wavedash_count,
       gs.shield_pressure_sequences, gs.shield_pressure_avg_damage, gs.shield_poke_rate,
-      gs.di_survival_score, gs.di_combo_score,
       gs.avg_death_percent, gs.total_damage_dealt,
       gs.ledge_entropy, gs.knockdown_entropy, gs.shield_pressure_entropy,
       g.duration_seconds,
@@ -1874,7 +1892,6 @@ export function getDeepInsightsData(): DeepInsightsData {
     throw new Error("Insufficient data for deep pattern analysis (minimum 5 games required).");
   }
 
-  // Metric definitions: typed key → human-readable label
   const metricDefs: { key: keyof DeepInsightsRow; label: string }[] = [
     { key: "neutral_win_rate", label: "Neutral Win Rate" },
     { key: "l_cancel_rate", label: "L-Cancel Rate" },
@@ -1883,13 +1900,10 @@ export function getDeepInsightsData(): DeepInsightsData {
     { key: "avg_damage_per_opening", label: "Avg Damage/Opening" },
     { key: "recovery_success_rate", label: "Recovery Success" },
     { key: "edgeguard_success_rate", label: "Edgeguard Success" },
-    { key: "power_shield_count", label: "Power Shields" },
     { key: "wavedash_count", label: "Wavedash Count" },
     { key: "shield_pressure_sequences", label: "Shield Pressure Sequences" },
     { key: "shield_pressure_avg_damage", label: "Shield Pressure Damage" },
     { key: "shield_poke_rate", label: "Shield Poke Rate" },
-    { key: "di_survival_score", label: "Survival DI" },
-    { key: "di_combo_score", label: "Combo DI" },
     { key: "avg_death_percent", label: "Avg Death %" },
     { key: "total_damage_dealt", label: "Total Damage Dealt" },
     { key: "ledge_entropy", label: "Ledge Option Entropy" },
@@ -1901,6 +1915,7 @@ export function getDeepInsightsData(): DeepInsightsData {
 
   const metricKeys = metricDefs.map((m) => m.key);
   const keyToLabel = new Map(metricDefs.map((m) => [m.key, m.label]));
+  const round4 = (x: number) => Math.round(x * 10000) / 10000;
 
   const calculatePearson = (
     data: DeepInsightsRow[],
@@ -1927,32 +1942,26 @@ export function getDeepInsightsData(): DeepInsightsData {
     return den === 0 ? 0 : num / den;
   };
 
-  // Run ALL pairwise correlations, keep those with |r| >= 0.15 (weak+ signal)
-  const allCorrelations: { metricA: string; metricB: string; coefficient: number }[] = [];
-  for (let i = 0; i < metricDefs.length; i++) {
-    const defA = metricDefs[i];
-    if (!defA) continue;
-    for (let j = i + 1; j < metricDefs.length; j++) {
-      const defB = metricDefs[j];
-      if (!defB) continue;
-      const r = calculatePearson(rows, defA.key, defB.key);
-      if (Math.abs(r) >= 0.15) {
-        allCorrelations.push({
-          metricA: defA.label,
-          metricB: defB.label,
-          coefficient: Math.round(r * 10000) / 10000,
-        });
+  // 1. Pairwise correlations — only with enough games, only moderate-or-stronger pairs.
+  const correlations: { metricA: string; metricB: string; coefficient: number }[] = [];
+  if (rows.length >= DEEP_INSIGHTS_CORRELATION_MIN_GAMES) {
+    for (let i = 0; i < metricDefs.length; i++) {
+      const defA = metricDefs[i];
+      if (!defA) continue;
+      for (let j = i + 1; j < metricDefs.length; j++) {
+        const defB = metricDefs[j];
+        if (!defB) continue;
+        const r = calculatePearson(rows, defA.key, defB.key);
+        if (Math.abs(r) >= DEEP_INSIGHTS_CORRELATION_MIN_R) {
+          correlations.push({ metricA: defA.label, metricB: defB.label, coefficient: round4(r) });
+        }
       }
     }
+    correlations.sort((a, b) => Math.abs(b.coefficient) - Math.abs(a.coefficient));
+    correlations.splice(25);
   }
 
-  // Sort by absolute strength descending — strongest relationships first
-  allCorrelations.sort((a, b) => Math.abs(b.coefficient) - Math.abs(a.coefficient));
-
-  // Cap at 25 to keep prompt size reasonable
-  const correlations = allCorrelations.slice(0, 25);
-
-  // 2. Situational: Short vs Long games (Fatigue check)
+  // 2. Situational: short vs long games, split at the median duration.
   const sorted = [...rows].sort((a, b) => a.duration_seconds - b.duration_seconds);
   const medianRow = sorted[Math.floor(sorted.length / 2)];
   if (!medianRow) throw new Error("No rows for median calculation");
@@ -1962,33 +1971,24 @@ export function getDeepInsightsData(): DeepInsightsData {
 
   const avg = (arr: DeepInsightsRow[], key: keyof DeepInsightsRow) =>
     arr.reduce((s, r) => s + r[key], 0) / (arr.length || 1);
-
+  const bucket = (label: string, games: DeepInsightsRow[]) => ({
+    label,
+    games: games.length,
+    metrics: {
+      neutralWinRate: round4(avg(games, "neutral_win_rate")),
+      conversionRate: round4(avg(games, "conversion_rate")),
+      openingsPerKill: round4(avg(games, "openings_per_kill")),
+      avgDeathPercent: round4(avg(games, "avg_death_percent")),
+      edgeguardSuccess: round4(avg(games, "edgeguard_success_rate")),
+      lCancelRate: round4(avg(games, "l_cancel_rate")),
+    },
+  });
   const situationalAverages = [
-    {
-      label: "Short Games (\u2264 " + Math.round(medianDuration) + "s)",
-      metrics: {
-        lCancelRate: avg(shortGames, "l_cancel_rate"),
-        neutralWinRate: avg(shortGames, "neutral_win_rate"),
-        conversionRate: avg(shortGames, "conversion_rate"),
-        edgeguardSuccess: avg(shortGames, "edgeguard_success_rate"),
-        comboDI: avg(shortGames, "di_combo_score"),
-        survivalDI: avg(shortGames, "di_survival_score"),
-      },
-    },
-    {
-      label: "Long Games (> " + Math.round(medianDuration) + "s)",
-      metrics: {
-        lCancelRate: avg(longGames, "l_cancel_rate"),
-        neutralWinRate: avg(longGames, "neutral_win_rate"),
-        conversionRate: avg(longGames, "conversion_rate"),
-        edgeguardSuccess: avg(longGames, "edgeguard_success_rate"),
-        comboDI: avg(longGames, "di_combo_score"),
-        survivalDI: avg(longGames, "di_survival_score"),
-      },
-    },
-  ];
+    bucket("Short games (≤ " + Math.round(medianDuration) + "s)", shortGames),
+    bucket("Long games (> " + Math.round(medianDuration) + "s)", longGames),
+  ].filter((b) => b.games > 0);
 
-  // 3. Wins vs Losses (The "What Matters" check)
+  // 3. Wins vs losses: average in wins minus average in losses.
   const wins = rows.filter((r) => r.is_win === 1);
   const losses = rows.filter((r) => r.is_win === 0);
 
@@ -1996,10 +1996,136 @@ export function getDeepInsightsData(): DeepInsightsData {
   for (const key of metricKeys) {
     if (key === "is_win") continue;
     const label = keyToLabel.get(key);
-    if (label) winLossDiffs[label] = Math.round((avg(wins, key) - avg(losses, key)) * 10000) / 10000;
+    if (label) winLossDiffs[label] = round4(avg(wins, key) - avg(losses, key));
   }
 
-  return { correlations, situationalAverages, winLossDiffs };
+  return {
+    gamesAnalyzed: rows.length,
+    wins: wins.length,
+    losses: losses.length,
+    correlations,
+    situationalAverages,
+    winLossDiffs,
+  };
+}
+
+// ── Career (all recorded games) summaries ──────────────────────────────
+
+export interface CareerOverview {
+  games: number;
+  wins: number;
+  losses: number;
+  firstPlayedAt: string | null;
+  lastPlayedAt: string | null;
+  characters: { character: string; games: number; wins: number; losses: number }[];
+  opponentCharacters: { opponentCharacter: string; games: number; wins: number; losses: number }[];
+}
+
+/** Record, date range and character/opponent breakdown over every game in the database. */
+export function getCareerOverview(): CareerOverview {
+  const db = getDb();
+  const totals = db
+    .prepare(
+      `SELECT COUNT(*) as games,
+        COALESCE(SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END), 0) as wins,
+        COALESCE(SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END), 0) as losses,
+        MIN(played_at) as firstPlayedAt, MAX(played_at) as lastPlayedAt
+       FROM games`,
+    )
+    .get() as {
+    games: number;
+    wins: number;
+    losses: number;
+    firstPlayedAt: string | null;
+    lastPlayedAt: string | null;
+  };
+  const characters = db
+    .prepare(
+      `SELECT player_character as character, COUNT(*) as games,
+        SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+        SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses
+       FROM games GROUP BY player_character ORDER BY games DESC, character ASC`,
+    )
+    .all() as CareerOverview["characters"];
+  const opponentCharacters = db
+    .prepare(
+      `SELECT opponent_character as opponentCharacter, COUNT(*) as games,
+        SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+        SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses
+       FROM games GROUP BY opponent_character ORDER BY games DESC, opponentCharacter ASC`,
+    )
+    .all() as CareerOverview["opponentCharacters"];
+  return {
+    games: totals.games,
+    wins: totals.wins,
+    losses: totals.losses,
+    firstPlayedAt: totals.firstPlayedAt,
+    lastPlayedAt: totals.lastPlayedAt,
+    characters,
+    opponentCharacters,
+  };
+}
+
+export interface CareerDriftRow {
+  label: string;
+  early: number;
+  recent: number;
+  unit: "pct" | "num";
+}
+
+export interface CareerDrift {
+  /** Games in each window (oldest N vs newest N, never overlapping). */
+  windowGames: number;
+  rows: CareerDriftRow[];
+}
+
+/** Per-game stat columns compared early vs recent; fixed allowlist, so the SQL below is built from code only. */
+const CAREER_DRIFT_COLUMNS: { column: string; label: string; unit: "pct" | "num" }[] = [
+  { column: "neutral_win_rate", label: "neutral win rate", unit: "pct" },
+  { column: "conversion_rate", label: "conversion rate", unit: "pct" },
+  { column: "openings_per_kill", label: "openings per kill", unit: "num" },
+  { column: "avg_damage_per_opening", label: "damage per opening", unit: "num" },
+  { column: "avg_death_percent", label: "average death percent", unit: "num" },
+  { column: "edgeguard_success_rate", label: "edgeguard success rate", unit: "pct" },
+  { column: "recovery_success_rate", label: "recovery success rate", unit: "pct" },
+];
+
+/**
+ * Oldest-N vs newest-N per-game averages (ordered by when the game was
+ * played). Windows shrink to half the record when it is short and the
+ * comparison is skipped below 10 games per window. L-cancel rate is left
+ * out: a game with no L-cancel attempts stores 0, which would drag the mean.
+ */
+export function getCareerDrift(windowGames: number): CareerDrift | null {
+  const db = getDb();
+  const { total } = db
+    .prepare("SELECT COUNT(*) as total FROM game_stats gs JOIN games g ON g.id = gs.game_id")
+    .get() as { total: number };
+  const w = Math.min(Math.floor(windowGames), Math.floor(total / 2));
+  if (w < 10) return null;
+  const selects = CAREER_DRIFT_COLUMNS.map((c) => `AVG(${c.column}) as ${c.column}`).join(", ");
+  const windowAvg = (order: "ASC" | "DESC") =>
+    db
+      .prepare(
+        `SELECT ${selects} FROM (
+           SELECT gs.* FROM game_stats gs JOIN games g ON g.id = gs.game_id
+           ORDER BY COALESCE(g.played_at, g.created_at) ${order}, g.id ${order}
+           LIMIT ?
+         )`,
+      )
+      .get(w) as Record<string, number | null>;
+  const early = windowAvg("ASC");
+  const recent = windowAvg("DESC");
+  const round4 = (x: number) => Math.round(x * 10000) / 10000;
+  return {
+    windowGames: w,
+    rows: CAREER_DRIFT_COLUMNS.map((c) => ({
+      label: c.label,
+      early: round4(early[c.column] ?? 0),
+      recent: round4(recent[c.column] ?? 0),
+      unit: c.unit,
+    })),
+  };
 }
 
 export function getStatTrend(

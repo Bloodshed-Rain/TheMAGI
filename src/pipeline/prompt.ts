@@ -307,8 +307,10 @@ Where findings come from, best first:
 - Opponent behavior that repeated within this game or set and can be exploited next game.
 Execution stats (L-cancels, wavedash counts, signature-move counts) only matter when they explain a decision-level problem. If execution data is strong, do not spend words on it.
 
-EVIDENCE RULES FOR A GAME OR SET
-- One game is a sample, not a habit. A pattern seen only in this game (no history, or marked low n) is "this game", gets at most one line, and must not be the top finding unless nothing else qualifies.
+SCOPE: THIS GAME (OR THIS SET)
+- Every finding is something that happened in the game or set under review, with its count here and the timestamps that support it. Rank findings by what they cost here.
+- The player's history (RECURRING PATTERNS, the matchup record) decides what to CALL a finding, never whether it counts. A this-game pattern that also recurs in history is a habit: say so with both counts, and it outranks a this-game-only pattern of equal cost. A this-game pattern with no history behind it is reported as "this game: 4 of 5 ledge options were rolls", never as a habit.
+- A pattern that exists in the player's history but did not occur in this game is not a finding here. At most it is one sentence of context under a finding it explains.
 - Timestamps: cite only timestamps that appear in the data, in [m:ss] form, for the moments that support a finding. Never invent one.
 
 ${COACHING_EVIDENCE_RULES}
@@ -348,9 +350,13 @@ A practice partner who watched the set and tells the truth. Direct and specific.
 // ── Aggregate analysis prompts ─────────────────────────────────────────
 
 // prettier-ignore
-export const SYSTEM_PROMPT_AGGREGATE = `You are MAGI, a Super Smash Bros. Melee coach reviewing one player's history across a scope: one character, one stage, one opponent, or their whole career.
+export const SYSTEM_PROMPT_AGGREGATE = `You are MAGI, a Super Smash Bros. Melee coach reviewing one player's games inside one scope: one character, one stage, or one opponent.
 
-The player can already see these averages on their dashboard. Restating them is worthless. Your job is to find what the averages hide and turn it into something they change in their next session.
+SCOPE
+- CHARACTER scope = the games the player played AS that character, never games against it. STAGE scope = their games on that stage. OPPONENT scope = their games against that opponent.
+- Every finding is about the player's own play inside this scope. The "all your games" column exists only to show what is specific to this scope. Never write findings about other characters, stages or opponents, and never recite the player's lifetime record.
+
+The player can already see this scope's averages in the app. Restating them is worthless. Your job is to find what the averages hide and turn it into something they change the next time they play this character, this stage, or this opponent.
 
 WHAT COUNTS AS A FINDING
 1. It is not a restatement of an average or a record (win rate, neutral win %, openings per kill, L-cancel %). Those are evidence, never findings.
@@ -386,16 +392,22 @@ export function assembleAggregatePrompt(
   stats: any,
   scopeType: "character" | "stage" | "opponent",
   identifier: string,
-  playerHistory?: any,
+  options?: { lifetimeGames?: number | undefined },
 ): string {
   const lines: string[] = [];
 
-  if (playerHistory) {
-    lines.push(assemblePlayerContext(playerHistory));
-    lines.push("");
-  }
-
-  lines.push(`Scope: ${scopeType.toUpperCase()} — ${identifier}`);
+  const scopeText =
+    scopeType === "character"
+      ? `the player's games playing AS ${identifier}`
+      : scopeType === "stage"
+        ? `the player's games on ${identifier}`
+        : `the player's games against ${identifier}`;
+  const games = Number(stats?.gamesPlayed ?? 0);
+  const record = `${Number(stats?.wins ?? 0)}W-${Number(stats?.losses ?? 0)}L over ${games} games`;
+  const lifetime = options?.lifetimeGames ?? 0;
+  const share =
+    lifetime > 0 ? ` (${Math.round((games / lifetime) * 100)}% of the player's ${lifetime} recorded games)` : "";
+  lines.push(`Scope: ${scopeType.toUpperCase()} — ${scopeText}: ${record}${share}.`);
   lines.push("");
   lines.push("=== AGGREGATE DATA (dashboard numbers — evidence only) ===");
   lines.push(JSON.stringify(stripNulls(stats)));
@@ -408,6 +420,7 @@ export function assembleAggregatePrompt(
 }
 
 export const SYSTEM_PROMPT_CHARACTER_BLURB = `You are MAGI helping a Melee player understand their games with one character.
+Talk only about the player's games playing AS this character; never mention their other characters or lifetime record.
 Write 3 short sentences in everyday language, addressed to the player as "you". No headings or markdown.
 First describe one thing going well, then one thing to improve, then one small action to try next session.
 Use at most two numbers, with the number of examples when useful. Explain any necessary Melee term in the sentence.
@@ -416,48 +429,165 @@ Do not claim a cause from a correlation or rank the player against other players
 Only cite stats with enough examples: habit options >=15, deaths >=20, missed-attack opportunities >=25, shield blocks >=30, recovery attempts >=20.
 Never invent numbers. If there is too little evidence, say what more games could help reveal.`;
 
-// ── Discovery (Deep Pattern) prompts ───────────────────────────────────
+/// ── Career (all recorded games) prompt ─────────────────────────────────
 
-export const SYSTEM_PROMPT_DISCOVERY = `You are MAGI, a superhuman Melee data scientist.
-Your goal is to perform DEEP PATTERN RECOGNITION across a large dataset of match results and metrics.
+/**
+ * Everything the career prompt prints. Built by the analyze:career handler
+ * from the DB (overview, drift, determinants) and from the pattern
+ * formatters, so this module stays free of database access.
+ */
+export interface CareerPromptData {
+  tag: string;
+  overview: {
+    games: number;
+    wins: number;
+    losses: number;
+    firstPlayedAt: string | null;
+    lastPlayedAt: string | null;
+    characters: { character: string; games: number; wins: number; losses: number }[];
+    opponentCharacters: { opponentCharacter: string; games: number; wins: number; losses: number }[];
+  };
+  /** Oldest-window vs newest-window per-game averages; null when the record is too short for two windows. */
+  drift: { windowGames: number; rows: { label: string; early: number; recent: number; unit: "pct" | "num" }[] } | null;
+  /** formatRecurringPatterns output: recent window vs all games. */
+  recentVsAllLines: string[];
+  /** formatPatternBreakdown output: one row per main character. */
+  byCharacterLines: string[];
+  /** formatPatternBreakdown output: one row per common opponent character. */
+  byMatchupLines: string[];
+  /** Descriptive per-game stat relationships over every decisive game (db getDeepInsightsData). */
+  determinants: {
+    gamesAnalyzed: number;
+    wins: number;
+    losses: number;
+    correlations: { metricA: string; metricB: string; coefficient: number }[];
+    situationalAverages: { label: string; games: number; metrics: Record<string, number> }[];
+    winLossDiffs: Record<string, number>;
+  } | null;
+}
 
-You are not here to give basic tips. You are here to find the hidden "Why" behind the player's performance.
-You have been provided with:
-1. Pearson Correlation Coefficients between various metrics.
-2. Situational Averages (e.g., Short vs. Long games).
-3. The delta between winning games and losing games.
+// prettier-ignore
+export const SYSTEM_PROMPT_CAREER = `You are MAGI, a Super Smash Bros. Melee coach reviewing one player's ENTIRE recorded history: every game MAGI has imported for them, across every character they play, every opponent and every stage.
 
-CORE OBJECTIVES:
-- Identify "The Fatigue Factor": Does tech skill, DI quality, or neutral success drop as games get longer? Check the situational split for drift.
-- Identify "The Determinant": Which stat is MOST correlated with winning? The correlation matrix is full pairwise across 20+ metrics — look beyond the obvious (neutral win rate) for surprising win-condition drivers like edgeguarding, DI, or shield pressure.
-- Identify "The Hidden Link": Find the strongest non-obvious correlation between two metrics that aren't commonly associated. Why might they be linked? What does it reveal about the player's style?
-- Identify "The Pressure Leak": Does the player perform differently in high-stakes situations (simulated by statistical anomalies)?
-- Provide 3 "Priceless Insights" that are not obvious from a simple win/loss count. The expanded correlation data gives you far more signal — use it.
+A human coach sees a few sets and remembers a few more. You are looking at all of it at once. The player can already see per-game stats, averages and trend lines in the app, so restating those is worthless. Your value is what only the full record can show:
+- A decision the player keeps making whoever they play and whoever they face, with how often each matchup punishes it.
+- What changed between their early games and their recent games in behavior, not just results, and what did not change despite many more games.
+- What separates their wins from their losses in measured behavior, beyond "won neutral more".
+- A matchup, character or situation where their numbers sit far from their own baseline, which nobody notices one game at a time.
 
-TONE:
-Analytical, visionary, slightly "Matrix-esque" but still focused on practical Melee. Use terminology like "statistical leak," "performance drift," and "win-condition correlation."`;
+WHAT COUNTS AS A FINDING
+A finding must pass all three tests:
+1. It is not a restatement of a record, an average or a trend line (win rate, neutral win %, openings per kill, L-cancel %, "improving over time"). Those are evidence, never findings.
+2. It names a specific behavior in a specific situation, measured in the data, with its count and denominator, and says which scopes it holds in (which characters, which matchups, early and/or recent).
+3. It states the cost and one concrete replacement: what to do instead, in which situation, and the cue that tells the player they are in it.
 
-export function assembleDiscoveryPrompt(discoveryData: any, playerHistory?: any): string {
+${COACHING_EVIDENCE_RULES}
+- An early-vs-recent gap is a change in results, not proof of a change in skill: the opponents, characters and stages in the two windows can differ. Say what changed; offer a cause only as your read.
+- Win-minus-loss differences and correlations are descriptive over the games listed, with no control for who the opponent was. Never present one as a cause. Cite a correlation only with its sample size, and only when it is at least moderate.
+- Sample guards are already applied. A cell marked "low n" is not evidence; a block that is omitted has too few games, say so if it matters.
+- Execution stats (L-cancels, wavedash counts, signature-move counts) only matter when they explain a decision-level pattern.
+
+OUTPUT FORMAT
+Markdown. Use exactly these ## headings, in this order. Under ~700 words total. No preamble, no closing summary.
+
+## The Read
+2–4 sentences on what defines this player's results across their whole record, in terms of behavior.
+
+## Only the Full Record Shows
+Two to four findings that need the whole history to see: a habit that persists across matchups or characters, an early-vs-recent change, or a win/loss separator. Each with its counts and the scopes it holds in.
+
+## Fix This First
+**Pattern:** / **Why it costs you:** / **Do instead:** — the single highest-impact leak across the record, with n of d and the matchups where it costs most.
+
+## Also Worth Fixing
+One or two more leaks in the same structure. Omit if nothing else passes the finding tests.
+
+## Keep Doing
+One or two measured strengths worth protecting, with their numbers. Omit if none stands out.
+
+## Practice Plan
+Two or three drills tied to the findings, each with a target the player can check in MAGI afterwards.`;
+
+function fmtDriftValue(value: number, unit: "pct" | "num"): string {
+  return unit === "pct" ? `${(value * 100).toFixed(1)}%` : value.toFixed(1);
+}
+
+function fmtDate(iso: string | null): string {
+  return iso ? iso.slice(0, 10) : "unknown date";
+}
+
+export function assembleCareerPrompt(data: CareerPromptData): string {
+  const o = data.overview;
   const lines: string[] = [];
-
-  if (playerHistory) {
-    lines.push(assemblePlayerContext(playerHistory));
-    lines.push("");
+  lines.push(`=== SCOPE: ALL RECORDED GAMES for ${data.tag} ===`);
+  lines.push(
+    `${o.games} games (${o.wins}W-${o.losses}L), from ${fmtDate(o.firstPlayedAt)} to ${fmtDate(o.lastPlayedAt)}. Every number below is over this record unless its own scope says otherwise.`,
+  );
+  if (o.characters.length > 0) {
+    lines.push(
+      `Characters played: ${o.characters.map((c) => `${c.character} ${c.games} games (${c.wins}W-${c.losses}L)`).join(", ")}`,
+    );
+  }
+  if (o.opponentCharacters.length > 0) {
+    lines.push(
+      `Most common opponent characters: ${o.opponentCharacters
+        .slice(0, 8)
+        .map((m) => `${m.opponentCharacter} ${m.games} games (${m.wins}W-${m.losses}L)`)
+        .join(", ")}`,
+    );
   }
 
-  lines.push("Perform a Deep Pattern Discovery analysis on the following career data:");
-  lines.push("");
-  lines.push("=== CORRELATION MATRIX ===");
-  lines.push(JSON.stringify(discoveryData.correlations, null, 2));
-  lines.push("");
-  lines.push("=== SITUATIONAL PERFORMANCE ===");
-  lines.push(JSON.stringify(discoveryData.situationalAverages, null, 2));
-  lines.push("");
-  lines.push("=== WIN/LOSS DETERMINANTS (Delta between Wins and Losses) ===");
-  lines.push(JSON.stringify(discoveryData.winLossDiffs, null, 2));
-  lines.push("");
-  lines.push("Synthesize these hidden narratives. What is the one truth in these numbers the player hasn't seen?");
+  if (data.drift && data.drift.rows.length > 0) {
+    lines.push(
+      "",
+      `=== EARLY vs RECENT — per-game averages over the oldest ${data.drift.windowGames} games vs the newest ${data.drift.windowGames} (opponents and characters may differ between windows) ===`,
+    );
+    for (const r of data.drift.rows) {
+      lines.push(`  ${r.label}: early ${fmtDriftValue(r.early, r.unit)} → recent ${fmtDriftValue(r.recent, r.unit)}`);
+    }
+  }
 
+  if (data.recentVsAllLines.length > 0) {
+    lines.push(
+      "",
+      "=== MEASURED PATTERNS — recent games vs the whole record (◄ marks a recent rate far from the career baseline; primary evidence for habits and for what changed) ===",
+    );
+    lines.push(...data.recentVsAllLines);
+  }
+
+  if (data.byCharacterLines.length > 0) {
+    lines.push("", "=== THE SAME MEASURES PER CHARACTER YOU PLAY (does the habit follow you across characters?) ===");
+    lines.push(...data.byCharacterLines);
+  }
+
+  if (data.byMatchupLines.length > 0) {
+    lines.push("", "=== THE SAME MEASURES PER OPPONENT CHARACTER (which matchups punish it?) ===");
+    lines.push(...data.byMatchupLines);
+  }
+
+  const d = data.determinants;
+  if (d) {
+    lines.push(
+      "",
+      `=== WINS vs LOSSES — average in wins minus average in losses, over ${d.wins} wins and ${d.losses} losses (descriptive only; positive = higher in wins) ===`,
+    );
+    lines.push(JSON.stringify(d.winLossDiffs));
+    if (d.situationalAverages.length > 0) {
+      lines.push("", "=== SHORT vs LONG GAMES — per-game averages split at the median game length ===");
+      for (const s of d.situationalAverages) lines.push(`  ${s.label}, ${s.games} games: ${JSON.stringify(s.metrics)}`);
+    }
+    if (d.correlations.length > 0) {
+      lines.push(
+        "",
+        `=== PAIRWISE CORRELATIONS — Pearson r across ${d.gamesAnalyzed} games, |r| ≥ 0.25 only, strongest first (descriptive only) ===`,
+      );
+      for (const c of d.correlations) lines.push(`  ${c.metricA} × ${c.metricB}: r = ${c.coefficient.toFixed(2)}`);
+    } else {
+      lines.push("", `(Pairwise correlations omitted: ${d.gamesAnalyzed} games is too few to report them.)`);
+    }
+  }
+
+  lines.push("", "Write the coaching analysis in the format from your instructions.");
   return lines.join("\n");
 }
 
@@ -662,7 +792,7 @@ export function assemblePlayerContext(history: PlayerHistory): string {
  * changes enough that cached analyses should not be served. Stored in
  * coaching_analyses.prompt_version; cache lookups match on it.
  */
-export const COACHING_PROMPT_VERSION = "3";
+export const COACHING_PROMPT_VERSION = "4";
 
 /**
  * PlayerSummary fields left out of the prompt: superseded by the measured
@@ -729,10 +859,22 @@ function formatHabitSection(frameEvents: GameFrameEvents, tagBySlot: [string, st
   return lines;
 }
 
+/**
+ * Background a single-game or set review may use but never recite: the
+ * player's record in this exact matchup (their character vs the opponent's),
+ * excluding the game(s) under review. Lifetime record, other characters and
+ * overall trends stay out — they belong to the career analysis.
+ */
+export interface CoachingBackground {
+  matchupRecord?:
+    | { character: string; opponentCharacter: string; wins: number; losses: number; games: number }
+    | undefined;
+}
+
 export function assembleUserPrompt(
   gameResults: GameResult[],
   targetPlayerTag: string,
-  playerHistory?: PlayerHistory | undefined,
+  background?: CoachingBackground | undefined,
   patterns?: RecurringPatterns | null,
 ): string {
   const first = gameResults[0];
@@ -742,12 +884,10 @@ export function assembleUserPrompt(
 
   const lines: string[] = [];
 
-  // Include player profile context if available
-  if (playerHistory) {
-    lines.push(assemblePlayerContext(playerHistory));
-    lines.push("");
+  const record = background?.matchupRecord;
+  if (record && record.games > 0) {
     lines.push(
-      "The profile is background only — the player knows their record. Do not recite it; use it only where it sharpens a finding.",
+      `Background only, do not recite: before this ${gameResults.length > 1 ? "set" : "game"}, ${targetPlayerTag}'s record as ${record.character} vs ${record.opponentCharacter} was ${record.wins}W-${record.losses}L over ${record.games} games.`,
     );
     lines.push("");
   }

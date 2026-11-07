@@ -2,7 +2,7 @@
 
 [Back to MAGI](../README.md) · [Troubleshooting](DEVELOPMENT.md#troubleshooting)
 
-These instructions describe source version **1.11.0**. Compare the version shown in Settings with the release you downloaded.
+These instructions describe source version **1.12.0**. Compare the version shown in Settings with the release you downloaded.
 
 ## Quick Start
 
@@ -72,7 +72,7 @@ AI suggestions can be wrong. Replay timestamps and bounded clips are available f
 
 AI appears in:
 
-- dashboard summaries
+- the Dashboard analysis of every recorded game
 - individual game coaching
 - character analysis and identity blurbs
 - session reports

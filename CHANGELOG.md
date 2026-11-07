@@ -1,5 +1,13 @@
 # Release notes
 
+## 1.12.0 — 2026-11-06
+
+- Scope every AI analysis to the data that invoked it. A single-game review (Library → Game Theater) now ranks and reports only what happened in that game: the player's history decides whether to call something a habit, never whether it counts, and a pattern that did not occur in the game is no longer a finding. The lifetime profile (record, other characters, overall trend) is replaced by one background line, the player's record in that exact matchup before the game.
+- Character coaching and the character blurb discuss only the games played as that character. The prompt states the scope explicitly (games the player played AS the character, never games against it) and no longer receives the lifetime record or other characters.
+- Replace the Dashboard's five-game Oracle paragraph with an analysis of every recorded game, written for what a human coach cannot hold in their head: habits that persist across characters and matchups (with how often each matchup punishes them), what changed between the oldest and newest games, what separates wins from losses, and the recent games against the career baseline. It is cached with the game count it covered and offers a refresh when new games arrive. The unused "deep pattern discovery" and trend-commentary prompts are removed.
+- Win/loss separators and correlations given to the career analysis use only exact per-game measurements: the labeled power-shield approximation and the pre-measured-DI proxy scores are excluded, correlations need at least 20 games and |r| ≥ 0.25, and every block carries its sample size.
+- Coaching prompt version 4: cached analyses from earlier versions are regenerated when next opened.
+
 ## 1.11.0 — 2026-11-03
 
 - Audit highlight detection, character-specific action detection, and per-game statistics against the installed slippi-js parser and imported replays; correct every detector whose evidence did not establish what it claimed. Details and evidence are in [docs/melee-accuracy.md](docs/melee-accuracy.md).

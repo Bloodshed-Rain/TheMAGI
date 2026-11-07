@@ -203,10 +203,10 @@ app.whenReady().then(() => {
         result.gameSummary.players.find((p) => p.tag.toLowerCase() !== "unknown")?.tag ??
         result.gameSummary.players[0].tag;
     }
-    // Lifetime profile + measured recurring patterns for contextual coaching.
+    // Matchup record (background only) + measured recurring patterns for contextual coaching.
     // (A replay already in the DB contributes 1 game to its own history window — negligible.)
-    const { playerHistory, patterns } = buildCoachingContext([result], targetTag);
-    const userPrompt = assembleUserPrompt([result], targetTag, playerHistory, patterns);
+    const { background, patterns } = buildCoachingContext([result], targetTag);
+    const userPrompt = assembleUserPrompt([result], targetTag, background, patterns);
     // Queue the API call — waits its turn, respects rate limits
     const analysisText = await llmQueue.enqueue(() =>
       callLLM({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }),

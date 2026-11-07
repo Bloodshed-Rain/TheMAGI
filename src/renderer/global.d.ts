@@ -21,6 +21,7 @@ import type {
   CharacterEventProfile as EventProfile,
   CharacterBlurbResult as BlurbResult,
 } from "../characterEventProfile";
+import type { CareerAnalysisResult as CareerResult } from "../careerAnalysis";
 import type { CornermanLiveEvent as LiveEvent } from "../cornermanLiveEvents";
 import type { ProviderId as LlmProviderId } from "../llm";
 import type { ProviderSpeechEvent, ProviderSpeechRequest } from "../providerVoice";
@@ -39,6 +40,7 @@ declare global {
   // Re-exported from src/characterEventProfile.ts (per-character analytics contract).
   type CharacterEventProfile = EventProfile;
   type CharacterBlurbResult = BlurbResult;
+  type CareerAnalysisResult = CareerResult;
 
   interface CornermanStatus {
     active: boolean;
@@ -89,11 +91,10 @@ declare global {
       importAndAnalyze: (filePaths: string[], targetPlayer: string) => Promise<any>;
       analyzeReplays: (replayPaths: string[], targetPlayer: string, streamId?: string) => Promise<string>;
       analyzeRecent: (count: number, targetPlayer: string, streamId?: string) => Promise<string>;
-      analyzeTrends: (trendSummary: string) => Promise<string>;
       analyzeScoped: (scope: string, id: string | number, targetPlayer?: string, streamId?: string) => Promise<string>;
       generateDossier: (opponentKey: string, targetPlayer?: string, streamId?: string) => Promise<string>;
-      analyzeDiscovery: (streamId?: string) => Promise<string>;
       analyzeCharacterBlurb: (character: string, force?: boolean) => Promise<CharacterBlurbResult>;
+      analyzeCareer: (force?: boolean, streamId?: string) => Promise<CareerAnalysisResult>;
       analyzeSession: (date: string, force?: boolean) => Promise<string>;
       generatePracticePlan: (weaknessSummary: string) => Promise<{
         id: number;

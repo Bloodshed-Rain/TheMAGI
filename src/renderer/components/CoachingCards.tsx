@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Target,
   Crosshair,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -35,6 +36,7 @@ const SECTION_ICONS: Record<SectionType, LucideIcon> = {
   "also-fix": AlertTriangle,
   exploit: Crosshair,
   keep: ChevronsUp,
+  "long-run": TrendingUp,
   overview: Eye,
   highlights: ChevronsUp,
   lowlights: AlertTriangle,

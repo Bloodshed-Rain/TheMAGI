@@ -8,6 +8,7 @@ export type SectionType =
   | "fix-first"
   | "also-fix"
   | "exploit"
+  | "long-run"
   | "keep"
   | "overview"
   | "highlights"
@@ -51,6 +52,8 @@ const SECTION_CLASSIFIERS: Array<{ pattern: RegExp; type: SectionType }> = [
   { pattern: /also\s*worth\s*fixing/i, type: "also-fix" },
   { pattern: /exploit\s*next\s*game/i, type: "exploit" },
   { pattern: /^keep\s*doing/i, type: "keep" },
+  // Career (all recorded games) format
+  { pattern: /full\s*record|long[- ]?run|whole\s*record/i, type: "long-run" },
   // Earlier formats (cached analyses)
   { pattern: /game\s*overview/i, type: "overview" },
   { pattern: /executive\s*summary|high[- ]?level|vibcheck|vibe/i, type: "executive-summary" },
@@ -161,6 +164,12 @@ export const SECTION_META: Record<SectionType, SectionMeta> = {
     label: "Keep Doing",
     color: "var(--green)",
     iconPath: "M6 9l6-6 6 6M6 15l6 6 6-6",
+  },
+  "long-run": {
+    label: "Only the Full Record Shows",
+    color: "var(--secondary)",
+    iconPath: "M3 17l6-6 4 4 8-8",
+    iconPath2: "M14 7h7v7",
   },
   overview: {
     label: "Overview",

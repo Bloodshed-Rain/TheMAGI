@@ -1,6 +1,6 @@
 {
   "name": "magi-melee",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "Local-first Melee replay analysis, live Play Mode, and optional AI coaching",
   "main": "src/main/entry.js",
   "engines": {
