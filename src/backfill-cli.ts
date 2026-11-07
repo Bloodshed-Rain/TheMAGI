@@ -1,9 +1,11 @@
 /**
- * Backfill CLI: populate the per-instance event tables (schema v10-v14) for
- * games imported before those tables existed.
+ * Backfill CLI: re-parse imported replays and rebuild every per-game derived
+ * row (event tables, game_stats, signature stats, highlights) for games
+ * imported before the current detectors.
  *
  * Usage:
- *   npx tsx src/backfill-cli.ts [--force] [--limit N]
+ *   npm run backfill [-- --force] [-- --limit N]
+ *   (scripts/backfill.js sets ELECTRON_RUN_AS_NODE=1 and runs this file under Electron's Node)
  *
  *   --force    Re-process every game, replacing existing event rows
  *   --limit N  Only process the first N candidate games (smoke testing)
@@ -27,7 +29,7 @@ function parseArgs(argv: string[]): { force: boolean; limit: number | undefined 
       }
       limit = value;
     } else if (arg === "--help" || arg === "-h") {
-      console.log("Usage: npx tsx src/backfill-cli.ts [--force] [--limit N]");
+      console.log("Usage: npm run backfill [-- --force] [-- --limit N]");
       process.exit(0);
     } else {
       console.error(`Unknown argument: ${arg}`);
@@ -75,10 +77,8 @@ main()
       // so plain node can't load it. Run through Electron's node instead:
       console.error("");
       console.error("better-sqlite3 is built for Electron's ABI. Run this CLI through Electron:");
-      console.error("  ELECTRON_RUN_AS_NODE=1 npx electron --require tsx/cjs src/backfill-cli.ts");
-      console.error(
-        '  (PowerShell: $env:ELECTRON_RUN_AS_NODE="1"; npx electron --require tsx/cjs src/backfill-cli.ts)',
-      );
+      console.error("  npm run backfill");
+      console.error("  (scripts/backfill.js sets ELECTRON_RUN_AS_NODE=1 for any shell; options go after --)");
     }
     process.exitCode = 1;
   })

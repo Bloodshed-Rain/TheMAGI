@@ -248,12 +248,25 @@ describe("win-rate correctness", () => {
     expect(DB_SOURCE).toContain("idx_whiff_events_lookup");
   });
 
+  it("has migration v17 relabeling or dropping highlights the old detectors overclaimed", () => {
+    expect(DB_SOURCE).toContain("version: 17");
+    expect(DB_SOURCE).toContain("REPAIR_HIGHLIGHT_LABELS_SQL");
+    expect(DB_SOURCE).toContain("WHERE type = 'tipper-fsmash'");
+    expect(DB_SOURCE).toContain("SET type = 'last-stock-win'");
+    expect(DB_SOURCE).toContain("DELETE FROM highlights WHERE type IN ('tech-chase-kill'");
+    expect(DB_SOURCE).toContain("export function deleteDerivedGameRows");
+  });
+
   it("supports event backfill: candidate query + per-game row deletion", () => {
     expect(DB_SOURCE).toContain("export function getBackfillCandidates");
     expect(DB_SOURCE).toContain("export function deleteFrameEventRows");
-    // The marker table for "already backfilled" must be stock_deaths — every
-    // parsed game writes stock records, so absence reliably means missing.
-    expect(DB_SOURCE).toContain("WHERE NOT EXISTS (SELECT 1 FROM stock_deaths sd WHERE sd.game_id = g.id)");
+    // "Already backfilled" = events written by the CURRENT detectors. Games that
+    // never had events have events_version NULL, so they stay candidates too.
+    expect(DB_SOURCE).toContain("WHERE g.events_version IS NULL OR g.events_version < ?");
+    expect(DB_SOURCE).toContain("ALTER TABLE games ADD COLUMN events_version INTEGER");
+    // Every persist path stamps the version that wrote the rows.
+    const IMPORTER_SOURCE = fs.readFileSync(path.resolve(__dirname, "../src/importer.ts"), "utf-8");
+    expect(IMPORTER_SOURCE).toContain("setGameEventsVersion(gameId, FRAME_EVENTS_VERSION)");
 
     const BACKFILL_SOURCE = fs.readFileSync(path.resolve(__dirname, "../src/backfill.ts"), "utf-8");
     // Rows are replaced atomically and files re-hashed before attribution.

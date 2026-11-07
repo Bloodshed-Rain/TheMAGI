@@ -15,6 +15,9 @@ import {
   FileText,
   BookOpen,
   CheckCircle,
+  Target,
+  Crosshair,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -28,6 +31,12 @@ import { expandCornermanShorthand } from "../../cornermanText";
 // ── Section Icon ──────────────────────────────────────────────────────
 
 const SECTION_ICONS: Record<SectionType, LucideIcon> = {
+  read: Eye,
+  "fix-first": Target,
+  "also-fix": AlertTriangle,
+  exploit: Crosshair,
+  keep: ChevronsUp,
+  "long-run": TrendingUp,
   overview: Eye,
   highlights: ChevronsUp,
   lowlights: AlertTriangle,

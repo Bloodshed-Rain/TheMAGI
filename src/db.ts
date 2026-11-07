@@ -8,6 +8,8 @@ import fs from "fs";
 import type { AggregateStats, PlayerHistory } from "./pipeline/index.js";
 import type { CharacterEventProfile } from "./characterEventProfile.js";
 import { moveIdToName } from "./pipeline/helpers.js";
+import { FRAME_EVENTS_VERSION } from "./pipeline/frameEvents.js";
+import type { PatternData } from "./pipeline/patterns.js";
 import { buildReplaySearchTerms, buildReplaySignatureSearchKeys } from "./replaySearch.js";
 
 // ── Database path ────────────────────────────────────────────────────
@@ -694,7 +696,59 @@ const migrations: Migration[] = [
       db.exec(REPAIR_KEN_COMBOS_SQL);
     },
   },
+  {
+    version: 16,
+    description: "Track event-detector version per game and prompt version per coaching analysis",
+    up: (db) => {
+      // games.events_version: NULL = rows written by the v1 detectors (see
+      // FRAME_EVENTS_VERSION). A plain backfill re-parses stale games.
+      const gameColumns = db.pragma("table_info(games)") as { name: string }[];
+      if (!gameColumns.some((c) => c.name === "events_version")) {
+        db.exec("ALTER TABLE games ADD COLUMN events_version INTEGER");
+      }
+      // coaching_analyses.prompt_version: NULL = written before prompt
+      // versioning; cache lookups only reuse analyses from the current prompt.
+      const analysisColumns = db.pragma("table_info(coaching_analyses)") as { name: string }[];
+      if (!analysisColumns.some((c) => c.name === "prompt_version")) {
+        db.exec("ALTER TABLE coaching_analyses ADD COLUMN prompt_version TEXT");
+      }
+    },
+  },
+  {
+    version: 17,
+    description: "Relabel or drop highlights whose old detectors overclaimed; rebuild happens on backfill",
+    up: (db) => {
+      db.exec(REPAIR_HIGHLIGHT_LABELS_SQL);
+    },
+  },
 ];
+
+/**
+ * Highlight rows written before the kill-evidence audit (v1.11.0). The old
+ * detectors tested the victim's position on the stock-loss frame, which is
+ * the blast zone for every side/bottom death, so "spike" and "shine spike"
+ * only meant "did not die off the top"; "tipper" was never measurable;
+ * "comeback" meant a last-stock win; "Ganoncide" was any side-B kill; the
+ * throw-based types read a move-id table that was shifted by one (uthrow was
+ * really bthrow, bthrow was fthrow, pummel was a getup attack). Rows are
+ * relabeled to what they actually measured, or deleted when nothing true can
+ * be said; a plain backfill re-derives every game with the current detectors.
+ */
+export const REPAIR_HIGHLIGHT_LABELS_SQL = `
+  UPDATE highlights SET type = 'early-fsmash-kill', label = 'Early F-Smash Kill',
+    description = REPLACE(description, ' — early tipper', ' (tipper not verified)')
+    WHERE type = 'tipper-fsmash';
+  UPDATE highlights SET type = 'last-stock-win', label = 'Last-Stock Win' WHERE type = 'comeback';
+  UPDATE highlights SET type = 'dair-kill', label = 'Dair Kill',
+    description = REPLACE(description, 'dair spike at', 'dair kill from')
+    WHERE type = 'spike-kill';
+  UPDATE highlights SET type = 'shine-kill', label = 'Shine Kill',
+    description = REPLACE(description, 'offstage shine kill at', 'shine kill from')
+    WHERE type = 'shine-spike';
+  UPDATE highlights SET type = 'upair-knee', label = 'Up Air → Knee' WHERE type = 'sacred-combo';
+  UPDATE highlights SET type = 'gerudo-kill', label = 'Gerudo Dragon Kill' WHERE type = 'ganoncide';
+  DELETE FROM highlights WHERE type IN ('tech-chase-kill', 'fair-gimp', 'upthrow-upair', 'backthrow-kill', 'wobble');
+`;
 
 /**
  * Ensure the schema_version table exists and return current version.
@@ -1268,16 +1322,33 @@ export interface BackfillCandidate {
  * parsed game writes at least two stock records, so absence = never
  * backfilled.
  */
+/**
+ * Games to (re)parse. Default: games with no event rows OR whose rows were
+ * written by older detectors (events_version below FRAME_EVENTS_VERSION).
+ * `all` re-processes every game.
+ */
 export function getBackfillCandidates(all: boolean, limit?: number): BackfillCandidate[] {
-  const where = all ? "" : "WHERE NOT EXISTS (SELECT 1 FROM stock_deaths sd WHERE sd.game_id = g.id)";
+  const where = all ? "" : "WHERE g.events_version IS NULL OR g.events_version < ?";
+  const params = all ? [] : [FRAME_EVENTS_VERSION];
   const limitSql = limit != null && limit > 0 ? `LIMIT ${Math.floor(limit)}` : "";
   const rows = getDb()
     .prepare(
       `SELECT g.id as id, g.replay_path as replayPath, g.replay_hash as replayHash, g.player_tag as playerTag
        FROM games g ${where} ORDER BY g.id ${limitSql}`,
     )
-    .all() as BackfillCandidate[];
+    .all(...params) as BackfillCandidate[];
   return rows;
+}
+
+/**
+ * Remove the per-game derived rows (game_stats, signature stats, highlights)
+ * so a backfill can re-insert them from a fresh parse.
+ */
+export function deleteDerivedGameRows(gameId: number): void {
+  const db = getDb();
+  for (const table of ["game_stats", "character_signature_stats", "highlights"]) {
+    db.prepare(`DELETE FROM ${table} WHERE game_id = ?`).run(gameId);
+  }
 }
 
 /** Remove all per-instance event rows for a game (before re-inserting). */
@@ -1337,10 +1408,11 @@ export function insertCoachingAnalysis(
   scope?: string,
   scopeIdentifier?: string,
   title?: string,
+  promptVersion?: string,
 ): number {
   const stmt = getDb().prepare(`
-    INSERT INTO coaching_analyses (game_id, session_id, model_used, analysis_text, scope, scope_identifier, title)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO coaching_analyses (game_id, session_id, model_used, analysis_text, scope, scope_identifier, title, prompt_version)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
     gameId,
@@ -1350,8 +1422,14 @@ export function insertCoachingAnalysis(
     scope ?? "game",
     scopeIdentifier ?? null,
     title ?? null,
+    promptVersion ?? null,
   );
   return Number(result.lastInsertRowid);
+}
+
+/** Stamp a game's per-instance event rows with the detector version that wrote them. */
+export function setGameEventsVersion(gameId: number, version: number): void {
+  getDb().prepare("UPDATE games SET events_version = ? WHERE id = ?").run(version, gameId);
 }
 
 // ── Analysis history ────────────────────────────────────────────────
@@ -1433,6 +1511,8 @@ export interface AggregateStatsParams {
   opponentCharacter?: string;
   stage?: string;
   opponentKey?: string;
+  /** Games to leave out — typically the game(s) being analyzed. */
+  excludeGameIds?: number[];
 }
 
 /**
@@ -1458,6 +1538,10 @@ export function getAggregateStats(filters: AggregateStatsParams): AggregateStats
   if (filters.opponentKey) {
     conditions.push("(g.opponent_tag = ? OR g.opponent_connect_code = ?)");
     params.push(filters.opponentKey, filters.opponentKey);
+  }
+  if (filters.excludeGameIds && filters.excludeGameIds.length > 0) {
+    conditions.push("g.id NOT IN (SELECT value FROM json_each(?))");
+    params.push(JSON.stringify(filters.excludeGameIds));
   }
 
   const where = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
@@ -1741,13 +1825,10 @@ interface DeepInsightsRow {
   avg_damage_per_opening: number;
   recovery_success_rate: number;
   edgeguard_success_rate: number;
-  power_shield_count: number;
   wavedash_count: number;
   shield_pressure_sequences: number;
   shield_pressure_avg_damage: number;
   shield_poke_rate: number;
-  di_survival_score: number;
-  di_combo_score: number;
   avg_death_percent: number;
   total_damage_dealt: number;
   ledge_entropy: number;
@@ -1757,20 +1838,36 @@ interface DeepInsightsRow {
   is_win: number;
 }
 
-/** Deep insights data for AI pattern recognition */
+/** Fewer decisive games than this and pairwise correlations are not reported at all. */
+export const DEEP_INSIGHTS_CORRELATION_MIN_GAMES = 20;
+/** Weakest |Pearson r| reported; anything under it is noise at these sample sizes. */
+export const DEEP_INSIGHTS_CORRELATION_MIN_R = 0.25;
+
 export interface DeepInsightsData {
+  /** Decisive games (wins + losses) every number below is computed over. */
+  gamesAnalyzed: number;
+  wins: number;
+  losses: number;
+  /** Empty when gamesAnalyzed < DEEP_INSIGHTS_CORRELATION_MIN_GAMES. */
   correlations: { metricA: string; metricB: string; coefficient: number }[];
   situationalAverages: {
     label: string;
+    games: number;
     metrics: Record<string, number>;
   }[];
   winLossDiffs: Record<string, number>;
 }
 
+/**
+ * Per-game stat relationships across every decisive game, for the career
+ * prompt. Only exact per-game measurements take part: the labeled
+ * approximation `power_shield_count` and the pre-measured-DI proxy scores
+ * `di_survival_score` / `di_combo_score` are left out so no insight is built
+ * on a heuristic. Everything here is descriptive — no control for opponent.
+ */
 export function getDeepInsightsData(): DeepInsightsData {
   const db = getDb();
 
-  // 1. Fetch raw data — pull all meaningful stat columns for pairwise correlation
   const rows = db
     .prepare(
       `
@@ -1778,9 +1875,8 @@ export function getDeepInsightsData(): DeepInsightsData {
       gs.neutral_win_rate, gs.l_cancel_rate, gs.conversion_rate,
       gs.openings_per_kill, gs.avg_damage_per_opening,
       gs.recovery_success_rate, gs.edgeguard_success_rate,
-      gs.power_shield_count, gs.wavedash_count,
+      gs.wavedash_count,
       gs.shield_pressure_sequences, gs.shield_pressure_avg_damage, gs.shield_poke_rate,
-      gs.di_survival_score, gs.di_combo_score,
       gs.avg_death_percent, gs.total_damage_dealt,
       gs.ledge_entropy, gs.knockdown_entropy, gs.shield_pressure_entropy,
       g.duration_seconds,
@@ -1796,7 +1892,6 @@ export function getDeepInsightsData(): DeepInsightsData {
     throw new Error("Insufficient data for deep pattern analysis (minimum 5 games required).");
   }
 
-  // Metric definitions: typed key → human-readable label
   const metricDefs: { key: keyof DeepInsightsRow; label: string }[] = [
     { key: "neutral_win_rate", label: "Neutral Win Rate" },
     { key: "l_cancel_rate", label: "L-Cancel Rate" },
@@ -1805,13 +1900,10 @@ export function getDeepInsightsData(): DeepInsightsData {
     { key: "avg_damage_per_opening", label: "Avg Damage/Opening" },
     { key: "recovery_success_rate", label: "Recovery Success" },
     { key: "edgeguard_success_rate", label: "Edgeguard Success" },
-    { key: "power_shield_count", label: "Power Shields" },
     { key: "wavedash_count", label: "Wavedash Count" },
     { key: "shield_pressure_sequences", label: "Shield Pressure Sequences" },
     { key: "shield_pressure_avg_damage", label: "Shield Pressure Damage" },
     { key: "shield_poke_rate", label: "Shield Poke Rate" },
-    { key: "di_survival_score", label: "Survival DI" },
-    { key: "di_combo_score", label: "Combo DI" },
     { key: "avg_death_percent", label: "Avg Death %" },
     { key: "total_damage_dealt", label: "Total Damage Dealt" },
     { key: "ledge_entropy", label: "Ledge Option Entropy" },
@@ -1823,6 +1915,7 @@ export function getDeepInsightsData(): DeepInsightsData {
 
   const metricKeys = metricDefs.map((m) => m.key);
   const keyToLabel = new Map(metricDefs.map((m) => [m.key, m.label]));
+  const round4 = (x: number) => Math.round(x * 10000) / 10000;
 
   const calculatePearson = (
     data: DeepInsightsRow[],
@@ -1849,32 +1942,26 @@ export function getDeepInsightsData(): DeepInsightsData {
     return den === 0 ? 0 : num / den;
   };
 
-  // Run ALL pairwise correlations, keep those with |r| >= 0.15 (weak+ signal)
-  const allCorrelations: { metricA: string; metricB: string; coefficient: number }[] = [];
-  for (let i = 0; i < metricDefs.length; i++) {
-    const defA = metricDefs[i];
-    if (!defA) continue;
-    for (let j = i + 1; j < metricDefs.length; j++) {
-      const defB = metricDefs[j];
-      if (!defB) continue;
-      const r = calculatePearson(rows, defA.key, defB.key);
-      if (Math.abs(r) >= 0.15) {
-        allCorrelations.push({
-          metricA: defA.label,
-          metricB: defB.label,
-          coefficient: Math.round(r * 10000) / 10000,
-        });
+  // 1. Pairwise correlations — only with enough games, only moderate-or-stronger pairs.
+  const correlations: { metricA: string; metricB: string; coefficient: number }[] = [];
+  if (rows.length >= DEEP_INSIGHTS_CORRELATION_MIN_GAMES) {
+    for (let i = 0; i < metricDefs.length; i++) {
+      const defA = metricDefs[i];
+      if (!defA) continue;
+      for (let j = i + 1; j < metricDefs.length; j++) {
+        const defB = metricDefs[j];
+        if (!defB) continue;
+        const r = calculatePearson(rows, defA.key, defB.key);
+        if (Math.abs(r) >= DEEP_INSIGHTS_CORRELATION_MIN_R) {
+          correlations.push({ metricA: defA.label, metricB: defB.label, coefficient: round4(r) });
+        }
       }
     }
+    correlations.sort((a, b) => Math.abs(b.coefficient) - Math.abs(a.coefficient));
+    correlations.splice(25);
   }
 
-  // Sort by absolute strength descending — strongest relationships first
-  allCorrelations.sort((a, b) => Math.abs(b.coefficient) - Math.abs(a.coefficient));
-
-  // Cap at 25 to keep prompt size reasonable
-  const correlations = allCorrelations.slice(0, 25);
-
-  // 2. Situational: Short vs Long games (Fatigue check)
+  // 2. Situational: short vs long games, split at the median duration.
   const sorted = [...rows].sort((a, b) => a.duration_seconds - b.duration_seconds);
   const medianRow = sorted[Math.floor(sorted.length / 2)];
   if (!medianRow) throw new Error("No rows for median calculation");
@@ -1884,33 +1971,24 @@ export function getDeepInsightsData(): DeepInsightsData {
 
   const avg = (arr: DeepInsightsRow[], key: keyof DeepInsightsRow) =>
     arr.reduce((s, r) => s + r[key], 0) / (arr.length || 1);
-
+  const bucket = (label: string, games: DeepInsightsRow[]) => ({
+    label,
+    games: games.length,
+    metrics: {
+      neutralWinRate: round4(avg(games, "neutral_win_rate")),
+      conversionRate: round4(avg(games, "conversion_rate")),
+      openingsPerKill: round4(avg(games, "openings_per_kill")),
+      avgDeathPercent: round4(avg(games, "avg_death_percent")),
+      edgeguardSuccess: round4(avg(games, "edgeguard_success_rate")),
+      lCancelRate: round4(avg(games, "l_cancel_rate")),
+    },
+  });
   const situationalAverages = [
-    {
-      label: "Short Games (\u2264 " + Math.round(medianDuration) + "s)",
-      metrics: {
-        lCancelRate: avg(shortGames, "l_cancel_rate"),
-        neutralWinRate: avg(shortGames, "neutral_win_rate"),
-        conversionRate: avg(shortGames, "conversion_rate"),
-        edgeguardSuccess: avg(shortGames, "edgeguard_success_rate"),
-        comboDI: avg(shortGames, "di_combo_score"),
-        survivalDI: avg(shortGames, "di_survival_score"),
-      },
-    },
-    {
-      label: "Long Games (> " + Math.round(medianDuration) + "s)",
-      metrics: {
-        lCancelRate: avg(longGames, "l_cancel_rate"),
-        neutralWinRate: avg(longGames, "neutral_win_rate"),
-        conversionRate: avg(longGames, "conversion_rate"),
-        edgeguardSuccess: avg(longGames, "edgeguard_success_rate"),
-        comboDI: avg(longGames, "di_combo_score"),
-        survivalDI: avg(longGames, "di_survival_score"),
-      },
-    },
-  ];
+    bucket("Short games (≤ " + Math.round(medianDuration) + "s)", shortGames),
+    bucket("Long games (> " + Math.round(medianDuration) + "s)", longGames),
+  ].filter((b) => b.games > 0);
 
-  // 3. Wins vs Losses (The "What Matters" check)
+  // 3. Wins vs losses: average in wins minus average in losses.
   const wins = rows.filter((r) => r.is_win === 1);
   const losses = rows.filter((r) => r.is_win === 0);
 
@@ -1918,10 +1996,136 @@ export function getDeepInsightsData(): DeepInsightsData {
   for (const key of metricKeys) {
     if (key === "is_win") continue;
     const label = keyToLabel.get(key);
-    if (label) winLossDiffs[label] = Math.round((avg(wins, key) - avg(losses, key)) * 10000) / 10000;
+    if (label) winLossDiffs[label] = round4(avg(wins, key) - avg(losses, key));
   }
 
-  return { correlations, situationalAverages, winLossDiffs };
+  return {
+    gamesAnalyzed: rows.length,
+    wins: wins.length,
+    losses: losses.length,
+    correlations,
+    situationalAverages,
+    winLossDiffs,
+  };
+}
+
+// ── Career (all recorded games) summaries ──────────────────────────────
+
+export interface CareerOverview {
+  games: number;
+  wins: number;
+  losses: number;
+  firstPlayedAt: string | null;
+  lastPlayedAt: string | null;
+  characters: { character: string; games: number; wins: number; losses: number }[];
+  opponentCharacters: { opponentCharacter: string; games: number; wins: number; losses: number }[];
+}
+
+/** Record, date range and character/opponent breakdown over every game in the database. */
+export function getCareerOverview(): CareerOverview {
+  const db = getDb();
+  const totals = db
+    .prepare(
+      `SELECT COUNT(*) as games,
+        COALESCE(SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END), 0) as wins,
+        COALESCE(SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END), 0) as losses,
+        MIN(played_at) as firstPlayedAt, MAX(played_at) as lastPlayedAt
+       FROM games`,
+    )
+    .get() as {
+    games: number;
+    wins: number;
+    losses: number;
+    firstPlayedAt: string | null;
+    lastPlayedAt: string | null;
+  };
+  const characters = db
+    .prepare(
+      `SELECT player_character as character, COUNT(*) as games,
+        SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+        SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses
+       FROM games GROUP BY player_character ORDER BY games DESC, character ASC`,
+    )
+    .all() as CareerOverview["characters"];
+  const opponentCharacters = db
+    .prepare(
+      `SELECT opponent_character as opponentCharacter, COUNT(*) as games,
+        SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+        SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses
+       FROM games GROUP BY opponent_character ORDER BY games DESC, opponentCharacter ASC`,
+    )
+    .all() as CareerOverview["opponentCharacters"];
+  return {
+    games: totals.games,
+    wins: totals.wins,
+    losses: totals.losses,
+    firstPlayedAt: totals.firstPlayedAt,
+    lastPlayedAt: totals.lastPlayedAt,
+    characters,
+    opponentCharacters,
+  };
+}
+
+export interface CareerDriftRow {
+  label: string;
+  early: number;
+  recent: number;
+  unit: "pct" | "num";
+}
+
+export interface CareerDrift {
+  /** Games in each window (oldest N vs newest N, never overlapping). */
+  windowGames: number;
+  rows: CareerDriftRow[];
+}
+
+/** Per-game stat columns compared early vs recent; fixed allowlist, so the SQL below is built from code only. */
+const CAREER_DRIFT_COLUMNS: { column: string; label: string; unit: "pct" | "num" }[] = [
+  { column: "neutral_win_rate", label: "neutral win rate", unit: "pct" },
+  { column: "conversion_rate", label: "conversion rate", unit: "pct" },
+  { column: "openings_per_kill", label: "openings per kill", unit: "num" },
+  { column: "avg_damage_per_opening", label: "damage per opening", unit: "num" },
+  { column: "avg_death_percent", label: "average death percent", unit: "num" },
+  { column: "edgeguard_success_rate", label: "edgeguard success rate", unit: "pct" },
+  { column: "recovery_success_rate", label: "recovery success rate", unit: "pct" },
+];
+
+/**
+ * Oldest-N vs newest-N per-game averages (ordered by when the game was
+ * played). Windows shrink to half the record when it is short and the
+ * comparison is skipped below 10 games per window. L-cancel rate is left
+ * out: a game with no L-cancel attempts stores 0, which would drag the mean.
+ */
+export function getCareerDrift(windowGames: number): CareerDrift | null {
+  const db = getDb();
+  const { total } = db
+    .prepare("SELECT COUNT(*) as total FROM game_stats gs JOIN games g ON g.id = gs.game_id")
+    .get() as { total: number };
+  const w = Math.min(Math.floor(windowGames), Math.floor(total / 2));
+  if (w < 10) return null;
+  const selects = CAREER_DRIFT_COLUMNS.map((c) => `AVG(${c.column}) as ${c.column}`).join(", ");
+  const windowAvg = (order: "ASC" | "DESC") =>
+    db
+      .prepare(
+        `SELECT ${selects} FROM (
+           SELECT gs.* FROM game_stats gs JOIN games g ON g.id = gs.game_id
+           ORDER BY COALESCE(g.played_at, g.created_at) ${order}, g.id ${order}
+           LIMIT ?
+         )`,
+      )
+      .get(w) as Record<string, number | null>;
+  const early = windowAvg("ASC");
+  const recent = windowAvg("DESC");
+  const round4 = (x: number) => Math.round(x * 10000) / 10000;
+  return {
+    windowGames: w,
+    rows: CAREER_DRIFT_COLUMNS.map((c) => ({
+      label: c.label,
+      early: round4(early[c.column] ?? 0),
+      recent: round4(recent[c.column] ?? 0),
+      unit: c.unit,
+    })),
+  };
 }
 
 export function getStatTrend(
@@ -3101,6 +3305,209 @@ export function getCharacterStageStats(character: string): CharacterStageStats[]
   `,
     )
     .all(character) as CharacterStageStats[];
+}
+
+// ── Recurring patterns for coaching prompts ──────────────────────────
+
+export interface PatternScopeFilters {
+  /** Display label for this history column ("vs Fox", "all Marth"). */
+  label: string;
+  character?: string;
+  opponentCharacter?: string;
+  stage?: string;
+  /** Opponent connect code or tag (same key as getAggregateStats). */
+  opponentKey?: string;
+  /** Games to leave out — typically the game(s) being analyzed. */
+  excludeGameIds?: number[];
+  /** Most recent N games with event data (default 150). */
+  limit?: number;
+}
+
+/**
+ * Per-instance event history for the target player over a scope of recent
+ * games, in the same PatternData shape the pipeline builds for one game.
+ * Death verdicts and habit punish flags only count games written by the
+ * current detectors (games.events_version >= FRAME_EVENTS_VERSION); every
+ * other field is unchanged between detector versions and uses all games.
+ */
+export function getPatternData(filters: PatternScopeFilters): PatternData | null {
+  const db = getDb();
+  const conditions = ["EXISTS (SELECT 1 FROM stock_deaths sd0 WHERE sd0.game_id = g.id)"];
+  const params: Record<string, unknown> = {
+    v: FRAME_EVENTS_VERSION,
+    excluded: JSON.stringify(filters.excludeGameIds ?? []),
+    limit: Math.max(1, Math.floor(filters.limit ?? 150)),
+  };
+  if (filters.character) {
+    conditions.push("g.player_character = @character");
+    params.character = filters.character;
+  }
+  if (filters.opponentCharacter) {
+    conditions.push("g.opponent_character = @opponentCharacter");
+    params.opponentCharacter = filters.opponentCharacter;
+  }
+  if (filters.stage) {
+    conditions.push("g.stage = @stage");
+    params.stage = filters.stage;
+  }
+  if (filters.opponentKey) {
+    conditions.push("(g.opponent_tag = @opponentKey OR g.opponent_connect_code = @opponentKey)");
+    params.opponentKey = filters.opponentKey;
+  }
+  conditions.push("g.id NOT IN (SELECT value FROM json_each(@excluded))");
+
+  // Resolve the scope to game ids once; every aggregate below then uses the
+  // per-table game_id indexes instead of re-evaluating the scope per row.
+  const scopeRows = db
+    .prepare(
+      `SELECT g.id as id, COALESCE(g.events_version, 1) >= @v as cur FROM games g
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY COALESCE(g.played_at, '') DESC, g.id DESC
+       LIMIT @limit`,
+    )
+    .all(params) as { id: number; cur: number }[];
+  if (scopeRows.length === 0) return null;
+  const currentIds = scopeRows.filter((r) => r.cur).map((r) => r.id);
+  const idParams = { ids: JSON.stringify(scopeRows.map((r) => r.id)), cur: JSON.stringify(currentIds) };
+  const IN_SCOPE = (col: string) => `${col} IN (SELECT value FROM json_each(@ids))`;
+  const CURRENT = (col: string) => `${col} IN (SELECT value FROM json_each(@cur))`;
+  // Bind only the parameters a statement references.
+  const bind = (sql: string) => Object.fromEntries(Object.entries(idParams).filter(([k]) => sql.includes(`@${k}`)));
+  const q = <T>(sql: string): T[] => db.prepare(sql).all(bind(sql)) as T[];
+  const one = <T>(sql: string): T => db.prepare(sql).get(bind(sql)) as T;
+
+  const habits = q<PatternData["habits"][number]>(`
+    SELECT h.situation, h.option, COUNT(*) as total,
+      COALESCE(SUM(CASE WHEN ${CURRENT("h.game_id")} THEN 1 ELSE 0 END), 0) as punishedOf,
+      COALESCE(SUM(CASE WHEN ${CURRENT("h.game_id")} AND h.punished = 1 THEN 1 ELSE 0 END), 0) as punished
+    FROM habit_instances h
+    WHERE ${IN_SCOPE("h.game_id")} AND h.is_player = 1
+    GROUP BY h.situation, h.option`);
+
+  const deathTotals = one<{ total: number; resourceFaults: number }>(`
+    SELECT COUNT(*) as total, COALESCE(SUM(sd.resource_fault), 0) as resourceFaults
+    FROM stock_deaths sd
+    WHERE ${CURRENT("sd.game_id")} AND sd.victim_is_player = 1 AND sd.died = 1`);
+  const verdictRows = q<{ verdict: string | null; count: number }>(`
+    SELECT sd.verdict, COUNT(*) as count
+    FROM stock_deaths sd
+    WHERE ${CURRENT("sd.game_id")} AND sd.victim_is_player = 1 AND sd.died = 1
+    GROUP BY sd.verdict`);
+  const verdicts: Record<string, number> = {};
+  for (const r of verdictRows) verdicts[r.verdict ?? "UNKNOWN"] = (verdicts[r.verdict ?? "UNKNOWN"] ?? 0) + r.count;
+  const killerRows = q<{
+    moveId: number;
+    count: number;
+    avgPercent: number | null;
+    noDI: number;
+    wrongDI: number;
+    helpfulDI: number;
+    failedRecovery: number;
+  }>(`
+    SELECT sd.killer_move_id as moveId, COUNT(*) as count, ROUND(AVG(sd.death_percent)) as avgPercent,
+      SUM(CASE WHEN sd.verdict = 'NO_DI' THEN 1 ELSE 0 END) as noDI,
+      SUM(CASE WHEN sd.verdict = 'WRONG_DI' THEN 1 ELSE 0 END) as wrongDI,
+      SUM(CASE WHEN sd.verdict IN ('GOOD_DI', 'OK_DI') THEN 1 ELSE 0 END) as helpfulDI,
+      SUM(CASE WHEN sd.verdict = 'FAILED_RECOVERY' THEN 1 ELSE 0 END) as failedRecovery
+    FROM stock_deaths sd
+    WHERE ${CURRENT("sd.game_id")} AND sd.victim_is_player = 1 AND sd.died = 1 AND sd.killer_move_id IS NOT NULL
+    GROUP BY sd.killer_move_id
+    ORDER BY count DESC
+    LIMIT 8`);
+
+  const throwDI = q<PatternData["throwDI"][number]>(`
+    SELECT td.throw_direction as direction, COUNT(*) as total, COALESCE(SUM(td.no_di), 0) as noDI
+    FROM throw_di td
+    WHERE ${IN_SCOPE("td.game_id")} AND td.victim_is_player = 1
+    GROUP BY td.throw_direction`);
+
+  const capture = one<{ opportunities: number; punished: number }>(`
+    SELECT COUNT(*) as opportunities, COALESCE(SUM(w.punished), 0) as punished
+    FROM whiff_events w
+    WHERE ${IN_SCOPE("w.game_id")} AND w.whiffer_is_player = 0 AND w.opportunity = 1`);
+  const unpunishedByMove = q<{ move: string; count: number }>(`
+    SELECT w.attack_label as move, COUNT(*) as count
+    FROM whiff_events w
+    WHERE ${IN_SCOPE("w.game_id")} AND w.whiffer_is_player = 0 AND w.opportunity = 1 AND w.punished = 0
+    GROUP BY w.attack_label ORDER BY count DESC LIMIT 5`);
+  const whiffExposure = q<PatternData["whiffExposure"][number]>(`
+    SELECT w.attack_label as move, COUNT(*) as opportunities, COALESCE(SUM(w.punished), 0) as punished
+    FROM whiff_events w
+    WHERE ${IN_SCOPE("w.game_id")} AND w.whiffer_is_player = 1 AND w.opportunity = 1
+    GROUP BY w.attack_label`);
+
+  const shieldByMove = q<PatternData["shieldDefense"]["byMove"][number]>(`
+    SELECT sb.attack_label as move, COUNT(*) as graded,
+      SUM(CASE WHEN sb.grade = 'punish-taken' THEN 1 ELSE 0 END) as taken,
+      SUM(CASE WHEN sb.grade = 'punish-missed' THEN 1 ELSE 0 END) as missed
+    FROM shield_blocks sb
+    WHERE ${IN_SCOPE("sb.game_id")} AND sb.defender_is_player = 1 AND sb.string_final = 1 AND sb.frame_gap IS NOT NULL
+    GROUP BY sb.attack_label`);
+  const pressure = one<{ graded: number; unsafe: number; punished: number }>(`
+    SELECT COUNT(*) as graded,
+      COALESCE(SUM(CASE WHEN sb.grade IN ('punish-taken', 'punish-missed') THEN 1 ELSE 0 END), 0) as unsafe,
+      COALESCE(SUM(CASE WHEN sb.grade = 'punish-taken' THEN 1 ELSE 0 END), 0) as punished
+    FROM shield_blocks sb
+    WHERE ${IN_SCOPE("sb.game_id")} AND sb.defender_is_player = 0 AND sb.string_final = 1 AND sb.frame_gap IS NOT NULL`);
+
+  const recoveryTotals = one<{ spans: number; died: number; djEarly: number; djEarlyDied: number }>(`
+    SELECT COUNT(*) as spans,
+      COALESCE(SUM(CASE WHEN rs.landing = 'death' THEN 1 ELSE 0 END), 0) as died,
+      COALESCE(SUM(rs.dj_early), 0) as djEarly,
+      COALESCE(SUM(CASE WHEN rs.dj_early = 1 AND rs.landing = 'death' THEN 1 ELSE 0 END), 0) as djEarlyDied
+    FROM recovery_spans rs
+    WHERE ${IN_SCOPE("rs.game_id")} AND rs.recovering_is_player = 1`);
+  const routes = q<PatternData["recovery"]["routes"][number]>(`
+    SELECT rs.route, COUNT(*) as total, SUM(CASE WHEN rs.landing = 'death' THEN 1 ELSE 0 END) as died
+    FROM recovery_spans rs
+    WHERE ${IN_SCOPE("rs.game_id")} AND rs.recovering_is_player = 1 AND rs.route IS NOT NULL
+    GROUP BY rs.route`);
+  const byDepth = q<PatternData["edgeguard"]["byDepth"][number]>(`
+    SELECT rs.edgeguarder_depth as depth, COUNT(*) as total,
+      SUM(CASE WHEN rs.landing = 'death' THEN 1 ELSE 0 END) as kills
+    FROM recovery_spans rs
+    WHERE ${IN_SCOPE("rs.game_id")} AND rs.recovering_is_player = 0
+    GROUP BY rs.edgeguarder_depth`);
+
+  const shieldTaken = shieldByMove.reduce((s, m) => s + m.taken, 0);
+  const shieldMissed = shieldByMove.reduce((s, m) => s + m.missed, 0);
+
+  return {
+    label: filters.label,
+    games: scopeRows.length,
+    currentGames: currentIds.length,
+    habits,
+    deaths: {
+      total: deathTotals.total,
+      verdicts,
+      resourceFaults: deathTotals.resourceFaults,
+      byKiller: killerRows.map((k) => ({
+        move: moveName(k.moveId),
+        count: k.count,
+        avgPercent: k.avgPercent,
+        noDI: k.noDI,
+        wrongDI: k.wrongDI,
+        helpfulDI: k.helpfulDI,
+        failedRecovery: k.failedRecovery,
+      })),
+    },
+    throwDI,
+    whiffCapture: { opportunities: capture.opportunities, punished: capture.punished, unpunishedByMove },
+    whiffExposure,
+    shieldDefense: {
+      graded: shieldByMove.reduce((s, m) => s + m.graded, 0),
+      taken: shieldTaken,
+      missed: shieldMissed,
+      byMove: shieldByMove,
+    },
+    shieldPressure: pressure,
+    recovery: { ...recoveryTotals, routes },
+    edgeguard: {
+      opportunities: byDepth.reduce((s, d) => s + d.total, 0),
+      kills: byDepth.reduce((s, d) => s + d.kills, 0),
+      byDepth,
+    },
+  };
 }
 
 // ── Character event profile (v10-v14 per-instance aggregates) ────────

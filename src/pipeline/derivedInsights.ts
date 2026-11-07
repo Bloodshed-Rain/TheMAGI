@@ -2,7 +2,8 @@ import { type FramesType, type StatsType, type ConversionType, type StockType } 
 
 import type { DerivedInsights, HabitProfile } from "./types.js";
 import type { GameFrameEvents, HabitInstance, HabitSituation, PlayerSlot } from "./frameEvents.js";
-import { ratio, entropy, frameToTimestamp, moveIdToName, getMoveName, isOffstage } from "./helpers.js";
+import { ratio, entropy, frameToTimestamp, moveIdToName, getMoveName } from "./helpers.js";
+import { isOffstageKill } from "./killEvidence.js";
 
 // ── Derived insights ──────────────────────────────────────────────────
 
@@ -38,11 +39,10 @@ function computePerformanceByStock(
     const endF = stock.endFrame ?? lastFrame;
 
     // conversion.playerIndex = victim
-    // My attacks (opponent is victim) = neutral wins for me
+    // My attacks (opponent is victim); opponent's attacks (I am victim)
     const myAttacks = conversions.filter(
       (c) => c.playerIndex === opponentIndex && c.startFrame >= startF && c.startFrame <= endF,
     );
-    // Opponent's attacks (I am victim) = neutral losses for me
     const oppAttacks = conversions.filter(
       (c) => c.playerIndex === playerIndex && c.startFrame >= startF && c.startFrame <= endF,
     );
@@ -50,11 +50,15 @@ function computePerformanceByStock(
     const dmgDealt = myAttacks.reduce((s, c) => s + ((c.endPercent ?? c.currentPercent) - c.startPercent), 0);
     const dmgTaken = oppAttacks.reduce((s, c) => s + ((c.endPercent ?? c.currentPercent) - c.startPercent), 0);
 
-    const totalNeutral = myAttacks.length + oppAttacks.length;
+    // Neutral win rate per stock uses the same opening type as the headline
+    // stat (slippi-js "neutral-win"), so counter-attacks and trades do not
+    // inflate it.
+    const myNeutralWins = myAttacks.filter((c) => c.openingType === "neutral-win").length;
+    const oppNeutralWins = oppAttacks.filter((c) => c.openingType === "neutral-win").length;
 
     return {
       stock: stock.count,
-      neutralWinRate: ratio(myAttacks.length, totalNeutral),
+      neutralWinRate: ratio(myNeutralWins, myNeutralWins + oppNeutralWins),
       damageEfficiency: dmgTaken > 0 ? Math.round((dmgDealt / dmgTaken) * 100) / 100 : dmgDealt > 0 ? 999 : 0,
     };
   });
@@ -172,20 +176,19 @@ export function buildDerivedInsights(
       const lastMove = c.moves[c.moves.length - 1]!;
       const moveName = moveIdToName[lastMove.moveId] ?? getMoveName(lastMove.moveId);
       const dmg = Math.round((c.endPercent ?? c.currentPercent) - c.startPercent);
-      const isOffstageKill =
-        c.endFrame != null &&
-        frames[c.endFrame]?.players[opponentIndex]?.post != null &&
-        isOffstage(
-          frames[c.endFrame]!.players[opponentIndex]!.post!.positionX ?? 0,
-          frames[c.endFrame]!.players[opponentIndex]!.post!.positionY ?? 0,
-          stageId,
-        );
+      // Edgeguard kill = the final hit landed with the opponent already
+      // offstage and they did not die off the top (killEvidence.ts). The
+      // victim's position on the stock-loss frame is the blast zone for every
+      // death, so it must not be used here.
+      const offstageKill = isOffstageKill(c, frames, stageId);
 
+      // startPercent is where the kill CONVERSION began, not where the
+      // finishing move landed; endPercent is the opponent's percent at death.
       keyMoments.push({
         timestamp: frameToTimestamp(c.startFrame),
         frame: c.startFrame,
-        type: isOffstageKill ? "edgeguard_kill" : "kill",
-        description: `Killed opponent with ${moveName} at ${Math.round(c.startPercent)}% (${dmg}% combo)`,
+        type: offstageKill ? "edgeguard_kill" : "kill",
+        description: `Took a stock: conversion from ${Math.round(c.startPercent)}% finished with ${moveName} (${c.moves.length} hits, ${dmg}%; opponent died at ${Math.round(c.endPercent ?? c.currentPercent)}%)`,
       });
     }
   }
@@ -210,19 +213,22 @@ export function buildDerivedInsights(
         stock?.verdict === "NO_DI"
           ? " — no DI input"
           : stock?.verdict === "WRONG_DI"
-            ? ` — wrong survival DI (score ${stock.diScore ?? 0})`
+            ? ` — DI with no survival benefit (score ${stock.diScore ?? 0})`
             : stock?.verdict === "OK_DI"
               ? " — partial survival DI"
               : stock?.verdict === "GOOD_DI"
                 ? " — good survival DI"
-                : "";
+                : stock?.verdict === "FAILED_RECOVERY"
+                  ? " — not hit again after that; did not make it back (no DI to grade)"
+                  : "";
       const resourceText = stock?.resourceFault ? " (double jump unused)" : "";
+      const deathPercent = Math.round(stock?.deathPercent ?? c.endPercent ?? c.currentPercent);
 
       keyMoments.push({
         timestamp: frameToTimestamp(c.startFrame),
         frame: c.startFrame,
         type: "death",
-        description: `Died to ${moveName} at ${Math.round(c.startPercent)}%${verdictText}${resourceText}`,
+        description: `Lost a stock at ${deathPercent}%: opponent's conversion from ${Math.round(c.startPercent)}% ended with ${moveName}${verdictText}${resourceText}`,
       });
     }
   }
@@ -244,7 +250,9 @@ export function buildDerivedInsights(
     }
   }
 
-  // Missed punishes (opening at high % that did <15% and didn't kill)
+  // Low-yield openings: an opening at high % that did <15% and didn't kill.
+  // Type kept as "missed_punish" for consumers; the text states only what was
+  // observed — the data does not establish that a bigger punish was available.
   for (const c of stats.conversions) {
     if (c.playerIndex === opponentIndex && c.moves.length > 0 && c.startPercent >= 80 && !c.didKill) {
       const dmg = (c.endPercent ?? c.currentPercent) - c.startPercent;
@@ -254,7 +262,7 @@ export function buildDerivedInsights(
           timestamp: frameToTimestamp(c.startFrame),
           frame: c.startFrame,
           type: "missed_punish",
-          description: `Missed punish: ${opener} at ${Math.round(c.startPercent)}%, only dealt ${Math.round(dmg)}%`,
+          description: `Low-yield opening: ${opener} with opponent at ${Math.round(c.startPercent)}% led to only ${Math.round(dmg)}% and no kill`,
         });
       }
     }

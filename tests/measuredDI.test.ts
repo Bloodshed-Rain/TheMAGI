@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import path from "path";
 import fs from "fs";
-import { processGame, DI_DEADZONE, assembleUserPrompt } from "../src/pipeline";
-import type { GameResult } from "../src/pipeline";
+import { processGame, DI_DEADZONE, assembleUserPrompt, computeDeathVerdicts } from "../src/pipeline";
+import type { GameResult, StockRecord } from "../src/pipeline";
+import type { FramesType } from "@slippi/slippi-js/node";
 
 const TEST_REPLAYS_DIR = path.resolve(__dirname, "fixtures");
 
@@ -14,7 +15,7 @@ const replays = fs
 // Parse every fixture once; suites below assert over all of them.
 const results: GameResult[] = replays.map((fp, i) => processGame(fp, i + 1));
 
-const VERDICTS = ["NO_DI", "WRONG_DI", "OK_DI", "GOOD_DI", "SD", "UNKNOWN"];
+const VERDICTS = ["NO_DI", "WRONG_DI", "OK_DI", "GOOD_DI", "FAILED_RECOVERY", "SD", "UNKNOWN"];
 const THROW_DIRECTIONS = ["forward", "back", "up", "down"];
 
 describe("measuredDI: death verdicts", () => {
@@ -131,5 +132,114 @@ describe("measuredDI: surfaced to coaching", () => {
         }
       }
     }
+  });
+});
+
+// ── Synthetic-frame regression tests (v2 death verdicts) ──────────────
+
+type Post = {
+  actionStateId: number;
+  positionX?: number;
+  positionY?: number;
+  hitlagRemaining?: number;
+  jumpsRemaining?: number;
+  isAirborne?: boolean;
+};
+type Pre = { joystickX?: number; joystickY?: number };
+
+const BATTLEFIELD = 31;
+const DAMAGE_FLY_HI = 88;
+const FALL_SPECIAL = 35;
+const DEAD_DOWN = 0;
+const DEAD_UP_STAR = 4;
+
+function frames(length: number, at: (f: number) => { post: Post; pre?: Pre }): FramesType {
+  const out: Record<number, unknown> = {};
+  for (let f = 0; f < length; f++) {
+    const { post, pre } = at(f);
+    out[f] = { frame: f, players: { 0: { pre: { joystickX: 0, joystickY: 0, ...pre }, post: { positionX: 0, positionY: 0, hitlagRemaining: 0, jumpsRemaining: 1, isAirborne: false, ...post } } } };
+  }
+  return out as unknown as FramesType;
+}
+
+function stock(overrides: Partial<StockRecord>): StockRecord {
+  return {
+    victimSlot: 0,
+    stockNumber: 4,
+    startFrame: 0,
+    endFrame: 300,
+    startPercent: 0,
+    deathPercent: 140,
+    killerMoveId: 9,
+    deathDirection: "up",
+    died: true,
+    verdict: null,
+    diScore: null,
+    diStickX: null,
+    diStickY: null,
+    launchAngleDeg: null,
+    resourceFault: false,
+    finalHitFrame: null,
+    ...overrides,
+  };
+}
+
+/** Hit with hitlag on frames 96-100 (stick held right), launched straight up, Star KO from 170, stock lost at 300. */
+const starKO = frames(301, (f) => {
+  if (f < 96) return { post: { actionStateId: 14 } };
+  if (f <= 100) return { post: { actionStateId: DAMAGE_FLY_HI, hitlagRemaining: 101 - f }, pre: { joystickX: 1, joystickY: 0 } };
+  if (f < 170) return { post: { actionStateId: DAMAGE_FLY_HI, positionX: 0, positionY: (f - 100) * 3, isAirborne: true } };
+  return { post: { actionStateId: DEAD_UP_STAR, positionY: 210, isAirborne: true } };
+});
+
+/** Hit offstage at frame 100, then up-B into helpless fall offstage with the double jump unspent; DeadDown at 300, stock lost at 310. */
+function offstageFall(withHit: boolean): FramesType {
+  return frames(311, (f) => {
+    if (f < 96) return { post: { actionStateId: 14 } };
+    if (f <= 100)
+      return withHit
+        ? { post: { actionStateId: DAMAGE_FLY_HI, hitlagRemaining: 101 - f, positionX: -80 } }
+        : { post: { actionStateId: 14, positionX: -80 } };
+    if (f < 130) return { post: { actionStateId: withHit ? DAMAGE_FLY_HI : 29, positionX: -80 - (f - 100) * 2, positionY: 10, isAirborne: true } };
+    if (f < 300) return { post: { actionStateId: FALL_SPECIAL, positionX: -150, positionY: -40 - (f - 130), isAirborne: true, jumpsRemaining: 1 } };
+    return { post: { actionStateId: DEAD_DOWN, positionX: -150, positionY: -250, isAirborne: true } };
+  });
+}
+
+describe("measuredDI v2: final-hit search anchored at dying-state entry", () => {
+  it("POSITIVE: a Star KO is graded on the real hit instead of being called SD", () => {
+    const v = computeDeathVerdicts([stock({})], starKO, 300, BATTLEFIELD, [0, 1]).get("0:4")!;
+    expect(v.verdict).toBe("GOOD_DI");
+    expect(v.finalHitFrame).toBe(100);
+  });
+
+  it("NEGATIVE: a direct blast-zone kill is never flagged as an unspent double jump", () => {
+    const v = computeDeathVerdicts([stock({})], starKO, 300, BATTLEFIELD, [0, 1]).get("0:4")!;
+    expect(v.resourceFault).toBe(false);
+  });
+});
+
+describe("measuredDI v2: FAILED_RECOVERY vs SD", () => {
+  const offstageStock = stock({ endFrame: 310, deathDirection: "down", killerMoveId: 15, deathPercent: 119 });
+
+  it("POSITIVE: hit, never hit again, still inside the opponent's kill conversion ⇒ FAILED_RECOVERY", () => {
+    const v = computeDeathVerdicts([offstageStock], offstageFall(true), 310, BATTLEFIELD, [0, 1]).get("0:4")!;
+    expect(v.verdict).toBe("FAILED_RECOVERY");
+    expect(v.diScore).toBeNull();
+    expect(v.finalHitFrame).toBe(100);
+    // Fell helpless offstage for 170 frames with the double jump unspent.
+    expect(v.resourceFault).toBe(true);
+  });
+
+  it("NEGATIVE: the same fall with no kill conversion credited is an SD, not a failed recovery", () => {
+    const v = computeDeathVerdicts([stock({ ...offstageStock, killerMoveId: null })], offstageFall(true), 310, BATTLEFIELD, [0, 1]).get("0:4")!;
+    expect(v.verdict).toBe("SD");
+  });
+
+  it("NEGATIVE: no hit anywhere in the stock and no kill conversion ⇒ SD", () => {
+    const v = computeDeathVerdicts([stock({ ...offstageStock, killerMoveId: null })], offstageFall(false), 310, BATTLEFIELD, [0, 1]).get("0:4")!;
+    expect(v.verdict).toBe("SD");
+    expect(v.finalHitFrame).toBeNull();
+    expect(v.resourceFault).toBe(false);
   });
 });

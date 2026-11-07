@@ -1,11 +1,17 @@
 /**
- * Backfill engine: re-parse already-imported replays so games imported
- * before the per-instance event tables existed (schema v10-v14) get their
- * conversions / stock_deaths / habit_instances / throw_di / recovery_spans /
- * shield_blocks / whiff_events rows.
+ * Backfill engine: re-parse already-imported replays so every per-game
+ * derived row reflects the current detectors.
  *
- * Safe to re-run: each game's event rows are deleted and re-inserted in one
- * transaction, and files are re-hashed so a moved/replaced replay at the
+ * Originally this only filled the per-instance event tables (schema
+ * v10-v14: conversions / stock_deaths / habit_instances / throw_di /
+ * recovery_spans / shield_blocks / whiff_events). Since FRAME_EVENTS_VERSION
+ * 3 it also rewrites game_stats, character_signature_stats and highlights
+ * from the same parse, because those rows depend on the same stage-bounds,
+ * move-id and kill-evidence definitions and were wrong for games imported
+ * by older detectors.
+ *
+ * Safe to re-run: each game's derived rows are deleted and re-inserted in
+ * one transaction, and files are re-hashed so a moved/replaced replay at the
  * stored path is skipped instead of poisoning the wrong game row.
  */
 
@@ -14,8 +20,18 @@ import fs from "fs";
 
 import { findPlayerIdx } from "./pipeline";
 import { parsePool } from "./parsePool";
-import { getDb, getBackfillCandidates, deleteFrameEventRows, type BackfillCandidate } from "./db";
+import {
+  getDb,
+  getBackfillCandidates,
+  deleteDerivedGameRows,
+  deleteFrameEventRows,
+  insertGameStats,
+  insertHighlights,
+  insertSignatureStats,
+  type BackfillCandidate,
+} from "./db";
 import { persistFrameEvents } from "./importer";
+import { buildInsertGameStatsParams } from "./replayAnalyzer";
 
 const PARSE_BATCH_SIZE = 8;
 
@@ -62,9 +78,21 @@ async function processCandidate(candidate: BackfillCandidate, progress: Backfill
 
   const gameResult = await parsePool.parse(candidate.replayPath, 1);
   const playerIdx = findPlayerIdx(gameResult.gameSummary, candidate.playerTag);
+  const player = gameResult.gameSummary.players[playerIdx];
 
   const tx = getDb().transaction(() => {
+    deleteDerivedGameRows(candidate.id);
     deleteFrameEventRows(candidate.id);
+
+    insertGameStats(buildInsertGameStatsParams(candidate.id, gameResult, candidate.playerTag));
+    if (player.signatureStats) {
+      insertSignatureStats(candidate.id, JSON.stringify(player.signatureStats));
+    }
+    const highlights = gameResult.highlights[playerIdx];
+    if (highlights && highlights.length > 0) {
+      insertHighlights(candidate.id, highlights);
+    }
+
     persistFrameEvents(candidate.id, gameResult.frameEvents, playerIdx);
   });
   tx();

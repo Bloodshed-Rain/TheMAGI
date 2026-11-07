@@ -34,6 +34,9 @@
 .death-report-c-good-di {
   background: var(--green);
 }
+.death-report-c-failed-recovery {
+  background: color-mix(in srgb, var(--yellow) 55%, transparent);
+}
 .death-report-c-sd {
   background: var(--yellow);
 }

@@ -2,14 +2,27 @@ import crypto from "crypto";
 import fs from "fs";
 import { pipeline } from "stream/promises";
 import { loadConfig } from "../../config.js";
+import {
+  CAREER_ALL_GAMES_LIMIT,
+  CAREER_ANALYSIS_MIN_GAMES,
+  CAREER_DRIFT_WINDOW_GAMES,
+  CAREER_RECENT_WINDOW_GAMES,
+  CAREER_TOP_CHARACTERS,
+  CAREER_TOP_MATCHUPS,
+  type CareerAnalysisResult,
+} from "../../careerAnalysis.js";
 import { EVENT_SAMPLE_GUARDS, type CharacterBlurbResult } from "../../characterEventProfile.js";
+import { buildCoachingContext } from "../../coachingContext.js";
 import {
   getDb,
   insertCoachingAnalysis,
   getPlayerHistory,
+  getPatternData,
   getGamesBySession,
   getGameById,
   getAggregateStats,
+  getCareerDrift,
+  getCareerOverview,
   getCharacterEventProfile,
   getOpponentDetail,
   getDeepInsightsData,
@@ -17,22 +30,28 @@ import {
   insertGameStats,
   insertSignatureStats,
   insertHighlights,
+  type AggregateStatsParams,
+  type CareerOverview,
 } from "../../db.js";
 import {
   computeAdaptationSignals,
   findPlayerIdx,
   assembleUserPrompt,
   SYSTEM_PROMPT,
+  COACHING_PROMPT_VERSION,
   assembleAggregatePrompt,
   SYSTEM_PROMPT_AGGREGATE,
   SYSTEM_PROMPT_CHARACTER_BLURB,
-  assembleDiscoveryPrompt,
-  SYSTEM_PROMPT_DISCOVERY,
+  assembleCareerPrompt,
+  SYSTEM_PROMPT_CAREER,
   SYSTEM_PROMPT_SCOUT,
   assembleOpponentDossierPrompt,
   stripNulls,
+  type CareerPromptData,
   type GameResult,
+  type PatternData,
 } from "../../pipeline/index.js";
+import { formatPatternBreakdown, formatRecurringPatterns } from "../../pipeline/patterns.js";
 import { callLLM, callLLMStream, getActiveModelId, isUsableLLMResponse, type LLMConfig } from "../../llm.js";
 import { llmQueue } from "../../llmQueue.js";
 import { parsePool } from "../../parsePool.js";
@@ -61,10 +80,15 @@ export function resolveLLMConfig(): LLMConfig {
   };
 }
 
-/** Shared multi-game analysis logic used by both analyze:run and analyze:recent */
+/**
+ * Shared multi-game analysis logic used by analyze:run, analyze:recent and
+ * session scope. `excludeGameIds` = DB rows for the games being analyzed, so
+ * the recurring-pattern history does not count them twice.
+ */
 function runMultiGameAnalysis(
   gameResults: GameResult[],
   targetPlayer: string,
+  excludeGameIds: number[] = [],
 ): { targetTag: string; userPrompt: string } {
   const firstGame = gameResults[0]!.gameSummary;
   const targetTag =
@@ -82,11 +106,34 @@ function runMultiGameAnalysis(
     lastResult.derivedInsights[lastP1Idx].adaptationSignals = p1Signals;
   }
 
-  // Query player history for contextual coaching
-  const playerHistory = getPlayerHistory(targetTag) ?? undefined;
-
-  const userPrompt = assembleUserPrompt(gameResults, targetTag, playerHistory);
+  const { background, patterns } = buildCoachingContext(gameResults, targetTag, excludeGameIds);
+  const userPrompt = assembleUserPrompt(gameResults, targetTag, background, patterns);
   return { targetTag, userPrompt };
+}
+
+/** Aggregate scopes get the same measured-pattern block: the scope vs the player's overall baseline. */
+function aggregatePatternLines(scope: string, id: string): string {
+  try {
+    const scoped =
+      scope === "character"
+        ? getPatternData({ label: `as ${id}`, character: id })
+        : scope === "stage"
+          ? getPatternData({ label: `on ${id}`, stage: id })
+          : scope === "opponent"
+            ? getPatternData({ label: "vs this opponent", opponentKey: id })
+            : null;
+    const baseline = getPatternData({ label: "all your games" });
+    const lines = formatRecurringPatterns({ matchup: scoped, character: baseline });
+    if (lines.length === 0) return "";
+    return [
+      "",
+      "=== MEASURED PATTERNS — this scope vs your overall baseline (primary evidence for habits; findings stay inside the scope) ===",
+      ...lines,
+    ].join("\n");
+  } catch (err) {
+    console.warn("[coaching] aggregate patterns unavailable:", err instanceof Error ? err.message : err);
+    return "";
+  }
 }
 
 export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
@@ -97,22 +144,22 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     const llmConfig = resolveLLMConfig();
     const win = getMainWindow();
 
-    // Check DB cache for single replays — skip LLM if already analyzed
-    if (safePaths.length === 1) {
-      const db = getDb();
-      const fileHash = await hashFileAsync(safePaths[0]!);
-      const existingGame = db.prepare("SELECT id FROM games WHERE replay_hash = ?").get(fileHash) as
-        | { id: number }
-        | undefined;
-      if (existingGame) {
-        const cachedAnalysis = db
-          .prepare(
-            "SELECT analysis_text FROM coaching_analyses WHERE game_id = ? AND scope = 'game' ORDER BY created_at DESC LIMIT 1",
-          )
-          .get(existingGame.id) as { analysis_text: string } | undefined;
-        if (cachedAnalysis) {
-          return cachedAnalysis.analysis_text;
-        }
+    const db = getDb();
+    const fileHashes = await Promise.all(safePaths.map((p) => hashFileAsync(p)));
+    const existingIds = fileHashes.map(
+      (h) =>
+        (db.prepare("SELECT id FROM games WHERE replay_hash = ?").get(h) as { id: number } | undefined)?.id ?? null,
+    );
+
+    // Check DB cache for single replays — skip LLM if already analyzed with the current prompt
+    if (safePaths.length === 1 && existingIds[0] != null) {
+      const cachedAnalysis = db
+        .prepare(
+          "SELECT analysis_text FROM coaching_analyses WHERE game_id = ? AND scope = 'game' AND prompt_version = ? ORDER BY created_at DESC LIMIT 1",
+        )
+        .get(existingIds[0], COACHING_PROMPT_VERSION) as { analysis_text: string } | undefined;
+      if (cachedAnalysis) {
+        return cachedAnalysis.analysis_text;
       }
       // Not cached — fall through to streaming path
     }
@@ -124,7 +171,11 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       throw new Error("No games to analyze.");
     }
 
-    const { targetTag, userPrompt } = runMultiGameAnalysis(gameResults, targetPlayer);
+    const { targetTag, userPrompt } = runMultiGameAnalysis(
+      gameResults,
+      targetPlayer,
+      existingIds.filter((id): id is number => id != null),
+    );
 
     // Use streaming when a window is available to receive chunks
     const analysis = await llmQueue.enqueue(() =>
@@ -145,12 +196,11 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     }
 
     // Persist game data for each replay so stats/trends/dedup work
-    const db = getDb();
     const gameIds: number[] = [];
     for (let i = 0; i < gameResults.length; i++) {
       const gameResult = gameResults[i]!;
       const filePath = safePaths[i]!;
-      const fileHash = await hashFileAsync(filePath);
+      const fileHash = fileHashes[i] ?? (await hashFileAsync(filePath));
 
       const existing = db.prepare("SELECT id FROM games WHERE replay_hash = ?").get(fileHash) as
         | { id: number }
@@ -175,7 +225,16 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       }
     }
 
-    insertCoachingAnalysis(gameIds[0] ?? null, null, llmConfig.modelId || "pollinations", analysis);
+    insertCoachingAnalysis(
+      gameIds[0] ?? null,
+      null,
+      llmConfig.modelId || "pollinations",
+      analysis,
+      undefined,
+      undefined,
+      undefined,
+      COACHING_PROMPT_VERSION,
+    );
 
     return analysis;
   });
@@ -186,24 +245,27 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
     const win = getMainWindow();
     const db = getDb();
 
-    // Check cache for ALL scopes (ignore model_used to reuse any past analysis)
+    // Check cache for ALL scopes (ignore model_used to reuse any past analysis),
+    // but only analyses written with the current coaching prompt.
     let cachedCandidates: { analysis_text: string }[];
     if (scope === "game") {
       cachedCandidates = db
         .prepare(
-          "SELECT analysis_text FROM coaching_analyses WHERE game_id = ? AND scope = 'game' ORDER BY created_at DESC LIMIT 10",
+          "SELECT analysis_text FROM coaching_analyses WHERE game_id = ? AND scope = 'game' AND prompt_version = ? ORDER BY created_at DESC LIMIT 10",
         )
-        .all(Number(id)) as { analysis_text: string }[];
+        .all(Number(id), COACHING_PROMPT_VERSION) as { analysis_text: string }[];
     } else if (scope === "session") {
       cachedCandidates = db
-        .prepare("SELECT analysis_text FROM coaching_analyses WHERE session_id = ? ORDER BY created_at DESC LIMIT 10")
-        .all(Number(id)) as { analysis_text: string }[];
+        .prepare(
+          "SELECT analysis_text FROM coaching_analyses WHERE session_id = ? AND prompt_version = ? ORDER BY created_at DESC LIMIT 10",
+        )
+        .all(Number(id), COACHING_PROMPT_VERSION) as { analysis_text: string }[];
     } else {
       cachedCandidates = db
         .prepare(
-          "SELECT analysis_text FROM coaching_analyses WHERE scope = ? AND scope_identifier = ? ORDER BY created_at DESC LIMIT 10",
+          "SELECT analysis_text FROM coaching_analyses WHERE scope = ? AND scope_identifier = ? AND prompt_version = ? ORDER BY created_at DESC LIMIT 10",
         )
-        .all(scope, String(id)) as { analysis_text: string }[];
+        .all(scope, String(id), COACHING_PROMPT_VERSION) as { analysis_text: string }[];
     }
     const cached = cachedCandidates.find((entry) => isUsableLLMResponse(entry.analysis_text));
     if (cached) return cached.analysis_text;
@@ -217,35 +279,46 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       const game = getGameById(Number(id));
       if (!game) throw new Error("Game not found");
       const result = await parsePool.parse(game.replay_path, 1);
-      const playerHistory = getPlayerHistory(targetPlayer || game.player_tag) ?? undefined;
-      userPrompt = assembleUserPrompt([result], targetPlayer || game.player_tag, playerHistory);
+      const tag = targetPlayer || game.player_tag;
+      const { background, patterns } = buildCoachingContext([result], tag, [game.id]);
+      userPrompt = assembleUserPrompt([result], tag, background, patterns);
       gameIdForCache = game.id;
     } else if (scope === "session") {
       const sessionId = Number(id);
       const games = getGamesBySession(sessionId);
       if (games.length === 0) throw new Error("No games found for session");
       const gameResults = await parsePool.parseMany(games.map((g) => g.replay_path));
-      const { userPrompt: prompt } = runMultiGameAnalysis(gameResults, targetPlayer || "");
+      const { userPrompt: prompt } = runMultiGameAnalysis(
+        gameResults,
+        targetPlayer || "",
+        games.map((g) => g.id),
+      );
       userPrompt = prompt;
       sessionIdForCache = sessionId;
-    } else if (["character", "stage", "opponent", "career"].includes(scope)) {
-      const filters: any = {};
+    } else if (scope === "career") {
+      // The Dashboard's all-games analysis; this path shares its cache and stream.
+      const career = await runCareerAnalysis(false, streamId);
+      if (career.insufficient) {
+        throw new Error(
+          `Import at least ${CAREER_ANALYSIS_MIN_GAMES} games for an analysis of your whole record (${career.gamesPlayed} so far).`,
+        );
+      }
+      return career.text;
+    } else if (scope === "character" || scope === "stage" || scope === "opponent") {
+      // Each scope is the player's own games filtered one way; the lifetime
+      // profile stays out so the report cannot drift to other characters.
+      const filters: AggregateStatsParams = {};
       if (scope === "character") filters.character = String(id);
       if (scope === "stage") filters.stage = String(id);
       if (scope === "opponent") filters.opponentKey = String(id);
-      // 'career' scope uses empty filters to aggregate everything
 
       const stats = getAggregateStats(filters);
       if (!stats) throw new Error("No data found for this scope");
 
-      const playerHistory = getPlayerHistory(targetPlayer || "") ?? undefined;
       systemPrompt = SYSTEM_PROMPT_AGGREGATE;
-      userPrompt = assembleAggregatePrompt(
-        stats,
-        scope as any,
-        scope === "career" ? "Lifetime" : String(id),
-        playerHistory,
-      );
+      userPrompt =
+        assembleAggregatePrompt(stats, scope, String(id), { lifetimeGames: getCareerOverview().games }) +
+        aggregatePatternLines(scope, String(id));
     } else {
       throw new Error(`Invalid analysis scope: ${scope}`);
     }
@@ -283,6 +356,8 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       analysis,
       scope,
       String(id),
+      undefined,
+      COACHING_PROMPT_VERSION,
     );
     return analysis;
   });
@@ -370,7 +445,7 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       if (!force) {
         const cached = db
           .prepare(
-            "SELECT analysis_text, model_used, created_at FROM coaching_analyses WHERE scope = 'character-blurb-plain-v1' AND scope_identifier = ? ORDER BY created_at DESC LIMIT 1",
+            "SELECT analysis_text, model_used, created_at FROM coaching_analyses WHERE scope = 'character-blurb-plain-v2' AND scope_identifier = ? ORDER BY created_at DESC LIMIT 1",
           )
           .get(character) as { analysis_text: string; model_used: string; created_at: string } | undefined;
         if (cached) {
@@ -385,9 +460,8 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
 
       const llmConfig = resolveLLMConfig();
       const events = getCharacterEventProfile(character);
-      const playerHistory = getPlayerHistory("") ?? undefined;
       const userPrompt =
-        assembleAggregatePrompt(stats, "character", character, playerHistory) +
+        assembleAggregatePrompt(stats, "character", character, { lifetimeGames: getCareerOverview().games }) +
         "\n\nPER-INSTANCE EVENT PROFILE (measured, with sample sizes):\n" +
         JSON.stringify(stripNulls(events));
 
@@ -396,101 +470,153 @@ export function registerAnalysisHandlers(safeHandle: SafeHandleFn): void {
       );
 
       const modelUsed = llmConfig.modelId || "pollinations";
-      insertCoachingAnalysis(null, null, modelUsed, text, "character-blurb-plain-v1", character);
+      insertCoachingAnalysis(null, null, modelUsed, text, "character-blurb-plain-v2", character);
       return { text, modelUsed, createdAt: new Date().toISOString(), cached: false };
     },
   );
 
-  // Deep Pattern Discovery — MAGI finds hidden correlations across your whole career
-  safeHandle("analyze:discovery", async (_e, streamId?: string) => {
-    const llmConfig = resolveLLMConfig();
-    const win = getMainWindow();
-    const dbData = getDeepInsightsData();
-    const playerHistory = getPlayerHistory("") ?? undefined;
+  // All-games ("career") coaching — the Dashboard's analysis. See runCareerAnalysis.
+  safeHandle("analyze:career", async (_e, force?: boolean, streamId?: string) => runCareerAnalysis(!!force, streamId));
+}
 
-    const systemPrompt = SYSTEM_PROMPT_DISCOVERY;
-    const userPrompt = assembleDiscoveryPrompt(dbData, playerHistory);
+/**
+ * The career prompt's inputs, all from the database: overview and drift
+ * (db.ts), measured patterns for the recent window vs the whole record, the
+ * same measures per main character and per common opponent character, and the
+ * descriptive win/loss separators. Rows for a character or matchup with fewer
+ * than CAREER_ANALYSIS_MIN_GAMES games are left out rather than shown as noise.
+ */
+function buildCareerPromptData(overview: CareerOverview): CareerPromptData {
+  const config = loadConfig();
+  const tag = config.targetPlayer || config.connectCode || "the player";
 
-    const analysis = await llmQueue.enqueue(() =>
-      callLLMStream({ systemPrompt, userPrompt, config: llmConfig }, (chunk) => {
-        try {
-          win?.webContents.send("analyze:stream", chunk, streamId);
-        } catch {
-          // ignore
-        }
-      }),
-    );
-
-    try {
-      win?.webContents.send("analyze:stream-end", streamId);
-    } catch {
-      // ignore
-    }
-
-    return analysis;
+  const all = getPatternData({ label: "all games", limit: CAREER_ALL_GAMES_LIMIT });
+  const recent = getPatternData({
+    label: `last ${CAREER_RECENT_WINDOW_GAMES} games`,
+    limit: CAREER_RECENT_WINDOW_GAMES,
   });
+  const recentVsAllLines = all
+    ? formatRecurringPatterns({ character: all, matchup: recent && all.games > recent.games ? recent : null })
+    : [];
 
-  // Analyze recent games from the DB (by replay paths)
-  safeHandle("analyze:recent", async (_e, count: number, targetPlayer: string, streamId?: string) => {
-    const games = getDb()
+  const present = (rows: (PatternData | null)[]): PatternData[] => rows.filter((p): p is PatternData => p != null);
+  const byCharacterLines = formatPatternBreakdown(
+    present(
+      overview.characters
+        .filter((c) => c.games >= CAREER_ANALYSIS_MIN_GAMES)
+        .slice(0, CAREER_TOP_CHARACTERS)
+        .map((c) =>
+          getPatternData({ label: `as ${c.character}`, character: c.character, limit: CAREER_ALL_GAMES_LIMIT }),
+        ),
+    ),
+  );
+  const byMatchupLines = formatPatternBreakdown(
+    present(
+      overview.opponentCharacters
+        .filter((m) => m.games >= CAREER_ANALYSIS_MIN_GAMES)
+        .slice(0, CAREER_TOP_MATCHUPS)
+        .map((m) =>
+          getPatternData({
+            label: `vs ${m.opponentCharacter}`,
+            opponentCharacter: m.opponentCharacter,
+            limit: CAREER_ALL_GAMES_LIMIT,
+          }),
+        ),
+    ),
+  );
+
+  let determinants: CareerPromptData["determinants"] = null;
+  try {
+    determinants = getDeepInsightsData();
+  } catch (err) {
+    console.warn("[coaching] win/loss determinants unavailable:", err instanceof Error ? err.message : err);
+  }
+
+  return {
+    tag,
+    overview,
+    drift: getCareerDrift(CAREER_DRIFT_WINDOW_GAMES),
+    recentVsAllLines,
+    byCharacterLines,
+    byMatchupLines,
+    determinants,
+  };
+}
+
+/**
+ * One cached career analysis per prompt version. `scope_identifier` stores
+ * the game count it covered, so the Dashboard can say how many games a
+ * refresh would add. Streams over analyze:stream like the other scopes.
+ */
+async function runCareerAnalysis(force: boolean, streamId?: string): Promise<CareerAnalysisResult> {
+  const overview = getCareerOverview();
+  if (overview.games < CAREER_ANALYSIS_MIN_GAMES) {
+    return { insufficient: true, gamesPlayed: overview.games, minGames: CAREER_ANALYSIS_MIN_GAMES };
+  }
+
+  const db = getDb();
+  if (!force) {
+    const rows = db
       .prepare(
-        `
-      SELECT id, replay_path FROM games
-      WHERE played_at IS NOT NULL
-      ORDER BY played_at DESC
-      LIMIT ?
-    `,
+        "SELECT analysis_text, model_used, created_at, scope_identifier FROM coaching_analyses WHERE scope = 'career' AND prompt_version = ? ORDER BY created_at DESC, id DESC LIMIT 5",
       )
-      .all(count) as { id: number; replay_path: string }[];
-
-    if (games.length === 0) {
-      throw new Error("No games in database to analyze.");
+      .all(COACHING_PROMPT_VERSION) as {
+      analysis_text: string;
+      model_used: string;
+      created_at: string;
+      scope_identifier: string | null;
+    }[];
+    const cached = rows.find((r) => isUsableLLMResponse(r.analysis_text));
+    if (cached) {
+      return {
+        text: cached.analysis_text,
+        gamesAnalyzed: Number(cached.scope_identifier) || overview.games,
+        gamesNow: overview.games,
+        modelUsed: cached.model_used,
+        createdAt: cached.created_at,
+        cached: true,
+      };
     }
+  }
 
-    // Reverse to chronological order
-    games.reverse();
-    const paths = games.map((g) => g.replay_path);
+  const llmConfig = resolveLLMConfig();
+  const win = getMainWindow();
+  const userPrompt = assembleCareerPrompt(buildCareerPromptData(overview));
+  const analysis = await llmQueue.enqueue(() =>
+    callLLMStream({ systemPrompt: SYSTEM_PROMPT_CAREER, userPrompt, config: llmConfig }, (chunk) => {
+      try {
+        win?.webContents.send("analyze:stream", chunk, streamId);
+      } catch {
+        // ignore
+      }
+    }),
+  );
+  try {
+    win?.webContents.send("analyze:stream-end", streamId);
+  } catch {
+    // ignore
+  }
+  if (!isUsableLLMResponse(analysis)) {
+    throw new Error("The AI provider returned a status message instead of an analysis. Please try again.");
+  }
 
-    const llmConfig = resolveLLMConfig();
-
-    const gameResults = await parsePool.parseMany(paths);
-
-    const { userPrompt } = runMultiGameAnalysis(gameResults, targetPlayer);
-    const win = getMainWindow();
-    const analysis = await llmQueue.enqueue(() =>
-      callLLMStream({ systemPrompt: SYSTEM_PROMPT, userPrompt, config: llmConfig }, (chunk) => {
-        try {
-          win?.webContents.send("analyze:stream", chunk, streamId);
-        } catch {
-          // ignore
-        }
-      }),
-    );
-    try {
-      win?.webContents.send("analyze:stream-end", streamId);
-    } catch {
-      // ignore
-    }
-    insertCoachingAnalysis(games[0]?.id ?? null, null, llmConfig.modelId || "pollinations", analysis);
-
-    return analysis;
-  });
-
-  // Trend commentary — MAGI reacts to your trend data
-  safeHandle("analyze:trends", async (_e, trendSummary: string) => {
-    const llmConfig = resolveLLMConfig();
-
-    const trendPrompt = `You are MAGI (Melee Analysis through Generative Intelligence), a Melee coaching assistant with personality. You're reviewing a player's stat trends over their recent games.
-
-Your voice: You're like a sharp, witty practice partner who genuinely wants to see them improve. Think of the energy of a commentator who actually knows the game — mix real analysis with personality. You can be funny, you can be blunt, you can hype them up when something's genuinely impressive. Use Melee terminology naturally.
-
-Keep it concise — 3-5 short paragraphs max. Don't just recite the numbers back. Tell them what the numbers MEAN, what's exciting, what's concerning, and what to focus on next. If something is genuinely bad, don't sugarcoat it — but make it motivating, not demoralizing.
-
-Open with a quick vibe check on their overall trajectory, then hit the highlights and lowlights.`;
-
-    const analysis = await llmQueue.enqueue(() =>
-      callLLM({ systemPrompt: trendPrompt, userPrompt: trendSummary, config: llmConfig }),
-    );
-    return analysis;
-  });
+  const modelUsed = llmConfig.modelId || "pollinations";
+  insertCoachingAnalysis(
+    null,
+    null,
+    modelUsed,
+    analysis,
+    "career",
+    String(overview.games),
+    undefined,
+    COACHING_PROMPT_VERSION,
+  );
+  return {
+    text: analysis,
+    gamesAnalyzed: overview.games,
+    gamesNow: overview.games,
+    modelUsed,
+    createdAt: new Date().toISOString(),
+    cached: false,
+  };
 }

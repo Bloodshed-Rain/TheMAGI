@@ -6,7 +6,14 @@ export { buildDerivedInsights } from "./derivedInsights.js";
 export { computeAdaptationSignals, findPlayerIdx } from "./adaptation.js";
 export { classifyGameResult } from "./helpers.js";
 export { detectHighlights } from "./highlights.js";
-export { extractFrameEvents } from "./frameEvents.js";
+export { extractFrameEvents, FRAME_EVENTS_VERSION } from "./frameEvents.js";
+export {
+  patternsFromFrameEvents,
+  mergePatternData,
+  formatRecurringPatterns,
+  formatPatternBreakdown,
+} from "./patterns.js";
+export type { PatternData, RecurringPatterns } from "./patterns.js";
 export { computeDeathVerdicts, extractThrowDIRecords, DI_DEADZONE } from "./measuredDI.js";
 export { extractRecoverySpans } from "./recoveryEvents.js";
 export { extractShieldBlocks } from "./shieldEvents.js";
@@ -22,17 +29,19 @@ export {
   assembleUserPrompt,
   assemblePlayerContext,
   SYSTEM_PROMPT,
+  COACHING_PROMPT_VERSION,
   assembleAggregatePrompt,
   SYSTEM_PROMPT_AGGREGATE,
   SYSTEM_PROMPT_CHARACTER_BLURB,
   stripNulls,
-  assembleDiscoveryPrompt,
-  SYSTEM_PROMPT_DISCOVERY,
+  assembleCareerPrompt,
+  SYSTEM_PROMPT_CAREER,
   SYSTEM_PROMPT_SCOUT,
   assembleOpponentDossierPrompt,
   SYSTEM_PROMPT_CORNERMAN,
   assembleCornermanPrompt,
 } from "./prompt.js";
+export type { CoachingBackground, CareerPromptData } from "./prompt.js";
 
 export type {
   PlayerSummary,

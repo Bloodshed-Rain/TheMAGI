@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import Markdown from "react-markdown";
 import { useRecentGames, useOverallRecord, useDashboardHighlights } from "../hooks/queries";
 import { Card } from "../components/ui/Card";
 import { KPI } from "../components/ui/KPI";
@@ -10,6 +9,7 @@ import { DataTable } from "../components/ui/DataTable";
 import { ResultDot } from "../components/ui/ResultDot";
 import { Sparkline } from "../components/ui/Sparkline";
 import { EmptyState } from "../components/ui/EmptyState";
+import { CoachingCards } from "../components/CoachingCards";
 
 interface RecentGame {
   id: number;
@@ -39,28 +39,6 @@ function fmtDmgDelta(d: number): { label: string; tone: "good" | "bad" | "neutra
   if (Math.abs(d) < 0.05) return { label: "—", tone: "neutral" };
   const improving = d > 0;
   return { label: `${improving ? "↑" : "↓"} ${Math.abs(d).toFixed(1)}`, tone: improving ? "good" : "bad" };
-}
-
-function buildRecentSummary(games: RecentGame[]): string {
-  const wins = games.filter((g) => g.result === "win").length;
-  const losses = games.filter((g) => g.result === "loss").length;
-  const avg = (fn: (g: RecentGame) => number) => games.reduce((s, g) => s + fn(g), 0) / games.length;
-  return [
-    `Last ${games.length} games: ${wins}W-${losses}L`,
-    `- Neutral ${(avg((g) => g.neutralWinRate) * 100).toFixed(1)}%`,
-    `- L-Cancel ${(avg((g) => g.lCancelRate) * 100).toFixed(1)}%`,
-    `- Conversion ${(avg((g) => g.conversionRate) * 100).toFixed(1)}%`,
-    `- Dmg/Op ${avg((g) => g.avgDamagePerOpening).toFixed(1)}`,
-    "",
-    games
-      .map(
-        (g, i) =>
-          `  Game ${i + 1}: ${g.playerCharacter} vs ${g.opponentCharacter} (${g.opponentTag}) — ${g.result.toUpperCase()} ${g.playerFinalStocks}-${g.opponentFinalStocks}`,
-      )
-      .join("\n"),
-    "",
-    "You are MAGI Oracle. One concise paragraph. Reference one or two specific numbers above. End with a single sentence focusing the next session.",
-  ].join("\n");
 }
 
 export function Dashboard({ refreshKey }: { refreshKey: number }) {
@@ -292,7 +270,7 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
           </div>
         </Card>
 
-        <OracleInsightCard games={recent} />
+        <CareerInsightCard refreshKey={refreshKey} />
       </div>
 
       <Card>
@@ -372,51 +350,83 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
   );
 }
 
-function OracleInsightCard({ games }: { games: RecentGame[] }) {
-  const [insight, setInsight] = useState<string | null>(null);
+function CareerInsightCard({ refreshKey }: { refreshKey: number }) {
+  const [result, setResult] = useState<CareerAnalysisResult | null>(null);
+  const [streamText, setStreamText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const runningRef = useRef(false);
 
-  const run = useCallback(async () => {
-    if (games.length < 3 || runningRef.current) return;
+  const run = useCallback(async (force: boolean) => {
+    if (runningRef.current) return;
     runningRef.current = true;
     setLoading(true);
-    setInsight(null);
     setError(null);
+    setStreamText("");
+    const streamId = crypto.randomUUID();
+    const removeListener = window.clippi.onAnalysisStream((chunk, sid) => {
+      if (sid !== undefined && sid !== streamId) return;
+      setStreamText((prev) => prev + chunk);
+    });
     try {
-      const summary = buildRecentSummary(games.slice(0, 5));
-      const result = await window.clippi.analyzeTrends(summary);
-      setInsight(result);
+      setResult(await window.clippi.analyzeCareer(force, streamId));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      removeListener();
+      setStreamText("");
       setLoading(false);
       runningRef.current = false;
     }
-  }, [games]);
+  }, []);
 
-  const gameKey = games
-    .slice(0, 5)
-    .map((g) => g.id)
-    .join(",");
+  // A cached analysis comes back without an AI call; the first one is generated once.
   useEffect(() => {
-    if (games.length >= 3 && !insight && !loading) run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameKey]);
+    run(false);
+  }, [run, refreshKey]);
+
+  const insufficient = result && result.insufficient ? result : null;
+  const ready = result && !result.insufficient ? result : null;
+  const newGames = ready ? ready.gamesNow - ready.gamesAnalyzed : 0;
+  const text = loading && streamText ? streamText : (ready?.text ?? "");
 
   return (
-    <Card title="MAGI Oracle" className="clippi-card">
-      {loading && (
-        <div className="analyze-loading">
-          <div className="spinner" />
-          <span>Reading your recent games…</span>
+    <Card title="MAGI on your whole record" className="clippi-card">
+      {insufficient && (
+        <p className="dash-career-meta">
+          Import at least {insufficient.minGames} games to get an analysis of your full record (
+          {insufficient.gamesPlayed} so far).
+        </p>
+      )}
+      {ready && (
+        <div className="dash-career-meta">
+          <span>
+            Based on all {ready.gamesAnalyzed} recorded games · generated {ready.createdAt.slice(0, 10)}
+          </span>
+          {newGames > 0 && !loading && (
+            <button className="btn" onClick={() => run(true)}>
+              Refresh with {newGames} new {newGames === 1 ? "game" : "games"}
+            </button>
+          )}
         </div>
       )}
-      {error && <p style={{ color: "var(--loss)" }}>{error}</p>}
-      {insight && (
+      {loading && !streamText && (
+        <div className="analyze-loading">
+          <div className="spinner" />
+          <span>Reading every game you have recorded…</span>
+        </div>
+      )}
+      {error && (
+        <div className="dash-career-error">
+          <p style={{ color: "var(--loss)" }}>{error}</p>
+          <button className="btn" onClick={() => run(false)}>
+            Try again
+          </button>
+        </div>
+      )}
+      {text && (
         <div className="dash-oracle-body">
-          <Markdown>{insight}</Markdown>
+          <CoachingCards text={text} isStreaming={loading && !!streamText} />
         </div>
       )}
     </Card>

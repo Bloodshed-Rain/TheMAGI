@@ -145,8 +145,26 @@ export function processGame(
   const p0Insights = buildDerivedInsights(p0Index, p1Index, stats, frames, lastFrame, stageId, frameEvents, 0);
   const p1Insights = buildDerivedInsights(p1Index, p0Index, stats, frames, lastFrame, stageId, frameEvents, 1);
 
-  const p0Highlights = detectHighlights(gameSummary, stats.conversions, frames, stageId, 0, p0Index, p1Index);
-  const p1Highlights = detectHighlights(gameSummary, stats.conversions, frames, stageId, 1, p1Index, p0Index);
+  const p0Highlights = detectHighlights(
+    gameSummary,
+    stats.conversions,
+    frames,
+    stageId,
+    0,
+    p0Index,
+    p1Index,
+    lastFrame,
+  );
+  const p1Highlights = detectHighlights(
+    gameSummary,
+    stats.conversions,
+    frames,
+    stageId,
+    1,
+    p1Index,
+    p0Index,
+    lastFrame,
+  );
 
   return {
     gameSummary,

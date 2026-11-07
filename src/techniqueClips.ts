@@ -16,21 +16,23 @@ export function techniqueActionRange(
     return { startFrame: Math.max(0, moves.at(-3)!.frame - 60), endFrame: moves.at(-1)!.frame + 90 };
   }
   if (key === "kenComboKills") return null; // Removed legacy category.
+  // slippi-js move ids: 21 down-b/shine, 11 usmash, 16 uair, 17 dair, 14 fair,
+  // 55 uthrow (the grab family starts at 52 pummel; 54 is bthrow).
   const pairs: Record<string, number[]> = {
     multiShineCombos: [21, 21],
     waveshineToUpsmash: [21, 11],
-    upthrowUpairs: [54, 16],
-    upthrowUpairKills: [54, 16],
+    upthrowUpairs: [55, 16],
+    upthrowUpairKills: [55, 16],
     drillShines: [17, 21],
     pillarCombos: [17, 21, 17],
     pillarKills: [17, 21, 17],
     stompKnees: [17, 14],
-    upthrowKnees: [54, 14],
+    upthrowKnees: [55, 14],
   };
   if ((key.endsWith("Kills") || key === "pillarKills") && !didKill) return null;
   const pattern = pairs[key];
   if (pattern) {
-    const adjacent = ["drillShines", "pillarCombos", "pillarKills", "stompKnees"].includes(key);
+    const adjacent = ["waveshineToUpsmash", "drillShines", "pillarCombos", "pillarKills", "stompKnees"].includes(key);
     for (let start = 0; start < moves.length; start++) {
       if (moves[start]!.moveId !== pattern[0]) continue;
       let matched = 1,
@@ -53,6 +55,8 @@ export function techniqueActionRange(
     kneeKills: 14,
     dairKills: 17,
     upBKills: 20,
+    backThrowKills: 54,
+    upThrowKills: 55,
   };
   const last = moves.at(-1);
   if (last && didKill && finalMoves[key] === last.moveId)

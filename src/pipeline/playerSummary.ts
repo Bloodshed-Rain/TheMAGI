@@ -1,7 +1,6 @@
 import { isKenCombo } from "../kenCombo";
 import {
   Frames,
-  State,
   type OverallType,
   type ActionCountsType,
   type ConversionType,
@@ -11,6 +10,7 @@ import {
 } from "@slippi/slippi-js/node";
 
 import type { PlayerSummary, KenComboStats } from "./types.js";
+import { stockWasLost } from "./frameEvents.js";
 import {
   getPlayerTag,
   getCharacterName,
@@ -21,7 +21,6 @@ import {
   isAirborne,
   isOnLedge,
   isOnPlatform,
-  isOffstage,
   isDashDancing,
   stageBounds,
   moveIdToName,
@@ -33,7 +32,8 @@ import {
   FULL_SHIELD_SIZE,
   SHIELD_POKE_THRESHOLD,
 } from "./helpers.js";
-import { detectSignatureStats } from "./signatureStats.js";
+import { detectSignatureStats, countSpecialHits } from "./signatureStats.js";
+import { computeRecoveryCounters } from "./recoveryStats.js";
 import {
   getCharacterData,
   computeComboDIScore,
@@ -276,126 +276,26 @@ export function buildPlayerSummary(
     return sum + (end - s.startPercent);
   }, 0);
 
-  // Detect deaths — deathAnimation can be 0 for real deaths, so also check
-  // kill conversions that end on the same frame as the stock
-  const deaths = playerStocks.filter(
-    (s) =>
-      (s.deathAnimation != null && s.deathAnimation !== 0) ||
-      (s.endFrame != null &&
-        allConversions.some(
-          (c) =>
-            c.playerIndex === playerIndex &&
-            c.didKill &&
-            c.endFrame != null &&
-            Math.abs((c.endFrame ?? 0) - (s.endFrame ?? 0)) < 10,
-        )),
-  );
+  // A stock with an endFrame was lost (see stockWasLost) — including
+  // bottom blast-zone deaths, whose deathAnimation is 0 (DeadDown), and
+  // self-destructs with no kill conversion.
+  const deaths = playerStocks.filter((s) => stockWasLost(s));
   const avgDeathPercent =
     deaths.length > 0
       ? Math.round(deaths.reduce((s, st) => s + (st.endPercent ?? st.currentPercent), 0) / deaths.length)
       : 0;
 
-  // Recovery: count times player was knocked into a recovery situation.
-  // Only count when player is below stage level OR far past the edge AND
-  // in hitstun/tumble/freefall (not just voluntarily jumping near ledge).
-  let recoveryAttempts = 0;
-  let recoverySuccesses = 0;
-  let inRecovery = false;
-  let prevStocks = -1;
-  const recoveryBounds = stageBounds(stageId);
-
-  for (let f = Frames.FIRST_PLAYABLE; f <= lastFrame; f++) {
-    const frame = frames[f];
-    if (!frame) continue;
-    const pd = frame.players[playerIndex]?.post;
-    if (!pd) continue;
-
-    const currentStocks = pd.stocksRemaining ?? 0;
-
-    // Detect stock loss during recovery — death, not a successful recovery
-    if (prevStocks > 0 && currentStocks < prevStocks && inRecovery) {
-      inRecovery = false;
-      // Don't increment recoverySuccesses — player died
-    }
-    prevStocks = currentStocks;
-
-    if (currentStocks <= 0) continue;
-
-    const posX = pd.positionX ?? 0;
-    const posY = pd.positionY ?? 0;
-    const actionState = pd.actionStateId ?? 0;
-
-    // Below stage level = clearly needs to recover
-    const belowStage = posY < recoveryBounds.yMin;
-    // Far past edge in a vulnerable state (tumble, damage, freefall)
-    const farOffstage = Math.abs(posX) > recoveryBounds.x + 20;
-    const inVulnerableState =
-      actionState === State.DAMAGE_FALL ||
-      (actionState >= State.DAMAGE_START && actionState <= State.DAMAGE_END) ||
-      actionState === State.LANDING_FALL_SPECIAL; // freefall after up-b
-
-    const needsRecovery = belowStage || (farOffstage && inVulnerableState);
-    const onStage = !isOffstage(posX, posY, stageId);
-
-    if (needsRecovery && !inRecovery) {
-      recoveryAttempts++;
-      inRecovery = true;
-    } else if (onStage && inRecovery) {
-      recoverySuccesses++;
-      inRecovery = false;
-    }
-  }
-
+  // Recovery / edgeguard situations: shared definition with the recovery-span
+  // ledger (recoveryStats.ts). An edgeguard kill needs a hit or a ledge
+  // occupation by this player; an unforced offstage death is not credited.
+  const { recoveryAttempts, recoverySuccesses, edgeguardAttempts, edgeguardKills } = computeRecoveryCounters(
+    frames,
+    lastFrame,
+    stageId,
+    playerIndex,
+    opponentIndex,
+  );
   const recoverySuccessRate = ratio(recoverySuccesses, recoveryAttempts);
-
-  // Edgeguard tracking: count times opponent entered a recovery situation
-  // and whether they died or returned to stage.
-  let edgeguardAttempts = 0;
-  let edgeguardKills = 0;
-  let opponentInRecovery = false;
-  let prevOppStocks = -1; // track stock transitions to detect mid-game deaths
-
-  for (let f = Frames.FIRST_PLAYABLE; f <= lastFrame; f++) {
-    const frame = frames[f];
-    if (!frame) continue;
-    const oppPost = frame.players[opponentIndex]?.post;
-    if (!oppPost) continue;
-
-    const currentStocks = oppPost.stocksRemaining ?? 0;
-
-    // Detect stock loss (opponent died) — works for all deaths, not just last stock
-    if (prevOppStocks > 0 && currentStocks < prevOppStocks) {
-      if (opponentInRecovery) {
-        edgeguardKills++;
-        opponentInRecovery = false;
-      }
-    }
-    prevOppStocks = currentStocks;
-
-    if (currentStocks <= 0) continue;
-
-    const oppX = oppPost.positionX ?? 0;
-    const oppY = oppPost.positionY ?? 0;
-    const oppAction = oppPost.actionStateId ?? 0;
-
-    const oppBelowStage = oppY < recoveryBounds.yMin;
-    const oppFarOffstage = Math.abs(oppX) > recoveryBounds.x + 20;
-    const oppVulnerable =
-      oppAction === State.DAMAGE_FALL ||
-      (oppAction >= State.DAMAGE_START && oppAction <= State.DAMAGE_END) ||
-      oppAction === State.LANDING_FALL_SPECIAL;
-
-    const oppNeedsRecovery = oppBelowStage || (oppFarOffstage && oppVulnerable);
-    const oppOnStage = !isOffstage(oppX, oppY, stageId);
-
-    if (oppNeedsRecovery && !opponentInRecovery) {
-      edgeguardAttempts++;
-      opponentInRecovery = true;
-    } else if (oppOnStage && opponentInRecovery) {
-      opponentInRecovery = false;
-    }
-  }
-
   const edgeguardSuccessRate = ratio(edgeguardKills, edgeguardAttempts);
 
   // L-cancel rate
@@ -486,8 +386,8 @@ export function buildPlayerSummary(
       );
     }
 
-    // Detect death: deathAnimation is sometimes 0 even for real deaths
-    const died = (stock.deathAnimation != null && stock.deathAnimation !== 0) || killingConversion != null;
+    // deathAnimation 0 is DeadDown (bottom blast zone), not "no death".
+    const died = stockWasLost(stock);
     const percentLost = died ? (stock.endPercent ?? stock.currentPercent) : stock.currentPercent;
 
     let killMove: string | null = null;
@@ -624,6 +524,7 @@ export function buildPlayerSummary(
     edgeguardAttempts,
     edgeguardSuccessRate,
     lCancelRate,
+    lCancelAttempts: lTotal,
     wavedashCount: actionCounts.wavedashCount,
     dashDanceFrames: dashDanceFrameCount,
     powerShieldCount,
@@ -633,17 +534,17 @@ export function buildPlayerSummary(
     stocks: stockBreakdown,
     turnipPulls,
     kenCombos,
-    signatureStats: detectSignatureStats(
+    signatureStats: detectSignatureStats({
       character,
       playerIndex,
+      opponentIndex,
       myConversions,
-      moveUsageMap,
-      turnipPulls,
-      kenCombos,
+      specialHits: countSpecialHits(myConversions),
+      turnipPullStats: turnipPulls,
+      kenComboStats: kenCombos,
       frames,
       lastFrame,
       stageId,
-      allConversions,
-    ),
+    }),
   };
 }

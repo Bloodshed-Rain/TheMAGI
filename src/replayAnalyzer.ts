@@ -6,6 +6,7 @@ import { getActiveModelId } from "./llm";
 import {
   findPlayerIdx,
   classifyGameResult,
+  COACHING_PROMPT_VERSION,
   type GameSummary,
   type DerivedInsights,
   type GameHighlight,
@@ -260,12 +261,12 @@ export async function processReplay(
         `
       SELECT id, game_id, analysis_text, model_used, created_at
       FROM coaching_analyses
-      WHERE game_id = ? AND model_used = ? AND scope = 'game'
+      WHERE game_id = ? AND model_used = ? AND scope = 'game' AND prompt_version = ?
       ORDER BY created_at DESC
       LIMIT 1
     `,
       )
-      .get(existingGame.id, currentModelId) as AnalysisRow | undefined;
+      .get(existingGame.id, currentModelId, COACHING_PROMPT_VERSION) as AnalysisRow | undefined;
 
     if (cachedAnalysis) {
       // Cache hit — zero cost, return immediately
@@ -282,10 +283,16 @@ export async function processReplay(
 
     db.prepare(
       `
-      INSERT INTO coaching_analyses (game_id, session_id, model_used, analysis_text, scope)
-      VALUES (?, ?, ?, ?, 'game')
+      INSERT INTO coaching_analyses (game_id, session_id, model_used, analysis_text, scope, prompt_version)
+      VALUES (?, ?, ?, ?, 'game', ?)
     `,
-    ).run(existingGame.id, existingGame.session_id, getActiveModelId(loadConfig()), analysisText);
+    ).run(
+      existingGame.id,
+      existingGame.session_id,
+      getActiveModelId(loadConfig()),
+      analysisText,
+      COACHING_PROMPT_VERSION,
+    );
 
     return {
       gameId: existingGame.id,
@@ -324,10 +331,10 @@ export async function processReplay(
     // Insert coaching analysis
     db.prepare(
       `
-      INSERT INTO coaching_analyses (game_id, session_id, model_used, analysis_text, scope)
-      VALUES (?, ?, ?, ?, 'game')
+      INSERT INTO coaching_analyses (game_id, session_id, model_used, analysis_text, scope, prompt_version)
+      VALUES (?, ?, ?, ?, 'game', ?)
     `,
-    ).run(gameId, sessionId, getActiveModelId(loadConfig()), text);
+    ).run(gameId, sessionId, getActiveModelId(loadConfig()), text, COACHING_PROMPT_VERSION);
 
     return gameId;
   });
