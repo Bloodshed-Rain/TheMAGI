@@ -2,7 +2,7 @@
 
 [Back to MAGI](../README.md) · [Troubleshooting](DEVELOPMENT.md#troubleshooting)
 
-These instructions describe source version **1.13.0**. Compare the version shown in Settings with the release you downloaded.
+These instructions describe source version **1.14.0**. Compare the version shown in Settings with the release you downloaded.
 
 ## Quick Start
 
@@ -22,7 +22,7 @@ Replay parsing, statistics, browsing, trends, and manual notes do not require an
 
 **Play Mode (Windows):** Open **Play Mode** from the sidebar or command palette for a dedicated workspace with Melee in the center and configurable sidebars. Use **Settings → Play Mode settings** to select Slippi **Netplay** Dolphin and your Melee image; this is separate from Playback Dolphin used by Game Theater. Slippi Launcher's usual Windows installation and ISO settings are detected when available.
 
-Use **Customize** to select and reorder panels independently on either side, adjust sidebar widths, choose live statistics, collapse either sidebar, or apply Minimal, Live Coaching, and Practice presets. Layout, practice focus, and notes are saved locally. **Back to MAGI** hides the game while preserving its process; returning to Play Mode restores it. **Stop Game** ends the game, and quitting MAGI closes its hosted Dolphin session.
+Use **Customize** to arrange the sidebars. The module tray lists every module with what it shows: add one with **Add left** or **Add right**, or drag its card into a sidebar. Drag a module by its title to reorder it or move it to the other side; the buttons under each title do the same from the keyboard (move up, move down, move to the other sidebar, remove). A module sits in one sidebar at a time. Drag a sidebar's inner edge to resize it, or focus the edge and use the arrow keys. The chevron on a module folds it to its title, in or out of Customize. **Scenes** apply a whole arrangement at once: Minimal, Live Coaching, and Practice are built in, and **Save scene** stores the current arrangement under a name (up to 12; saving under an existing name replaces that scene). You can still choose live statistics and hide either sidebar. Layout, scenes, practice focus, and notes are saved locally. **Back to MAGI** hides the game while preserving its process; returning to Play Mode restores it. **Stop Game** ends the game, and quitting MAGI closes its hosted Dolphin session.
 
 **Fullscreen:** The game keeps its 4:3 aspect ratio, with information visible in the unused space beside it by default. Choose **Customize → Fullscreen panels → Auto-hide until hovered** for edge reveal. When the side space is too narrow for readable panels, edge reveal is used automatically. **Ctrl+Shift+F11** returns to the regular layout. Sidebar visibility controls live in Customize.
 

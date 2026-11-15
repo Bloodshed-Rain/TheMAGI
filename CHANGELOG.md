@@ -1,5 +1,15 @@
 # Release notes
 
+## 1.14.0 — 2026-11-15
+
+- Rebuild Play Mode's Customize view around a module tray. Every module is listed with what it shows and whether it needs a live session; add one with Add left / Add right or drag its card into a sidebar. The per-sidebar checkbox lists are gone.
+- Drag a module by its title to reorder it or move it to the other sidebar; a marker shows where it will land and Escape cancels. Each module also has buttons to move up, move down, move to the other sidebar and remove, so everything works from the keyboard.
+- Drag a sidebar's inner edge to resize it (or focus the edge and use the arrow keys). This replaces the width slider.
+- Fold any module to its title with the chevron in its header, in or out of Customize. Folded modules are remembered.
+- Scenes: Minimal, Live Coaching and Practice are joined by scenes you save by name (up to 12). Applying a scene restores which modules sit where, sidebar widths, displayed stats and folded modules; the fullscreen panel preference is not part of a scene. Saving under an existing name replaces that scene.
+- A module now sits in one sidebar at a time. A layout saved by an earlier version with the same module on both sides keeps it on the left.
+- Customize shows how wide the fullscreen side bars are on the current display, or says that panels will appear on edge hover when there is no room beside the game.
+
 ## 1.13.0 — 2026-11-15
 
 - Add a motion layer so data arrives the way it reads and actions are confirmed, without anything looping for decoration. Every animation is skipped when the operating system asks for reduced motion.

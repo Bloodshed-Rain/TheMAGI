@@ -1,24 +1,32 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   ArrowUp,
   ArrowDown,
+  ChevronDown,
+  ChevronRight,
   Gamepad2,
+  GripVertical,
   Settings2,
-  PanelLeft,
-  PanelRight,
   Square,
   Play,
   Maximize,
+  X,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import {
+  MAX_PLAY_SIDEBAR_WIDTH,
+  MIN_PLAY_SIDEBAR_WIDTH,
   PLAY_PANELS,
+  clampPlaySidebarWidth,
+  placePlayPanel,
   playPreset,
+  removePlayPanel,
   resolvePlayLayout,
   type PlayLayout,
   type PlayPanel,
-  type PlayPreset,
+  type PlaySide,
   type PlaySidebar,
   type PlayCoachingSetup,
 } from "../../playMode";
@@ -26,9 +34,11 @@ import { gameOnlyLayout } from "../../playGameOnlyLayout";
 import { LIVE_STAT_DEFS, formatLiveStatValue } from "../../cornermanLiveStats";
 import { usePlayHost } from "../hooks/usePlayHost";
 import { usePlayEdgePeek } from "../hooks/usePlayEdgePeek";
+import { usePlayPanelDrag } from "../hooks/usePlayPanelDrag";
 import { useCornermanLiveStats } from "../hooks/useCornermanLiveStats";
 import { useGlobalStore } from "../stores/useGlobalStore";
 import { CornermanLiveAlerts } from "../components/CornermanLiveAlerts";
+import { PlayLayoutEditor } from "../components/PlayLayoutEditor";
 import { PlayOracle } from "../components/PlayOracle";
 import { PlayRecentForm } from "../components/PlayRecentForm";
 import magiLogo from "../assets/magi-controller.png";
@@ -163,8 +173,47 @@ export function PlayMode({ onExit }: { onExit: () => void }) {
     };
   }, [layout, focus, notes, ready]);
 
-  const updateSide = (side: "left" | "right", change: Partial<PlaySidebar>) =>
+  const updateSide = (side: PlaySide, change: Partial<PlaySidebar>) =>
     setLayout((current) => ({ ...current, [side]: { ...current[side], ...change } }));
+  // Arranging happens in the windowed layout only; fullscreen shows the result.
+  const arranging = editing && !host.gameOnly;
+  const { dragging, drop, grab, sidebarRef, ghostRef } = usePlayPanelDrag(arranging, (id, side, index) =>
+    setLayout((current) => placePlayPanel(current, id, side, index)),
+  );
+  const resizer = (side: PlaySide) => {
+    const width = layout[side].width;
+    const grow = side === "left" ? "ArrowRight" : "ArrowLeft";
+    const shrink = side === "left" ? "ArrowLeft" : "ArrowRight";
+    return (
+      <div
+        key={side}
+        className={`play-resizer play-resizer-${side}`}
+        role="separator"
+        tabIndex={0}
+        aria-orientation="vertical"
+        aria-label={`Resize ${side} sidebar`}
+        aria-valuemin={MIN_PLAY_SIDEBAR_WIDTH}
+        aria-valuemax={MAX_PLAY_SIDEBAR_WIDTH}
+        aria-valuenow={width}
+        title="Drag to resize"
+        onPointerDown={(event) => {
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId) || !workspace.current) return;
+          const rect = workspace.current.getBoundingClientRect();
+          const next = clampPlaySidebarWidth(side === "left" ? event.clientX - rect.left : rect.right - event.clientX);
+          if (next !== width) updateSide(side, { width: next });
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== grow && event.key !== shrink) return;
+          event.preventDefault();
+          updateSide(side, { width: clampPlaySidebarWidth(width + (event.key === grow ? 10 : -10)) });
+        }}
+      />
+    );
+  };
   const openPlaySettings = () => {
     window.location.hash = "/settings?section=play";
   };
@@ -329,10 +378,13 @@ export function PlayMode({ onExit }: { onExit: () => void }) {
   const sidebar = (side: "left" | "right") => {
     const settings = layout[side];
     if (host.gameOnly ? gameOnly.autoHide && peek !== side : settings.collapsed) return null;
+    const dropLine = (index: number) =>
+      drop?.side === side && drop.index === index ? <div className="play-drop-line" aria-hidden="true" /> : null;
     return (
       <aside
-        className={`play-sidebar play-sidebar-${side}${host.gameOnly && gameOnly.autoHide ? " play-sidebar-peek" : ""}`}
+        className={`play-sidebar play-sidebar-${side}${host.gameOnly && gameOnly.autoHide ? " play-sidebar-peek" : ""}${dragging ? " is-drop-target" : ""}`}
         aria-label={`${side} sidebar`}
+        ref={sidebarRef(side)}
       >
         {host.gameOnly && (
           <div className="play-game-only-panel-controls">
@@ -363,76 +415,93 @@ export function PlayMode({ onExit }: { onExit: () => void }) {
             </small>
           </div>
         )}
-        {editing && (
-          <div className="card play-sidebar-editor">
-            <h2>{side === "left" ? "Left" : "Right"} sidebar</h2>
-            <label className="form-field">
-              Width · {settings.width}px
-              <input
-                type="range"
-                min={200}
-                max={380}
-                step={10}
-                value={settings.width}
-                onChange={(event) => updateSide(side, { width: Number(event.target.value) })}
-              />
-            </label>
-            <fieldset>
-              <legend>Choose panels</legend>
-              {(Object.keys(PLAY_PANELS) as PlayPanel[]).map((id) => (
-                <label key={id}>
-                  <input
-                    type="checkbox"
-                    checked={settings.panels.includes(id)}
-                    onChange={(event) =>
-                      updateSide(side, {
-                        panels: event.target.checked
-                          ? [...settings.panels, id]
-                          : settings.panels.filter((panel) => panel !== id),
-                      })
+        {!settings.panels.length &&
+          (arranging ? (
+            <p className="play-drop-empty">Drag a module here, or use Add in the tray above.</p>
+          ) : (
+            <p className="helper-text">Choose modules with Customize.</p>
+          ))}
+        {settings.panels.map((id, index) => {
+          const label = PLAY_PANELS[id];
+          const folded = layout.collapsedPanels.includes(id);
+          const other: PlaySide = side === "left" ? "right" : "left";
+          return (
+            <Fragment key={id}>
+              {dropLine(index)}
+              <section
+                className={`card play-panel${folded ? " is-folded" : ""}${dragging === id ? " is-dragging" : ""}`}
+              >
+                <header className={arranging ? "is-draggable" : undefined} {...grab(id)}>
+                  {arranging && <GripVertical className="play-grip" size={14} aria-hidden="true" />}
+                  <h2 className="card-title">{label}</h2>
+                  <button
+                    className="btn btn-ghost btn-icon-small"
+                    aria-expanded={!folded}
+                    aria-label={`${folded ? "Expand" : "Fold"} ${label}`}
+                    title={folded ? "Expand" : "Fold to title"}
+                    onClick={() =>
+                      setLayout((current) => ({
+                        ...current,
+                        collapsedPanels: folded
+                          ? current.collapsedPanels.filter((panel) => panel !== id)
+                          : [...current.collapsedPanels, id],
+                      }))
                     }
-                  />
-                  {PLAY_PANELS[id]}
-                </label>
-              ))}
-            </fieldset>
-          </div>
-        )}
-        {!settings.panels.length && <p className="helper-text">Choose panels with Customize.</p>}
-        {settings.panels.map((id, index) => (
-          <section className="card play-panel" key={id}>
-            <header>
-              <h2 className="card-title">{PLAY_PANELS[id]}</h2>
-              {editing && (
-                <div className="play-reorder">
-                  {([-1, 1] as const).map((direction) => (
+                  >
+                    {folded ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                </header>
+                {arranging && (
+                  <div className="play-panel-tools" role="group" aria-label={`Arrange ${label}`}>
                     <button
-                      className="btn btn-ghost"
-                      key={direction}
-                      disabled={index + direction < 0 || index + direction >= settings.panels.length}
-                      aria-label={`Move ${PLAY_PANELS[id]} ${direction === -1 ? "up" : "down"}`}
-                      onClick={() => {
-                        const panels = [...settings.panels];
-                        [panels[index], panels[index + direction]] = [panels[index + direction]!, panels[index]!];
-                        updateSide(side, { panels });
-                      }}
+                      className="btn btn-ghost btn-icon-small"
+                      disabled={index === 0}
+                      aria-label={`Move ${label} up`}
+                      title="Move up"
+                      onClick={() => setLayout((current) => placePlayPanel(current, id, side, index - 1))}
                     >
-                      {direction === -1 ? <ArrowUp size={13} /> : <ArrowDown size={13} />}
+                      <ArrowUp size={13} />
                     </button>
-                  ))}
-                </div>
-              )}
-            </header>
-            {panel(id)}
-          </section>
-        ))}
+                    <button
+                      className="btn btn-ghost btn-icon-small"
+                      disabled={index === settings.panels.length - 1}
+                      aria-label={`Move ${label} down`}
+                      title="Move down"
+                      onClick={() => setLayout((current) => placePlayPanel(current, id, side, index + 2))}
+                    >
+                      <ArrowDown size={13} />
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-icon-small"
+                      aria-label={`Move ${label} to the ${other} sidebar`}
+                      title={`Move to the ${other} sidebar`}
+                      onClick={() => setLayout((current) => placePlayPanel(current, id, other))}
+                    >
+                      <ArrowLeftRight size={13} />
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-icon-small"
+                      aria-label={`Remove ${label}`}
+                      title="Remove"
+                      onClick={() => setLayout((current) => removePlayPanel(current, id))}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                )}
+                {!folded && panel(id)}
+              </section>
+            </Fragment>
+          );
+        })}
+        {dropLine(settings.panels.length)}
       </aside>
     );
   };
 
   return (
     <div
-      className={`play-mode${host.gameOnly ? " play-mode-game-only" : ""}${host.gameOnly && !gameOnly.autoHide ? " play-mode-game-only-pinned" : ""}${peek ? ` play-peek-${peek}` : ""}`}
+      className={`play-mode${dragging ? " is-dragging-module" : ""}${host.gameOnly ? " play-mode-game-only" : ""}${host.gameOnly && !gameOnly.autoHide ? " play-mode-game-only-pinned" : ""}${peek ? ` play-peek-${peek}` : ""}`}
     >
       <header className="play-toolbar">
         <button className="btn btn-ghost" onClick={onExit}>
@@ -478,57 +547,7 @@ export function PlayMode({ onExit }: { onExit: () => void }) {
         </div>
       </header>
       {editing && (
-        <div className="play-customize-bar">
-          <div className="play-sidebar-toggles">
-            {" "}
-            <button
-              className="btn btn-ghost"
-              aria-label="Toggle left sidebar"
-              aria-pressed={!layout.left.collapsed}
-              disabled={!ready}
-              onClick={() => updateSide("left", { collapsed: !layout.left.collapsed })}
-            >
-              <PanelLeft size={15} /> Left panels
-            </button>
-            <button
-              className="btn btn-ghost"
-              aria-label="Toggle right sidebar"
-              aria-pressed={!layout.right.collapsed}
-              disabled={!ready}
-              onClick={() => updateSide("right", { collapsed: !layout.right.collapsed })}
-            >
-              <PanelRight size={15} /> Right panels
-            </button>
-          </div>
-          <span>Starting layout</span>
-          {(["minimal", "coaching", "practice"] as PlayPreset[]).map((preset) => (
-            <button
-              className="btn btn-ghost"
-              key={preset}
-              onClick={() =>
-                setLayout((current) => ({ ...playPreset(preset), gameOnlyPanelMode: current.gameOnlyPanelMode }))
-              }
-            >
-              {preset === "minimal" ? "Minimal" : preset === "coaching" ? "Live Coaching" : "Practice"}
-            </button>
-          ))}
-          <label className="play-game-only-preference">
-            Fullscreen panels
-            <select
-              value={layout.gameOnlyPanelMode}
-              onChange={(event) =>
-                setLayout((current) => ({
-                  ...current,
-                  gameOnlyPanelMode: event.target.value === "auto-hide" ? "auto-hide" : "visible",
-                }))
-              }
-            >
-              <option value="visible">Keep visible in side bars</option>
-              <option value="auto-hide">Auto-hide until hovered</option>
-            </select>
-          </label>
-          <small>Choose and reorder panels in either sidebar. {saveState}</small>
-        </div>
+        <PlayLayoutEditor layout={layout} setLayout={setLayout} ready={ready} saveState={saveState} grab={grab} />
       )}
       {liveSetup && cornermanEnabled && (
         <div className="play-live-setup" role="status">
@@ -601,7 +620,13 @@ export function PlayMode({ onExit }: { onExit: () => void }) {
           </footer>
         </section>
         {sidebar("right")}
+        {arranging && (["left", "right"] as const).filter((side) => !layout[side].collapsed).map(resizer)}
       </main>
+      {dragging && (
+        <div className="play-drag-ghost" ref={ghostRef} aria-hidden="true">
+          {PLAY_PANELS[dragging]}
+        </div>
+      )}
     </div>
   );
 }
