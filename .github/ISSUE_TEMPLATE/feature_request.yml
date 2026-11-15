@@ -1,0 +1,11 @@
+name: Feature request
+description: Suggest something MAGI should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to be able to do
+      description: Describe the problem you want solved before the solution.
+    validations:
+      required: true

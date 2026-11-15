@@ -1,12 +1,28 @@
+<div align="center">
+
 # MAGI
 
 **Your Melee, your stats, and your coaching—all in one place.**
+
+[![Latest release](https://img.shields.io/github/v/release/Bloodshed-Rain/TheMAGI?label=release)](https://github.com/Bloodshed-Rain/TheMAGI/releases/latest)
+[![Build](https://github.com/Bloodshed-Rain/TheMAGI/actions/workflows/build.yml/badge.svg)](https://github.com/Bloodshed-Rain/TheMAGI/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-lightgrey)
+
+**[Download MAGI](https://github.com/Bloodshed-Rain/TheMAGI/releases/latest) · [Website](https://themagi.gg) · [Setup guide](docs/USER_GUIDE.md) · [Changelog](CHANGELOG.md)**
+
+</div>
 
 MAGI brings Slippi, replay review, stats, and coaching together so you can spend more time playing and working on your game. Play a session, see what's happening in your matches, and figure out what to work on next.
 
 It's free and open source. You can use the stats and replay tools on their own, or add AI coaching when you want another perspective.
 
-**[Download MAGI](https://github.com/Bloodshed-Rain/TheMAGI/releases/latest) · [Website](https://themagi.gg) · [Setup guide](docs/USER_GUIDE.md)**
+- **Play Slippi inside MAGI** with your stats, goals, and a live controller display beside the game (Windows).
+- **Cornerman** gives live stats and between-game advice while you play.
+- **Game Theater** replays any game, jumps to stocks and highlights, and plays clips of the moments being discussed.
+- **Characters, Trends, Sessions, and Rivals** show how you play, how that's changing, and what your opponents do.
+- **Practice and Oracle** turn your games into a plan and answer questions about them.
+- **Local first.** Your replays and stats stay on your computer, and AI coaching is optional.
 
 ![Melee running inside MAGI with stats and coaching beside the game](screenshots/app-play-fullscreen.png)
 
@@ -80,6 +96,12 @@ You can finish setup later and reopen it from **Settings → Setup wizard**. Set
 
 **Mac and Linux:** use MAGI for your replay library, stats, review notes, and coaching. Replays open in a separate Slippi Dolphin window. Check the download page for a build that matches your computer.
 
+## Can I trust the numbers?
+
+MAGI reads your replay's own frame data, not a guess at it. A stat is shown only when the replay establishes everything it claims: a named technique appears only when every required condition is met, and anything looser is described as the sequence that was actually observed. Counts, clips, highlights, live alerts, and coaching all share the same definitions.
+
+The definitions, the evidence behind them, and the known limits are written down in [Melee accuracy notes](docs/melee-accuracy.md). If a number looks wrong to you, [open an issue](https://github.com/Bloodshed-Rain/TheMAGI/issues/new/choose) with the game and the moment.
+
 ## Do I need to pay for AI?
 
 MAGI itself is free. Your replay library, stats, trends, notes, and Play Mode work without an AI account.
@@ -113,7 +135,7 @@ The [setup guide](docs/USER_GUIDE.md) covers playing, replay review, coaching, a
 
 </details>
 
-Want to help build MAGI? Start with the [developer guide](docs/DEVELOPMENT.md) and [contribution guide](CONTRIBUTING.md).
+Want to help build MAGI? Start with the [developer guide](docs/DEVELOPMENT.md) and [contribution guide](CONTRIBUTING.md). To report a security problem, see the [security policy](SECURITY.md).
 
 **Version 1.15.0** · [What's changed](CHANGELOG.md) · [MIT License](LICENSE)
 

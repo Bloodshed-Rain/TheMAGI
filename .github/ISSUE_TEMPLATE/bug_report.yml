@@ -1,0 +1,36 @@
+name: Bug report
+description: Something in MAGI isn't working
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: MAGI version
+      description: Shown in Settings.
+      placeholder: "1.15.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, macOS, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What happened
+      description: The steps you took, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Does it involve Dolphin?
+      options: [No, Playing inside MAGI (Play Mode), Replay playback (Game Theater)]
+  - type: textarea
+    id: extra
+    attributes:
+      label: Logs or screenshots
+      description: Remove private information first. Never include API keys or a Melee game image.

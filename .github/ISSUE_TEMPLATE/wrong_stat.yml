@@ -1,0 +1,24 @@
+name: A stat or highlight looks wrong
+description: A number, label, or clip doesn't match what happened in the game
+labels: [accuracy]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: MAGI version
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Which stat, highlight, or coaching claim
+      description: Where you saw it and what MAGI said.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What actually happened
+      description: Characters, stage, timestamp or stock, and what you expected MAGI to show. A short .slp file is welcome if you are able to share it.
+    validations:
+      required: true

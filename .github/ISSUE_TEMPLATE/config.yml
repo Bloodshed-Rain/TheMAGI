@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup help
+    url: https://github.com/Bloodshed-Rain/TheMAGI/blob/main/docs/USER_GUIDE.md
+    about: The setup guide covers playing, replay review, coaching, and settings.
