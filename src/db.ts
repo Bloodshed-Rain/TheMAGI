@@ -721,6 +721,20 @@ const migrations: Migration[] = [
       db.exec(REPAIR_HIGHLIGHT_LABELS_SQL);
     },
   },
+  {
+    version: 18,
+    description: "Collect query-planner statistics for existing data",
+    up: (db) => {
+      // Without sqlite_stat1 the planner guesses row counts and, for the event
+      // aggregates, scans a whole event table through its *_lookup index instead
+      // of going through the character's games. Statistics only change HOW rows
+      // are fetched: every stats query is fully ordered (see "Row-order contract"
+      // below), so its result is the same with or without them. closeDb() keeps
+      // the statistics current afterwards, and is what covers a new install: here
+      // its game and event tables are still empty, so there is nothing to measure.
+      db.exec("ANALYZE");
+    },
+  },
 ];
 
 /**
@@ -838,6 +852,21 @@ export function getDb(): Database.Database {
 
 export function closeDb(): void {
   if (db) {
+    try {
+      // Refresh planner statistics for tables that have none yet or whose row count
+      // changed tenfold since they were last analyzed; otherwise this is a no-op.
+      // The mask matters: 0x10002 = "ANALYZE where needed, checking every table",
+      // WITHOUT bit 0x10. A plain `PRAGMA optimize` sets bit 0x10, which samples
+      // each index (temporary analysis_limit) and records about 2,000 rows per
+      // *_is_player value where there are tens of thousands; the planner then
+      // prefers the *_lookup indexes again and the event aggregates lose their
+      // speed-up. Never wait on another connection for this: statistics only
+      // affect speed, never results, so a busy database just skips the refresh.
+      db.pragma("busy_timeout = 0");
+      db.pragma("optimize = 0x10002");
+    } catch {
+      // Statistics are an optimization; the close below must still happen.
+    }
     try {
       db.close();
     } catch {
@@ -1499,6 +1528,31 @@ export function updateSession(sessionId: number, endedAt: string, gamesPlayed: n
     .run(endedAt, gamesPlayed, gamesWon, sessionId);
 }
 
+// ── Row-order contract for stats queries ─────────────────────────────
+//
+// Every list a stats query returns is fully ordered by its own SQL, down to a
+// unique key. The same data therefore yields the same rows in the same order —
+// and the same rows inside a LIMIT — whatever plan SQLite picks (with or
+// without planner statistics, whichever index it scans). Ties resolve as:
+//
+//   • Grouped lists (moves, options, directions, routes, grades, stages,
+//     characters, opponents): the list's measure DESC, then the grouped key
+//     ASC — text keys in SQLite's default BINARY order, move ids numerically.
+//     Habit lists stay grouped by situation first.
+//   • Best / worst picks (one row by win rate): win rate, then more games
+//     played (the larger sample), then the name ASC.
+//   • Games by time: played_at, then games.id in the same direction (a later
+//     import counts as later).
+//   • Highlights: start_frame ASC, then highlights.id ASC. A game's "kill move"
+//     is its highest-damage kill highlight; on equal damage, the earliest.
+//
+// Tie-breakers pick which of several EQUAL rows comes first; they never change
+// a count, rate or average. Do not return a GROUP BY without an ORDER BY, and
+// do not ORDER BY a non-unique expression alone: tied rows would come back in
+// plan order, and a LIMIT would keep a plan-dependent subset of them.
+// tests/characterEventProfile.test.ts ("row order is independent of the query
+// plan") guards this.
+
 // ── Trend queries ────────────────────────────────────────────────────
 
 export interface TrendPoint {
@@ -1583,7 +1637,7 @@ export function getAggregateStats(filters: AggregateStatsParams): AggregateStats
       `
     SELECT player_character as character, COUNT(*) as count
     FROM games g ${where}
-    GROUP BY player_character ORDER BY count DESC
+    GROUP BY player_character ORDER BY count DESC, player_character ASC
   `,
     )
     .all(...params) as { character: string; count: number }[];
@@ -1593,7 +1647,7 @@ export function getAggregateStats(filters: AggregateStatsParams): AggregateStats
       `
     SELECT opponent_tag as opponentTag, COUNT(*) as count
     FROM games g ${where}
-    GROUP BY opponent_tag ORDER BY count DESC
+    GROUP BY opponent_tag ORDER BY count DESC, opponent_tag ASC
   `,
     )
     .all(...params) as { opponentTag: string; count: number }[];
@@ -1603,7 +1657,7 @@ export function getAggregateStats(filters: AggregateStatsParams): AggregateStats
       `
     SELECT stage, COUNT(*) as count
     FROM games g ${where}
-    GROUP BY stage ORDER BY count DESC
+    GROUP BY stage ORDER BY count DESC, stage ASC
   `,
     )
     .all(...params) as { stage: string; count: number }[];
@@ -1634,6 +1688,7 @@ export function getCharacterSignatureAggregates(character: string): any[] {
     FROM character_signature_stats css
     JOIN games g ON g.id = css.game_id
     WHERE g.player_character = ?
+    ORDER BY css.game_id ASC
   `,
     )
     .all(character)
@@ -1646,7 +1701,7 @@ export function getGamesBySession(sessionId: number): { id: number; replay_path:
       `
     SELECT id, replay_path FROM games
     WHERE session_id = ?
-    ORDER BY game_number ASC
+    ORDER BY game_number ASC, id ASC
   `,
     )
     .all(sessionId) as { id: number; replay_path: string }[];
@@ -1884,6 +1939,7 @@ export function getDeepInsightsData(): DeepInsightsData {
     FROM game_stats gs
     JOIN games g ON gs.game_id = g.id
     WHERE g.result IN ('win', 'loss')
+    ORDER BY g.id ASC
   `,
     )
     .all() as DeepInsightsRow[];
@@ -2198,7 +2254,7 @@ export function getStatTrend(
     FROM game_stats gs
     JOIN games g ON gs.game_id = g.id
     WHERE g.played_at IS NOT NULL ${where}
-    ORDER BY g.played_at DESC
+    ORDER BY g.played_at DESC, g.id DESC
     LIMIT ?
   `,
     )
@@ -2231,7 +2287,7 @@ export function getMatchupRecords(playerCharacter?: string): MatchupRecord[] {
     FROM games g
     ${where}
     GROUP BY g.opponent_character
-    ORDER BY totalGames DESC
+    ORDER BY totalGames DESC, g.opponent_character ASC
   `,
     )
     .all(...params) as MatchupRecord[];
@@ -2257,7 +2313,7 @@ export function getStageRecords(): StageRecord[] {
       ROUND(CAST(SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) AS REAL) / MAX(SUM(CASE WHEN g.result IN ('win', 'loss') THEN 1 ELSE 0 END), 1), 4) as winRate
     FROM games g
     GROUP BY g.stage
-    ORDER BY totalGames DESC
+    ORDER BY totalGames DESC, g.stage ASC
   `,
     )
     .all() as StageRecord[];
@@ -2320,7 +2376,7 @@ export function getDashboardHighlights(trendWindow: number = 10): DashboardHighl
     FROM games g
     GROUP BY g.player_character
     HAVING SUM(CASE WHEN g.result IN ('win', 'loss') THEN 1 ELSE 0 END) >= 3
-    ORDER BY winRate DESC
+    ORDER BY winRate DESC, games DESC, g.player_character ASC
     LIMIT 1
   `,
     )
@@ -2336,7 +2392,7 @@ export function getDashboardHighlights(trendWindow: number = 10): DashboardHighl
     FROM games g
     GROUP BY g.opponent_character
     HAVING SUM(CASE WHEN g.result IN ('win', 'loss') THEN 1 ELSE 0 END) >= 3
-    ORDER BY winRate DESC
+    ORDER BY winRate DESC, games DESC, g.opponent_character ASC
     LIMIT 1
   `,
     )
@@ -2352,7 +2408,7 @@ export function getDashboardHighlights(trendWindow: number = 10): DashboardHighl
     FROM games g
     GROUP BY g.opponent_character
     HAVING SUM(CASE WHEN g.result IN ('win', 'loss') THEN 1 ELSE 0 END) >= 3
-    ORDER BY winRate ASC
+    ORDER BY winRate ASC, games DESC, g.opponent_character ASC
     LIMIT 1
   `,
     )
@@ -2368,7 +2424,7 @@ export function getDashboardHighlights(trendWindow: number = 10): DashboardHighl
     FROM games g
     GROUP BY g.stage
     HAVING SUM(CASE WHEN g.result IN ('win', 'loss') THEN 1 ELSE 0 END) >= 3
-    ORDER BY winRate DESC
+    ORDER BY winRate DESC, games DESC, g.stage ASC
     LIMIT 1
   `,
     )
@@ -2386,7 +2442,7 @@ export function getDashboardHighlights(trendWindow: number = 10): DashboardHighl
            gs.conversion_rate as conversionRate
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
-    ORDER BY g.played_at DESC
+    ORDER BY g.played_at DESC, g.id DESC
     LIMIT ?
   `,
     )
@@ -2430,7 +2486,7 @@ export function getDashboardHighlights(trendWindow: number = 10): DashboardHighl
   const streakRows = db
     .prepare(
       `
-    SELECT g.result FROM games g ORDER BY g.played_at DESC LIMIT 20
+    SELECT g.result FROM games g ORDER BY g.played_at DESC, g.id DESC LIMIT 20
   `,
     )
     .all() as Array<{ result: string }>;
@@ -2523,11 +2579,11 @@ export function getRecentGames(limit: number = 100): RecentGame[] {
       (SELECT h.label
          FROM highlights h
          WHERE h.game_id = g.id AND h.did_kill = 1
-         ORDER BY h.damage DESC
+         ORDER BY h.damage DESC, h.start_frame ASC, h.id ASC
          LIMIT 1) as killMove
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
-    ORDER BY g.played_at DESC
+    ORDER BY g.played_at DESC, g.id DESC
     LIMIT ?
   `,
     )
@@ -2667,7 +2723,7 @@ function getLibrarySearchMatches(gameIds: number[], searchTerms: string[]): Map<
       FROM highlights h
       WHERE h.game_id IN (${placeholders})
         AND ${highlightSearch.predicate}
-      ORDER BY h.game_id, h.start_frame ASC
+      ORDER BY h.game_id ASC, h.start_frame ASC, h.id ASC
     `,
     )
     .all(...gameIds, ...highlightSearch.params) as Array<
@@ -2771,12 +2827,12 @@ export function getLibraryGames(filters: LibraryGameFilters = {}): LibraryGamesP
       (SELECT h.label
          FROM highlights h
          WHERE h.game_id = g.id AND h.did_kill = 1
-         ORDER BY h.damage DESC
+         ORDER BY h.damage DESC, h.start_frame ASC, h.id ASC
          LIMIT 1) as killMove
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
     ${where}
-    ORDER BY g.played_at DESC
+    ORDER BY g.played_at DESC, g.id DESC
     LIMIT ? OFFSET ?
   `,
     )
@@ -2868,7 +2924,7 @@ export function getOpponentHistory(opponent?: string): OpponentRecord[] {
     WHERE opponentTag LIKE ? OR opponentConnectCode LIKE ? OR characters LIKE ?`
         : ""
     }
-    ORDER BY totalGames DESC
+    ORDER BY totalGames DESC, COALESCE(opponentConnectCode, opponentTag) ASC
   `;
 
   if (!search) return getDb().prepare(query).all() as OpponentRecord[];
@@ -2937,7 +2993,7 @@ export function detectSets(gapMinutes: number = 15): DetectedSet[] {
       result, played_at
     FROM games
     WHERE played_at IS NOT NULL
-    ORDER BY played_at ASC
+    ORDER BY played_at ASC, id ASC
   `,
     )
     .all() as {
@@ -3072,7 +3128,7 @@ export function getOpponentDetail(opponentKey: string): OpponentDetail | null {
     SELECT opponent_tag, opponent_connect_code
     FROM games
     WHERE opponent_connect_code = ? OR opponent_tag = ?
-    ORDER BY played_at DESC
+    ORDER BY played_at DESC, id DESC
     LIMIT 1
   `,
     )
@@ -3128,7 +3184,7 @@ export function getOpponentDetail(opponentKey: string): OpponentDetail | null {
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
     WHERE g.opponent_connect_code = ? OR g.opponent_tag = ?
-    ORDER BY g.played_at DESC
+    ORDER BY g.played_at DESC, g.id DESC
     LIMIT 50
   `,
     )
@@ -3147,7 +3203,7 @@ export function getOpponentDetail(opponentKey: string): OpponentDetail | null {
     FROM games g
     WHERE g.opponent_connect_code = ? OR g.opponent_tag = ?
     GROUP BY g.stage
-    ORDER BY totalGames DESC
+    ORDER BY totalGames DESC, g.stage ASC
   `,
     )
     .all(opponentKey, opponentKey) as OpponentStageBreakdown[];
@@ -3165,7 +3221,7 @@ export function getOpponentDetail(opponentKey: string): OpponentDetail | null {
     FROM games g
     WHERE g.opponent_connect_code = ? OR g.opponent_tag = ?
     GROUP BY g.opponent_character
-    ORDER BY totalGames DESC
+    ORDER BY totalGames DESC, g.opponent_character ASC
   `,
     )
     .all(opponentKey, opponentKey) as OpponentCharacterBreakdown[];
@@ -3240,7 +3296,7 @@ export function getCharacterList(): CharacterOverview[] {
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
     GROUP BY g.player_character
-    ORDER BY gamesPlayed DESC
+    ORDER BY gamesPlayed DESC, g.player_character ASC
   `,
     )
     .all() as CharacterOverview[];
@@ -3274,7 +3330,7 @@ export function getCharacterMatchups(character: string): CharacterMatchup[] {
     JOIN game_stats gs ON gs.game_id = g.id
     WHERE g.player_character = ?
     GROUP BY g.opponent_character
-    ORDER BY gamesPlayed DESC
+    ORDER BY gamesPlayed DESC, g.opponent_character ASC
   `,
     )
     .all(character) as CharacterMatchup[];
@@ -3301,7 +3357,7 @@ export function getCharacterStageStats(character: string): CharacterStageStats[]
     FROM games g
     WHERE g.player_character = ?
     GROUP BY g.stage
-    ORDER BY gamesPlayed DESC
+    ORDER BY gamesPlayed DESC, g.stage ASC
   `,
     )
     .all(character) as CharacterStageStats[];
@@ -3329,6 +3385,10 @@ export interface PatternScopeFilters {
  * Death verdicts and habit punish flags only count games written by the
  * current detectors (games.events_version >= FRAME_EVENTS_VERSION); every
  * other field is unchanged between detector versions and uses all games.
+ *
+ * Every list is ordered per the "Row-order contract" above (measure DESC, then
+ * label / move id ASC). formatRecurringPatterns slices and stable-sorts these
+ * lists, so their order decides which tied move or option the prompt names.
  */
 export function getPatternData(filters: PatternScopeFilters): PatternData | null {
   const db = getDb();
@@ -3382,7 +3442,8 @@ export function getPatternData(filters: PatternScopeFilters): PatternData | null
       COALESCE(SUM(CASE WHEN ${CURRENT("h.game_id")} AND h.punished = 1 THEN 1 ELSE 0 END), 0) as punished
     FROM habit_instances h
     WHERE ${IN_SCOPE("h.game_id")} AND h.is_player = 1
-    GROUP BY h.situation, h.option`);
+    GROUP BY h.situation, h.option
+    ORDER BY h.situation ASC, total DESC, h.option ASC`);
 
   const deathTotals = one<{ total: number; resourceFaults: number }>(`
     SELECT COUNT(*) as total, COALESCE(SUM(sd.resource_fault), 0) as resourceFaults
@@ -3392,7 +3453,8 @@ export function getPatternData(filters: PatternScopeFilters): PatternData | null
     SELECT sd.verdict, COUNT(*) as count
     FROM stock_deaths sd
     WHERE ${CURRENT("sd.game_id")} AND sd.victim_is_player = 1 AND sd.died = 1
-    GROUP BY sd.verdict`);
+    GROUP BY sd.verdict
+    ORDER BY count DESC, sd.verdict ASC`);
   const verdicts: Record<string, number> = {};
   for (const r of verdictRows) verdicts[r.verdict ?? "UNKNOWN"] = (verdicts[r.verdict ?? "UNKNOWN"] ?? 0) + r.count;
   const killerRows = q<{
@@ -3412,14 +3474,15 @@ export function getPatternData(filters: PatternScopeFilters): PatternData | null
     FROM stock_deaths sd
     WHERE ${CURRENT("sd.game_id")} AND sd.victim_is_player = 1 AND sd.died = 1 AND sd.killer_move_id IS NOT NULL
     GROUP BY sd.killer_move_id
-    ORDER BY count DESC
+    ORDER BY count DESC, sd.killer_move_id ASC
     LIMIT 8`);
 
   const throwDI = q<PatternData["throwDI"][number]>(`
     SELECT td.throw_direction as direction, COUNT(*) as total, COALESCE(SUM(td.no_di), 0) as noDI
     FROM throw_di td
     WHERE ${IN_SCOPE("td.game_id")} AND td.victim_is_player = 1
-    GROUP BY td.throw_direction`);
+    GROUP BY td.throw_direction
+    ORDER BY total DESC, td.throw_direction ASC`);
 
   const capture = one<{ opportunities: number; punished: number }>(`
     SELECT COUNT(*) as opportunities, COALESCE(SUM(w.punished), 0) as punished
@@ -3429,12 +3492,15 @@ export function getPatternData(filters: PatternScopeFilters): PatternData | null
     SELECT w.attack_label as move, COUNT(*) as count
     FROM whiff_events w
     WHERE ${IN_SCOPE("w.game_id")} AND w.whiffer_is_player = 0 AND w.opportunity = 1 AND w.punished = 0
-    GROUP BY w.attack_label ORDER BY count DESC LIMIT 5`);
+    GROUP BY w.attack_label
+    ORDER BY count DESC, w.attack_label ASC
+    LIMIT 5`);
   const whiffExposure = q<PatternData["whiffExposure"][number]>(`
     SELECT w.attack_label as move, COUNT(*) as opportunities, COALESCE(SUM(w.punished), 0) as punished
     FROM whiff_events w
     WHERE ${IN_SCOPE("w.game_id")} AND w.whiffer_is_player = 1 AND w.opportunity = 1
-    GROUP BY w.attack_label`);
+    GROUP BY w.attack_label
+    ORDER BY opportunities DESC, w.attack_label ASC`);
 
   const shieldByMove = q<PatternData["shieldDefense"]["byMove"][number]>(`
     SELECT sb.attack_label as move, COUNT(*) as graded,
@@ -3442,7 +3508,8 @@ export function getPatternData(filters: PatternScopeFilters): PatternData | null
       SUM(CASE WHEN sb.grade = 'punish-missed' THEN 1 ELSE 0 END) as missed
     FROM shield_blocks sb
     WHERE ${IN_SCOPE("sb.game_id")} AND sb.defender_is_player = 1 AND sb.string_final = 1 AND sb.frame_gap IS NOT NULL
-    GROUP BY sb.attack_label`);
+    GROUP BY sb.attack_label
+    ORDER BY graded DESC, sb.attack_label ASC`);
   const pressure = one<{ graded: number; unsafe: number; punished: number }>(`
     SELECT COUNT(*) as graded,
       COALESCE(SUM(CASE WHEN sb.grade IN ('punish-taken', 'punish-missed') THEN 1 ELSE 0 END), 0) as unsafe,
@@ -3461,13 +3528,15 @@ export function getPatternData(filters: PatternScopeFilters): PatternData | null
     SELECT rs.route, COUNT(*) as total, SUM(CASE WHEN rs.landing = 'death' THEN 1 ELSE 0 END) as died
     FROM recovery_spans rs
     WHERE ${IN_SCOPE("rs.game_id")} AND rs.recovering_is_player = 1 AND rs.route IS NOT NULL
-    GROUP BY rs.route`);
+    GROUP BY rs.route
+    ORDER BY total DESC, rs.route ASC`);
   const byDepth = q<PatternData["edgeguard"]["byDepth"][number]>(`
     SELECT rs.edgeguarder_depth as depth, COUNT(*) as total,
       SUM(CASE WHEN rs.landing = 'death' THEN 1 ELSE 0 END) as kills
     FROM recovery_spans rs
     WHERE ${IN_SCOPE("rs.game_id")} AND rs.recovering_is_player = 0
-    GROUP BY rs.edgeguarder_depth`);
+    GROUP BY rs.edgeguarder_depth
+    ORDER BY total DESC, rs.edgeguarder_depth ASC`);
 
   const shieldTaken = shieldByMove.reduce((s, m) => s + m.taken, 0);
   const shieldMissed = shieldByMove.reduce((s, m) => s + m.missed, 0);
@@ -3524,7 +3593,9 @@ function moveName(moveId: number): string {
  * target-player-perspective, so opponent-side rows (is_player = 0) feed the
  * edgeguard / pressure-received / whiff-capture buckets. Stored enum strings
  * pass through untouched — src/characterEventProfile.ts documents the
- * vocabulary the pipeline writes.
+ * vocabulary the pipeline writes. Lists follow the "Row-order contract" above:
+ * count DESC, then label / move id ASC, so a tie at a LIMIT (killer moves 8,
+ * kill moves 8, whiff exposure 12) always keeps the same rows.
  */
 export function getCharacterEventProfile(character: string): CharacterEventProfile {
   const db = getDb();
@@ -3533,21 +3604,25 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     db.prepare("SELECT COUNT(*) as n FROM games WHERE player_character = ?").get(character) as { n: number }
   ).n;
 
+  // A game counts once if ANY event table holds a row for it. Asked per game through
+  // each table's game_id index; the earlier form unioned all seven tables in full
+  // (every character's rows) before filtering to this character.
   const gamesWithEvents = (
     db
       .prepare(
         `
-    SELECT COUNT(DISTINCT e.game_id) as n FROM (
-      SELECT game_id FROM conversions
-      UNION SELECT game_id FROM stock_deaths
-      UNION SELECT game_id FROM habit_instances
-      UNION SELECT game_id FROM throw_di
-      UNION SELECT game_id FROM recovery_spans
-      UNION SELECT game_id FROM shield_blocks
-      UNION SELECT game_id FROM whiff_events
-    ) e
-    JOIN games g ON g.id = e.game_id
+    SELECT COUNT(*) as n
+    FROM games g
     WHERE g.player_character = ?
+      AND (
+        EXISTS (SELECT 1 FROM conversions e WHERE e.game_id = g.id)
+        OR EXISTS (SELECT 1 FROM stock_deaths e WHERE e.game_id = g.id)
+        OR EXISTS (SELECT 1 FROM habit_instances e WHERE e.game_id = g.id)
+        OR EXISTS (SELECT 1 FROM throw_di e WHERE e.game_id = g.id)
+        OR EXISTS (SELECT 1 FROM recovery_spans e WHERE e.game_id = g.id)
+        OR EXISTS (SELECT 1 FROM shield_blocks e WHERE e.game_id = g.id)
+        OR EXISTS (SELECT 1 FROM whiff_events e WHERE e.game_id = g.id)
+      )
   `,
       )
       .get(character) as { n: number }
@@ -3569,7 +3644,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = h.game_id
     WHERE g.player_character = ? AND h.is_player = 1
     GROUP BY h.situation, h.option
-    ORDER BY h.situation, total DESC
+    ORDER BY h.situation ASC, total DESC, h.option ASC
   `,
     )
     .all(character) as CharacterEventProfile["habits"];
@@ -3597,7 +3672,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = sd.game_id
     WHERE g.player_character = ? AND sd.victim_is_player = 1 AND sd.died = 1 AND sd.verdict IS NOT NULL
     GROUP BY sd.verdict
-    ORDER BY count DESC
+    ORDER BY count DESC, sd.verdict ASC
   `,
     )
     .all(character) as { verdict: string; count: number }[];
@@ -3610,7 +3685,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = sd.game_id
     WHERE g.player_character = ? AND sd.victim_is_player = 1 AND sd.died = 1 AND sd.killer_move_id IS NOT NULL
     GROUP BY sd.killer_move_id
-    ORDER BY count DESC
+    ORDER BY count DESC, sd.killer_move_id ASC
     LIMIT 8
   `,
     )
@@ -3624,7 +3699,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = sd.game_id
     WHERE g.player_character = ? AND sd.victim_is_player = 1 AND sd.died = 1 AND sd.death_direction IS NOT NULL
     GROUP BY sd.death_direction
-    ORDER BY count DESC
+    ORDER BY count DESC, sd.death_direction ASC
   `,
     )
     .all(character) as { direction: string; count: number }[];
@@ -3637,7 +3712,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = td.game_id
     WHERE g.player_character = ? AND td.victim_is_player = 1
     GROUP BY td.throw_direction
-    ORDER BY total DESC
+    ORDER BY total DESC, td.throw_direction ASC
   `,
     )
     .all(character) as { direction: string; total: number; noDI: number }[];
@@ -3674,7 +3749,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = rs.game_id
     WHERE g.player_character = ? AND rs.recovering_is_player = 1 AND rs.route IS NOT NULL
     GROUP BY rs.route
-    ORDER BY total DESC
+    ORDER BY total DESC, rs.route ASC
   `,
     )
     .all(character) as { route: string; total: number; died: number }[];
@@ -3687,7 +3762,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = rs.game_id
     WHERE g.player_character = ? AND rs.recovering_is_player = 1
     GROUP BY rs.landing
-    ORDER BY count DESC
+    ORDER BY count DESC, rs.landing ASC
   `,
     )
     .all(character) as { landing: string; count: number }[];
@@ -3714,7 +3789,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = rs.game_id
     WHERE g.player_character = ? AND rs.recovering_is_player = 0
     GROUP BY rs.edgeguarder_depth
-    ORDER BY total DESC
+    ORDER BY total DESC, rs.edgeguarder_depth ASC
   `,
     )
     .all(character) as { depth: string; total: number; kills: number }[];
@@ -3741,7 +3816,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = sb.game_id
     WHERE g.player_character = ? AND sb.defender_is_player = 1
     GROUP BY sb.grade
-    ORDER BY count DESC
+    ORDER BY count DESC, sb.grade ASC
   `,
     )
     .all(character) as { grade: string; count: number }[];
@@ -3759,7 +3834,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = sb.game_id
     WHERE g.player_character = ? AND sb.defender_is_player = 1
     GROUP BY sb.attack_label
-    ORDER BY blocks DESC
+    ORDER BY blocks DESC, sb.attack_label ASC
   `,
     )
     .all(character) as CharacterEventProfile["shield"]["defense"]["byMove"];
@@ -3789,7 +3864,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = sb.game_id
     WHERE g.player_character = ? AND sb.defender_is_player = 0
     GROUP BY sb.attack_label
-    ORDER BY blocks DESC
+    ORDER BY blocks DESC, sb.attack_label ASC
   `,
     )
     .all(character) as CharacterEventProfile["shield"]["pressure"]["byMove"];
@@ -3839,7 +3914,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = w.game_id
     WHERE g.player_character = ? AND w.whiffer_is_player = 1
     GROUP BY w.attack_label
-    ORDER BY total DESC
+    ORDER BY total DESC, w.attack_label ASC
     LIMIT 12
   `,
     )
@@ -3871,7 +3946,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = c.game_id
     WHERE g.player_character = ? AND c.attacker_is_player = 1
     GROUP BY c.opening_type
-    ORDER BY count DESC
+    ORDER BY count DESC, c.opening_type ASC
   `,
     )
     .all(character) as { openingType: string; count: number; avgDamage: number | null; kills: number }[];
@@ -3884,7 +3959,7 @@ export function getCharacterEventProfile(character: string): CharacterEventProfi
     JOIN games g ON g.id = c.game_id
     WHERE g.player_character = ? AND c.attacker_is_player = 1 AND c.did_kill = 1 AND c.last_move_id IS NOT NULL
     GROUP BY c.last_move_id
-    ORDER BY count DESC
+    ORDER BY count DESC, c.last_move_id ASC
     LIMIT 8
   `,
     )
@@ -4087,7 +4162,7 @@ export function getGameHighlights(gameId: number): HighlightRow[] {
            did_kill as didKill, moves_json, stock_number as stockNumber
     FROM highlights
     WHERE game_id = ?
-    ORDER BY start_frame ASC
+    ORDER BY start_frame ASC, id ASC
   `,
     )
     .all(gameId) as (Omit<HighlightRow, "didKill" | "moves"> & { didKill: number; moves_json: string })[];
@@ -4115,7 +4190,7 @@ export function getRecentHighlights(limit: number = 20): (HighlightRow & {
            g.replay_path as replayPath, g.opponent_tag as opponentTag, g.played_at as playedAt
     FROM highlights h
     JOIN games g ON g.id = h.game_id
-    ORDER BY g.played_at DESC, h.start_frame ASC
+    ORDER BY g.played_at DESC, g.id DESC, h.start_frame ASC, h.id ASC
     LIMIT ?
   `,
     )
@@ -4179,7 +4254,7 @@ export function getCharacterGameStats(character: string): CharacterGameStat[] {
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
     WHERE g.player_character = ?
-    ORDER BY g.played_at DESC
+    ORDER BY g.played_at DESC, g.id DESC
   `,
     )
     .all(character) as CharacterGameStat[];
@@ -4227,7 +4302,7 @@ export function getPlayerHistory(targetPlayer: string, recentLimit: number = 10)
     FROM games
     WHERE player_tag = ? OR player_connect_code = ?
     GROUP BY player_character
-    ORDER BY totalGames DESC
+    ORDER BY totalGames DESC, player_character ASC
   `,
     )
     .all(targetPlayer, targetPlayer) as PlayerHistory["characterWinRates"];
@@ -4245,7 +4320,7 @@ export function getPlayerHistory(targetPlayer: string, recentLimit: number = 10)
     FROM games
     WHERE player_tag = ? OR player_connect_code = ?
     GROUP BY opponent_character
-    ORDER BY totalGames DESC
+    ORDER BY totalGames DESC, opponent_character ASC
     LIMIT 3
   `,
     )
@@ -4268,7 +4343,7 @@ export function getPlayerHistory(targetPlayer: string, recentLimit: number = 10)
       SELECT g.id FROM games g
       WHERE (g.player_tag = ? OR g.player_connect_code = ?)
         AND g.played_at IS NOT NULL
-      ORDER BY g.played_at DESC
+      ORDER BY g.played_at DESC, g.id DESC
       LIMIT ?
     )
   `,
@@ -4302,7 +4377,7 @@ export function getPlayerHistory(targetPlayer: string, recentLimit: number = 10)
     FROM games
     WHERE (player_tag = ? OR player_connect_code = ?)
       AND played_at IS NOT NULL
-    ORDER BY played_at DESC
+    ORDER BY played_at DESC, id DESC
     LIMIT 50
   `,
     )
@@ -4359,7 +4434,7 @@ export function getSessionsByDay(daysBack: number = 90): DaySession[] {
       opponent_tag as opponentTag
     FROM games
     WHERE date(played_at, 'localtime') >= date('now', 'localtime', '-' || ? || ' days')
-    ORDER BY played_at DESC
+    ORDER BY played_at DESC, id DESC
   `,
     )
     .all(daysBack) as Array<{ date: string; id: number; result: string; opponentTag: string }>;
@@ -4434,7 +4509,7 @@ export function getGamesOnDate(date: string): RecentGame[] {
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
     WHERE date(g.played_at, 'localtime') = ?
-    ORDER BY g.played_at ASC
+    ORDER BY g.played_at ASC, g.id ASC
   `,
     )
     .all(date) as RecentGame[];
@@ -4491,7 +4566,7 @@ export function getTrendSeries(
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
     ${whereClause}
-    ORDER BY g.played_at ASC
+    ORDER BY g.played_at ASC, g.id ASC
   `;
   return getDb()
     .prepare(sql)
@@ -4514,7 +4589,7 @@ export function getTrendSeriesBundle(range: "7d" | "30d" | "all", filterChar: st
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
     ${whereClause}
-    ORDER BY g.played_at ASC
+    ORDER BY g.played_at ASC, g.id ASC
   `,
     )
     .all(...params) as Array<{ playedAt: string } & Record<TrendMetric, number>>;

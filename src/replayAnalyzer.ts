@@ -357,34 +357,3 @@ export interface BatchResult {
   /** Rough cost estimate — $0 for cached, ~$0.02 per new Gemini Flash call */
   estimatedCost: number;
 }
-
-/**
- * Process multiple replays, deduplicating each one.
- * Returns aggregate stats so the UI can show "Analyzed 3 new, 2 cached ($0.06)".
- */
-export async function processReplays(
-  filePaths: string[],
-  db: Database.Database,
-  sessionId: number | null = null,
-): Promise<BatchResult> {
-  const results: ProcessReplayResult[] = [];
-  let newCount = 0;
-  let cachedCount = 0;
-
-  for (const filePath of filePaths) {
-    const result = await processReplay(filePath, db, sessionId);
-    results.push(result);
-    if (result.cached) {
-      cachedCount++;
-    } else {
-      newCount++;
-    }
-  }
-
-  return {
-    results,
-    newCount,
-    cachedCount,
-    estimatedCost: newCount * 0.02,
-  };
-}

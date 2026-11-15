@@ -72,9 +72,6 @@ export const MODELS: ModelOption[] = [
   },
 ];
 
-/** No default — users must pick a provider and model in Settings. */
-export const DEFAULT_MODEL_ID: string | null = null;
-
 /** Get the provider for a given model ID */
 export function getModelProvider(modelId: string): ProviderId {
   const found = MODELS.find((m) => m.id === modelId);

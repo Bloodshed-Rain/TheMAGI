@@ -22,6 +22,11 @@ interface LiquidShellProps {
   children: ReactNode;
 }
 
+/** Paths whose route element is a bare redirect, so they have no page to animate. */
+function isRedirectOnlyPath(pathname: string): boolean {
+  return pathname === "/" || pathname === "/overlay";
+}
+
 export function LiquidShell({
   analyzeItems,
   systemItems,
@@ -134,17 +139,24 @@ export function LiquidShell({
       </nav>
 
       <main className="main-content">
+        {/* "/" only ever redirects. Rendering it inside the mode="wait" wrapper made the
+            first real page wait for an exit animation of an empty page, and while the
+            window is still hidden behind the splash those frames are throttled, which
+            held the first page's data requests back by seconds on every launch. */}
+        {isRedirectOnlyPath(location.pathname) && children}
         <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-            style={{ width: "100%", height: "100%" }}
-          >
-            {children}
-          </motion.div>
+          {!isRedirectOnlyPath(location.pathname) && (
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              {children}
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
     </div>

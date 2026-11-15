@@ -1,5 +1,17 @@
 # Release notes
 
+## 1.15.0 — 2026-11-15
+
+- Add an **Input display** module to Play Mode. It is in the Customize module tray, labeled Stream. It draws your controller as a GameCube wireframe and lights the lines of each control while it is held: A green, B red, Z purple, the C-stick yellow, everything else white. The stick caps move with the sticks, and L and R brighten with how far the trigger is pressed.
+- The display shows the inputs the running game read on each frame, taken from the hosted Dolphin's local spectator stream (the stream Slippi Launcher broadcasts from). MAGI connects only while Melee is running and the module is on screen. Inputs appear during a game, not in menus, and online they follow Slippi's delay setting.
+- A press that lasts one frame is always drawn. When several game frames arrive between two screen refreshes, that refresh shows every button held on any of them and the next shows the newest frame alone.
+- Only your controller is shown. You are matched by the connect code or tag in your profile, or by being the only human player in the game. When MAGI cannot tell which player is you, the display stays dark and says so. When the Dolphin's spectator stream is turned off, the module names the setting to change.
+- Open faster: the page you land on is loaded before the first render, so it appears without a loading placeholder, and the other pages load in idle time so the first visit to each is as quick as a return visit.
+- Faster character and pattern statistics on large libraries: the database upgrade (v18) collects query-planner statistics, and they are refreshed when the app closes. This changes how rows are fetched, never which rows or what they add up to.
+- Lists ranked by a count or a rate now order tied entries the same way every time (larger sample first for best/worst picks, then by name; games at the same timestamp by import order). Before, two entries with equal counts could swap places, and a top-N list could keep a different one of them, depending on how SQLite ran the query. No count, rate or average changes.
+- Remove files and code nothing used: the loose navigation icon exports and superseded screenshots, the wireframe optimizer script and its `sharp` dependency, and unreferenced query hooks and helpers.
+- Development only: an unpackaged run on Windows shows the MAGI icon in the taskbar instead of Electron's.
+
 ## 1.14.0 — 2026-11-15
 
 - Rebuild Play Mode's Customize view around a module tray. Every module is listed with what it shows and whether it needs a live session; add one with Add left / Add right or drag its card into a sidebar. The per-sidebar checkbox lists are gone.

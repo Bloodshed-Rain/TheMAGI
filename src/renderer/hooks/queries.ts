@@ -2,14 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 
 const GC_10MIN = 1000 * 60 * 10;
 
-export const useConfig = () => {
-  return useQuery({
-    queryKey: ["config"],
-    queryFn: () => window.clippi.loadConfig(),
-    gcTime: GC_10MIN,
-  });
-};
-
 export const useRecentGames = (limit: number) => {
   return useQuery({
     queryKey: ["recentGames", limit],
@@ -42,35 +34,11 @@ export const useOverallRecord = () => {
   });
 };
 
-export const useMatchupRecords = () => {
-  return useQuery({
-    queryKey: ["matchupRecords"],
-    queryFn: () => window.clippi.getMatchupRecords(),
-    gcTime: GC_10MIN,
-  });
-};
-
-export const useStageRecords = () => {
-  return useQuery({
-    queryKey: ["stageRecords"],
-    queryFn: () => window.clippi.getStageRecords(),
-    gcTime: GC_10MIN,
-  });
-};
-
 export const useOpponents = (search?: string) => {
   return useQuery({
     queryKey: ["opponents", search],
     queryFn: () => window.clippi.getOpponents(search),
     placeholderData: (previousData) => previousData,
-    gcTime: GC_10MIN,
-  });
-};
-
-export const useSets = () => {
-  return useQuery({
-    queryKey: ["sets"],
-    queryFn: () => window.clippi.getSets(),
     gcTime: GC_10MIN,
   });
 };
@@ -147,14 +115,6 @@ export const useCharacterBlurb = (character: string | null) => {
   });
 };
 
-export const useGetLatestAnalysis = () => {
-  return useQuery({
-    queryKey: ["latestAnalysis"],
-    queryFn: () => window.clippi.getLatestAnalysis(),
-    gcTime: GC_10MIN,
-  });
-};
-
 export const useDashboardHighlights = () => {
   return useQuery({
     queryKey: ["dashboardHighlights"],
@@ -198,14 +158,6 @@ export const useGameDetail = (gameId: number | null) => {
   });
 };
 
-export const useAnalysisHistory = (limit: number, offset: number, scopeFilter?: string) => {
-  return useQuery({
-    queryKey: ["analysisHistory", limit, offset, scopeFilter],
-    queryFn: () => window.clippi.getAnalysisHistory(limit, offset, scopeFilter),
-    gcTime: GC_10MIN,
-  });
-};
-
 export const useSessionsByDay = (daysBack: number = 90) => {
   return useQuery({
     queryKey: ["sessionsByDay", daysBack],
@@ -221,14 +173,6 @@ export type TrendMetric =
   | "avgDamagePerOpening"
   | "openingsPerKill"
   | "avgDeathPercent";
-
-export const useTrendSeries = (metric: TrendMetric, range: "7d" | "30d" | "all", filterChar: string | null) => {
-  return useQuery({
-    queryKey: ["trendSeries", metric, range, filterChar],
-    queryFn: () => window.clippi.getTrendSeries(metric, range, filterChar),
-    gcTime: GC_10MIN,
-  });
-};
 
 export const useTrendSeriesBundle = (range: "7d" | "30d" | "all", filterChar: string | null) => {
   return useQuery({

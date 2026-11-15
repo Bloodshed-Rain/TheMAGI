@@ -1,6 +1,6 @@
 {
   "name": "magi-melee",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "Local-first Melee replay analysis, live Play Mode, and optional AI coaching",
   "main": "src/main/entry.js",
   "engines": {
@@ -162,7 +162,6 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.26",
     "prettier": "^3.8.1",
-    "sharp": "^0.35.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.1",

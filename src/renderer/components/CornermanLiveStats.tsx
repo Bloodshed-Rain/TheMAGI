@@ -1,31 +1,12 @@
-import { useEffect, useState } from "react";
 import {
   computeStatDelta,
   formatElapsed,
   formatLiveStatValue,
   LIVE_STAT_DEFS,
-  LIVE_STAT_DEF_BY_ID,
   type CornermanLiveStatDef,
   type CornermanLiveStatId,
   type CornermanLiveStatValue,
 } from "../../cornermanLiveStats";
-
-/** No snapshot for this long (while live) → the game is paused, the parser
- *  wedged, or Dolphin died. Surface it honestly rather than showing frozen
- *  numbers as if they were current. */
-const STALE_AFTER_MS = 5000;
-
-/** Re-render on an interval while `active`, so the elapsed clock ticks and the
- *  STALE pill can appear after a silence. Frozen (no timer) once inactive. */
-function useTickWhile(active: boolean, intervalMs: number): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!active) return;
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(id);
-  }, [active, intervalMs]);
-  return now;
-}
 
 function findTarget(snapshot: CornermanLiveSnapshot): CornermanLivePlayerStats | null {
   return snapshot.players.find((p) => p.isTarget) ?? snapshot.players[0] ?? null;
@@ -33,59 +14,6 @@ function findTarget(snapshot: CornermanLiveSnapshot): CornermanLivePlayerStats |
 
 function statById(player: CornermanLivePlayerStats, id: CornermanLiveStatId): CornermanLiveStatValue | undefined {
   return player.stats.find((s) => s.id === id);
-}
-
-// ── Overlay strip: up to four glanceable tiles ────────────────────────
-
-export function CornermanLiveStatsStrip({
-  snapshot,
-  receivedAt,
-  statIds,
-  showBaseline = true,
-}: {
-  snapshot: CornermanLiveSnapshot | null;
-  receivedAt: number;
-  statIds: CornermanLiveStatId[];
-  showBaseline?: boolean;
-}) {
-  const isLive = snapshot?.phase === "live";
-  const now = useTickWhile(isLive, 1000);
-
-  if (!snapshot) return null;
-  const target = findTarget(snapshot);
-  if (!target) return null;
-
-  const stale = isLive && now - receivedAt > STALE_AFTER_MS;
-  const pill = snapshot.phase === "ended" ? "FINAL" : stale ? "STALE" : "LIVE";
-  const defs = statIds.map((id) => LIVE_STAT_DEF_BY_ID[id]).filter((d): d is CornermanLiveStatDef => Boolean(d));
-
-  return (
-    <div className={`overlay-stats${stale ? " overlay-stats-stale" : ""}`}>
-      <div className="overlay-stats-head">
-        <span className={`overlay-stats-pill overlay-stats-pill-${pill.toLowerCase()}`}>{pill}</span>
-        <span className="overlay-stats-clock">{formatElapsed(snapshot.elapsedSeconds)}</span>
-      </div>
-      <div className="overlay-stats-grid">
-        {defs.map((def) => {
-          const value = statById(target, def.id);
-          const delta = showBaseline && value ? computeStatDelta(def, value, snapshot.baseline) : null;
-          return (
-            <div className="overlay-stat-tile" key={def.id}>
-              <div className="overlay-stat-value">
-                {value ? formatLiveStatValue(def, value) : "—"}
-                {delta && (
-                  <span className={`overlay-stat-delta ${delta.isBetter ? "is-better" : "is-worse"}`}>
-                    {delta.glyph}
-                  </span>
-                )}
-              </div>
-              <div className="overlay-stat-label">{def.shortLabel}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 // ── Cornerman page: full registry table ───────────────────────────────

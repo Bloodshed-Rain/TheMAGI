@@ -20,10 +20,7 @@ vi.mock("os", async (importOriginal) => {
 });
 
 describe("character analytics page wiring", () => {
-  const charactersSource = fs.readFileSync(
-    path.resolve(__dirname, "../src/renderer/pages/Characters.tsx"),
-    "utf-8",
-  );
+  const charactersSource = fs.readFileSync(path.resolve(__dirname, "../src/renderer/pages/Characters.tsx"), "utf-8");
   const modules = [
     "IdentityCard",
     "FormStrip",
@@ -105,6 +102,8 @@ import {
   insertWhiffEvents,
   insertHabitInstances,
   getCharacterEventProfile,
+  getPatternData,
+  setGameEventsVersion,
   type InsertGameParams,
   type InsertGameStatsParams,
   type ConversionEventRow,
@@ -114,6 +113,8 @@ import {
   type WhiffEventRow,
   type HabitInstanceRow,
 } from "../src/db";
+import { FRAME_EVENTS_VERSION } from "../src/pipeline/frameEvents";
+import { moveIdToName } from "../src/pipeline/helpers";
 
 let hashCounter = 0;
 
@@ -459,6 +460,29 @@ beforeAll(() => {
       noDI: true,
     },
   ]);
+
+  // ── Samus: each game has rows in exactly ONE event table, plus one with none ──
+  const samus = () => seedGame({ playerCharacter: "Samus", opponentCharacter: "Fox" });
+  insertConversionEvents(samus(), [mkConversion()]);
+  insertStockDeaths(samus(), [mkDeath()]);
+  insertHabitInstances(samus(), [mkHabit()]);
+  insertThrowDIRows(samus(), [
+    {
+      victimIsPlayer: true,
+      frame: 50,
+      throwDirection: "up",
+      percent: 10,
+      stickX: 0,
+      stickY: 0,
+      sector: 0,
+      noDI: false,
+    },
+  ]);
+  insertRecoverySpans(samus(), [mkSpan()]);
+  insertShieldBlocks(samus(), [mkBlock()]);
+  // Two rows in one table for one game must still count that game once.
+  insertWhiffEvents(samus(), [mkWhiff(), mkWhiff({ startFrame: 900, vulnerableEndFrame: 930 })]);
+  samus(); // no event rows at all
 });
 
 afterAll(() => {
@@ -477,6 +501,22 @@ describe("getCharacterEventProfile", () => {
     // Events exist in foxG1 and foxG2 only — foxG3 is a backfill gap. Each
     // event-bearing game appears in several tables but is counted once.
     expect(profile.gamesWithEvents).toBe(2);
+  });
+
+  it("counts a game whose only events are in a single table, whichever table that is", () => {
+    const profile = getCharacterEventProfile("Samus");
+    expect(profile.totalGames).toBe(8);
+    // Seven games with rows in one table each; the eighth has none and must not count.
+    expect(profile.gamesWithEvents).toBe(7);
+  });
+
+  it("does not count another character's event-bearing games", () => {
+    // Fox, Marth and Samus all have event rows; a character with games but no
+    // events of its own must report zero rather than picking up theirs.
+    seedGame({ playerCharacter: "Yoshi", opponentCharacter: "Fox" });
+    const profile = getCharacterEventProfile("Yoshi");
+    expect(profile.totalGames).toBe(1);
+    expect(profile.gamesWithEvents).toBe(0);
   });
 
   it("isolates per-character data — Marth rows never leak into Fox", () => {
@@ -629,5 +669,448 @@ describe("getCharacterEventProfile", () => {
     expect(profile.conversions.total).toBe(0);
     expect(profile.trivia.totalPlaytimeSeconds).toBe(0);
     expect(profile.trivia.longestGameSeconds).toBeNull();
+  });
+});
+
+// ── Row order is independent of the query plan ───────────────────────
+//
+// db.ts "Row-order contract": every list is ordered by its measure DESC and
+// then by the grouped key ASC (label text, or move id numerically), so tied
+// rows come back in one documented order and a tie at a LIMIT always keeps the
+// same rows. Before the tie-breakers, running ANALYZE on a real database
+// changed which tied move made `unpunishedByMove` and the order of ~500 lists.
+//
+// Each tie character gets ONE game holding every tie, seeded either in the
+// order below or fully reversed; both must produce identical lists.
+
+const KILLER_TIE_IDS = [17, 16, 15, 14, 13, 12, 11, 10, 9]; // nine moves, one death each
+const KILL_MOVE_TIE_IDS = [18, 17, 16, 15, 14, 13, 12, 11, 10]; // nine moves, one kill each
+const EXPOSURE_LABELS = [
+  "usmash",
+  "uair",
+  "nair",
+  "jab",
+  "grab",
+  "ftilt",
+  "fsmash",
+  "fair",
+  "dtilt",
+  "dsmash",
+  "dash attack",
+  "dair",
+  "bair",
+]; // thirteen labels, one own whiff each (plus "utilt" twice)
+const CAPTURE_LABELS = ["usmash", "grab", "ftilt", "dtilt", "dsmash", "dash attack"]; // one unpunished each (plus "fsmash" twice)
+
+function seedTieCharacter(character: string, options: { reverse?: boolean; extraDeathMoveId?: number } = {}): number {
+  const order = <T>(rows: T[]): T[] => (options.reverse ? [...rows].reverse() : rows);
+  const gameId = seedGame({ playerCharacter: character, opponentCharacter: "Fox" });
+  setGameEventsVersion(gameId, FRAME_EVENTS_VERSION); // death verdicts / killers only count current games
+
+  // Deaths: move 20 twice, then nine moves once each. Verdicts 3/3/3/2, directions 4/4/3.
+  const verdicts = ["NO_DI", "WRONG_DI", "WRONG_DI", "WRONG_DI", "GOOD_DI", "GOOD_DI", "GOOD_DI", "FAILED_RECOVERY"];
+  const deaths: StockDeathRow[] = [
+    mkDeath({ killerMoveId: 20, verdict: "NO_DI", deathDirection: "up" }),
+    mkDeath({ killerMoveId: 20, verdict: "NO_DI", deathDirection: "up" }),
+    ...KILLER_TIE_IDS.map((killerMoveId, i) =>
+      mkDeath({
+        killerMoveId,
+        verdict: verdicts[i] ?? "FAILED_RECOVERY",
+        deathDirection: i < 2 ? "up" : i < 6 ? "left" : "right",
+      }),
+    ),
+  ];
+  if (options.extraDeathMoveId != null) {
+    deaths.push(mkDeath({ killerMoveId: options.extraDeathMoveId, verdict: "NO_DI", deathDirection: "up" }));
+  }
+  insertStockDeaths(gameId, order(deaths));
+
+  const throwRow = (throwDirection: string) => ({
+    victimIsPlayer: true,
+    frame: 100,
+    throwDirection,
+    percent: 30,
+    stickX: 0,
+    stickY: 0,
+    sector: 0,
+    noDI: false,
+  });
+  insertThrowDIRows(gameId, order(["up", "up", "down", "down", "back"].map(throwRow)));
+
+  insertHabitInstances(
+    gameId,
+    order([
+      ...["roll", "roll", "jump", "jump", "attack", "attack", "stand", "stand", "stand"].map((option) =>
+        mkHabit({ situation: "ledge", option }),
+      ),
+      mkHabit({ situation: "knockdown", option: "tech in place" }),
+      mkHabit({ situation: "knockdown", option: "getup" }),
+    ]),
+  );
+
+  insertRecoverySpans(
+    gameId,
+    order([
+      mkSpan({ route: "low", landing: "stage" }),
+      mkSpan({ route: "low", landing: "stage" }),
+      mkSpan({ route: "high", landing: "ledge" }),
+      mkSpan({ route: "high", landing: "ledge" }),
+      mkSpan({ route: "mid", landing: "death" }),
+      mkSpan({ recoveringIsPlayer: false, edgeguarderDepth: "shallow" }),
+      mkSpan({ recoveringIsPlayer: false, edgeguarderDepth: "shallow" }),
+      mkSpan({ recoveringIsPlayer: false, edgeguarderDepth: "deep" }),
+      mkSpan({ recoveringIsPlayer: false, edgeguarderDepth: "deep" }),
+      mkSpan({ recoveringIsPlayer: false, edgeguarderDepth: "ledge" }),
+    ]),
+  );
+
+  // Own blocks: bair ×3, then three labels ×2; grades 3/3/3. Pressure: three labels ×1.
+  insertShieldBlocks(
+    gameId,
+    order([
+      mkBlock({ attackLabel: "nair", grade: "correct-hold" }),
+      mkBlock({ attackLabel: "nair", grade: "correct-hold" }),
+      mkBlock({ attackLabel: "fair", grade: "correct-hold" }),
+      mkBlock({ attackLabel: "fair", grade: "punish-missed" }),
+      mkBlock({ attackLabel: "dash attack", grade: "punish-missed" }),
+      mkBlock({ attackLabel: "dash attack", grade: "punish-missed" }),
+      mkBlock({ attackLabel: "bair", grade: "punish-taken" }),
+      mkBlock({ attackLabel: "bair", grade: "punish-taken" }),
+      mkBlock({ attackLabel: "bair", grade: "punish-taken" }),
+      mkBlock({ defenderIsPlayer: false, attackLabel: "uair" }),
+      mkBlock({ defenderIsPlayer: false, attackLabel: "dair" }),
+      mkBlock({ defenderIsPlayer: false, attackLabel: "bair" }),
+    ]),
+  );
+
+  insertWhiffEvents(
+    gameId,
+    order([
+      // Opponent whiffs left unpunished: seven labels, top 5 kept by getPatternData.
+      mkWhiff({ attackLabel: "fsmash" }),
+      mkWhiff({ attackLabel: "fsmash" }),
+      ...CAPTURE_LABELS.map((attackLabel) => mkWhiff({ attackLabel })),
+      // Own whiffs: fourteen labels, top 12 kept by getCharacterEventProfile.
+      mkWhiff({ whifferIsPlayer: true, attackLabel: "utilt" }),
+      mkWhiff({ whifferIsPlayer: true, attackLabel: "utilt" }),
+      ...EXPOSURE_LABELS.map((attackLabel) => mkWhiff({ whifferIsPlayer: true, attackLabel })),
+    ]),
+  );
+
+  // Own kills: move 21 twice, then nine moves once each. Opening types 4/4/3.
+  const openings = [
+    "neutral-win",
+    "neutral-win",
+    "counter-attack",
+    "counter-attack",
+    "counter-attack",
+    "counter-attack",
+  ];
+  insertConversionEvents(
+    gameId,
+    order([
+      mkConversion({ didKill: true, lastMoveId: 21, openingType: "neutral-win" }),
+      mkConversion({ didKill: true, lastMoveId: 21, openingType: "neutral-win" }),
+      ...KILL_MOVE_TIE_IDS.map((lastMoveId, i) =>
+        mkConversion({ didKill: true, lastMoveId, openingType: openings[i] ?? "trade" }),
+      ),
+    ]),
+  );
+  return gameId;
+}
+
+/** Everything order-sensitive the two stats functions return for one character. */
+function orderedLists(character: string) {
+  const profile = getCharacterEventProfile(character);
+  const pattern = getPatternData({ label: "tie", character });
+  if (!pattern) throw new Error(`no pattern data for ${character}`);
+  return {
+    profile: {
+      habits: profile.habits.map((h) => `${h.situation}/${h.option}:${h.total}`),
+      verdicts: profile.deaths.verdicts.map((v) => `${v.verdict}:${v.count}`),
+      killerMoves: profile.deaths.killerMoves.map((m) => `${m.moveId}:${m.count}`),
+      directions: profile.deaths.directions.map((d) => `${d.direction}:${d.count}`),
+      throwDI: profile.deaths.throwDI.map((t) => `${t.direction}:${t.total}`),
+      routes: profile.recovery.routes.map((r) => `${r.route}:${r.total}`),
+      landings: profile.recovery.landings.map((l) => `${l.landing}:${l.count}`),
+      byDepth: profile.recovery.edgeguard.byDepth.map((d) => `${d.depth}:${d.total}`),
+      grades: profile.shield.defense.grades.map((g) => `${g.grade}:${g.count}`),
+      defenseByMove: profile.shield.defense.byMove.map((m) => `${m.attackLabel}:${m.blocks}`),
+      pressureByMove: profile.shield.pressure.byMove.map((m) => `${m.attackLabel}:${m.blocks}`),
+      exposure: profile.whiffs.exposure.map((e) => `${e.attackLabel}:${e.total}`),
+      byOpeningType: profile.conversions.byOpeningType.map((o) => `${o.openingType}:${o.count}`),
+      killMoves: profile.conversions.killMoves.map((m) => `${m.moveId}:${m.count}`),
+    },
+    pattern: {
+      habits: pattern.habits.map((h) => `${h.situation}/${h.option}:${h.total}`),
+      // Object key order is what a consumer iterating the record would see.
+      verdicts: Object.entries(pattern.deaths.verdicts).map(([verdict, count]) => `${verdict}:${count}`),
+      byKiller: pattern.deaths.byKiller.map((k) => `${k.move}:${k.count}`),
+      throwDI: pattern.throwDI.map((t) => `${t.direction}:${t.total}`),
+      unpunishedByMove: pattern.whiffCapture.unpunishedByMove.map((m) => `${m.move}:${m.count}`),
+      whiffExposure: pattern.whiffExposure.map((w) => `${w.move}:${w.opportunities}`),
+      shieldByMove: pattern.shieldDefense.byMove.map((m) => `${m.move}:${m.graded}`),
+      routes: pattern.recovery.routes.map((r) => `${r.route}:${r.total}`),
+      byDepth: pattern.edgeguard.byDepth.map((d) => `${d.depth}:${d.total}`),
+    },
+  };
+}
+
+const moveLabel = (id: number, count: number) => `${moveIdToName[id]}:${count}`;
+
+describe("row order is independent of the query plan", () => {
+  beforeAll(() => {
+    seedTieCharacter("Falco");
+    seedTieCharacter("Peach", { reverse: true });
+  });
+
+  it("returns tied rows in the documented order: measure DESC, then label / move id ASC", () => {
+    expect(orderedLists("Falco")).toEqual({
+      profile: {
+        // Grouped by situation first; "stand" (3) outranks the alphabetically earlier options (2).
+        habits: [
+          "knockdown/getup:1",
+          "knockdown/tech in place:1",
+          "ledge/stand:3",
+          "ledge/attack:2",
+          "ledge/jump:2",
+          "ledge/roll:2",
+        ],
+        verdicts: ["GOOD_DI:3", "NO_DI:3", "WRONG_DI:3", "FAILED_RECOVERY:2"],
+        // LIMIT 8: the 2-death move, then the seven LOWEST tied move ids.
+        killerMoves: ["20:2", "9:1", "10:1", "11:1", "12:1", "13:1", "14:1", "15:1"],
+        directions: ["left:4", "up:4", "right:3"],
+        throwDI: ["down:2", "up:2", "back:1"],
+        routes: ["high:2", "low:2", "mid:1"],
+        landings: ["ledge:2", "stage:2", "death:1"],
+        byDepth: ["deep:2", "shallow:2", "ledge:1"],
+        grades: ["correct-hold:3", "punish-missed:3", "punish-taken:3"],
+        defenseByMove: ["bair:3", "dash attack:2", "fair:2", "nair:2"],
+        pressureByMove: ["bair:1", "dair:1", "uair:1"],
+        // LIMIT 12: "utilt" (2), then the eleven alphabetically first of thirteen tied labels.
+        exposure: [
+          "utilt:2",
+          "bair:1",
+          "dair:1",
+          "dash attack:1",
+          "dsmash:1",
+          "dtilt:1",
+          "fair:1",
+          "fsmash:1",
+          "ftilt:1",
+          "grab:1",
+          "jab:1",
+          "nair:1",
+        ],
+        byOpeningType: ["counter-attack:4", "neutral-win:4", "trade:3"],
+        killMoves: ["21:2", "10:1", "11:1", "12:1", "13:1", "14:1", "15:1", "16:1"],
+      },
+      pattern: {
+        habits: [
+          "knockdown/getup:1",
+          "knockdown/tech in place:1",
+          "ledge/stand:3",
+          "ledge/attack:2",
+          "ledge/jump:2",
+          "ledge/roll:2",
+        ],
+        verdicts: ["GOOD_DI:3", "NO_DI:3", "WRONG_DI:3", "FAILED_RECOVERY:2"],
+        byKiller: [
+          moveLabel(20, 2),
+          moveLabel(9, 1),
+          moveLabel(10, 1),
+          moveLabel(11, 1),
+          moveLabel(12, 1),
+          moveLabel(13, 1),
+          moveLabel(14, 1),
+          moveLabel(15, 1),
+        ],
+        throwDI: ["down:2", "up:2", "back:1"],
+        // LIMIT 5: "fsmash" (2), then the four alphabetically first of six tied labels.
+        unpunishedByMove: ["fsmash:2", "dash attack:1", "dsmash:1", "dtilt:1", "ftilt:1"],
+        whiffExposure: ["utilt:2", ...[...EXPOSURE_LABELS].sort().map((label) => `${label}:1`)],
+        shieldByMove: ["bair:3", "dash attack:2", "fair:2", "nair:2"],
+        routes: ["high:2", "low:2", "mid:1"],
+        byDepth: ["deep:2", "shallow:2", "ledge:1"],
+      },
+    });
+  });
+
+  it("never lets a tie at the LIMIT boundary admit the row the rule excludes", () => {
+    const { profile, pattern } = orderedLists("Falco");
+    // Tied with rows that made the cut, but later in the documented order.
+    expect(profile.killerMoves).not.toContain("16:1");
+    expect(profile.killerMoves).not.toContain("17:1");
+    expect(profile.killMoves).not.toContain("17:1");
+    expect(profile.killMoves).not.toContain("18:1");
+    expect(profile.exposure).not.toContain("uair:1");
+    expect(profile.exposure).not.toContain("usmash:1");
+    expect(pattern.byKiller).not.toContain(moveLabel(16, 1));
+    expect(pattern.byKiller).not.toContain(moveLabel(17, 1));
+    expect(pattern.unpunishedByMove).not.toContain("grab:1");
+    expect(pattern.unpunishedByMove).not.toContain("usmash:1");
+  });
+
+  it("returns the same lists when the same events were stored in the opposite order", () => {
+    // Peach holds Falco's rows inserted back to front (reversed rowids).
+    expect(orderedLists("Peach")).toEqual(orderedLists("Falco"));
+  });
+
+  it("lets a higher count beat the tie-breaker, displacing only the last tied row", () => {
+    // Same data plus one more death to move 17 — excluded above as a tied row.
+    seedTieCharacter("Roy", { extraDeathMoveId: 17 });
+    const { profile, pattern } = orderedLists("Roy");
+    // 17 now has 2 deaths: it ranks right after 20 (2 deaths, lower id) and pushes out 15.
+    expect(profile.killerMoves).toEqual(["17:2", "20:2", "9:1", "10:1", "11:1", "12:1", "13:1", "14:1"]);
+    expect(pattern.byKiller).toEqual([
+      moveLabel(17, 2),
+      moveLabel(20, 2),
+      moveLabel(9, 1),
+      moveLabel(10, 1),
+      moveLabel(11, 1),
+      moveLabel(12, 1),
+      moveLabel(13, 1),
+      moveLabel(14, 1),
+    ]);
+    // Counts are untouched by ordering: 12 deaths in, 12 counted.
+    expect(getCharacterEventProfile("Roy").deaths.total).toBe(12);
+    expect(getPatternData({ label: "tie", character: "Roy" })?.deaths.total).toBe(12);
+  });
+
+  it("returns identical results with planner statistics, without them, and with unordered scans reversed", () => {
+    const snapshot = () =>
+      JSON.stringify(
+        ["Fox", "Marth", "Samus", "Falco", "Peach", "Roy"].map((character) => [
+          getCharacterEventProfile(character),
+          getPatternData({ label: "x", character }),
+          getPatternData({ label: "x", character, opponentCharacter: "Fox" }),
+        ]),
+      );
+    const db = getDb();
+    // Statistics rows for the tables the stats queries read.
+    const statRows = () =>
+      db.prepare("SELECT name FROM sqlite_master WHERE name = 'sqlite_stat1'").get()
+        ? (db.prepare("SELECT COUNT(*) as n FROM sqlite_stat1 WHERE tbl <> 'schema_version'").get() as { n: number }).n
+        : 0;
+
+    // The schema migration ran ANALYZE while every game and event table was still
+    // empty, so the seeded rows above have been queried with no statistics so far.
+    expect(statRows()).toBe(0);
+    const withoutStatistics = snapshot();
+
+    db.exec("ANALYZE");
+    expect(statRows()).toBeGreaterThan(0);
+    expect(snapshot()).toBe(withoutStatistics);
+
+    // SQLite's own probe for results that lean on an undefined row order.
+    db.pragma("reverse_unordered_selects = ON");
+    try {
+      expect(snapshot()).toBe(withoutStatistics);
+    } finally {
+      db.pragma("reverse_unordered_selects = OFF");
+    }
+  });
+
+  it("refreshes planner statistics when the database closes, without changing results", () => {
+    const before = JSON.stringify(orderedLists("Falco"));
+    // Put the database back in a new install's state: data, but no statistics.
+    getDb().exec("DELETE FROM sqlite_stat1");
+    closeDb();
+    const session = getDb(); // a fresh connection that has never seen statistics
+    expect((session.prepare("SELECT COUNT(*) as n FROM sqlite_stat1").get() as { n: number }).n).toBe(0);
+    expect(JSON.stringify(orderedLists("Falco"))).toBe(before);
+    closeDb(); // PRAGMA optimize = 0x10002 analyzes every table that lacks statistics
+
+    const reopened = getDb();
+    const stat = reopened
+      .prepare("SELECT stat FROM sqlite_stat1 WHERE tbl = 'stock_deaths' AND idx = 'idx_stock_deaths_game'")
+      .get() as { stat: string } | undefined;
+    // Exact row count, not a sampled estimate: "<rows in table> <avg rows per game>".
+    const total = (reopened.prepare("SELECT COUNT(*) as n FROM stock_deaths").get() as { n: number }).n;
+    expect(stat?.stat.split(" ")[0]).toBe(String(total));
+    expect(JSON.stringify(orderedLists("Falco"))).toBe(before);
+  });
+});
+
+describe("db.ts row-order contract (source guard)", () => {
+  const dbSource = fs.readFileSync(path.resolve(__dirname, "../src/db.ts"), "utf-8");
+  const codeLines = dbSource.split(/\r?\n/).filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line));
+
+  /** Sort keys of an ORDER BY clause, split on top-level commas only. */
+  function sortKeys(clause: string): string[] {
+    const keys: string[] = [];
+    let depth = 0;
+    let current = "";
+    for (const ch of clause) {
+      if (ch === "(") depth++;
+      if (ch === ")") depth--;
+      if (ch === "," && depth === 0) {
+        keys.push(current.trim());
+        current = "";
+      } else current += ch;
+    }
+    if (current.trim()) keys.push(current.trim());
+    return keys;
+  }
+
+  /** The ORDER BY clause on a source line: up to LIMIT or the end of the SQL text. */
+  function orderByClause(line: string): string | null {
+    const at = line.indexOf("ORDER BY ");
+    if (at < 0) return null;
+    return line
+      .slice(at + "ORDER BY ".length)
+      .replace(/\s+LIMIT\b.*$/, "")
+      .replace(/[`"].*$/, "")
+      .trim();
+  }
+
+  // A single sort key is only acceptable when it is unique within the result
+  // (so no tie exists) or when tied rows are indistinguishable.
+  const SINGLE_KEY_ALLOWED = new Set([
+    "g.id ASC", // unique
+    "g.id ${limitSql}", // unique
+    "css.game_id ASC", // primary key
+    "opponent_character ASC", // SELECT DISTINCT on this column
+    "stage ASC", // SELECT DISTINCT on this column
+    "w.reaction_delay", // one-column result: tied rows are the same value (median input)
+    // Coaching-text and chat lookups, not stats lists.
+    "ca.created_at DESC",
+    "created_at DESC",
+    "created_at ASC",
+  ]);
+
+  const clauses = codeLines.map(orderByClause).filter((c): c is string => c != null);
+
+  it("finds the queries it is meant to guard", () => {
+    expect(clauses.length).toBeGreaterThan(70);
+    expect(clauses).toContain("count DESC, sd.killer_move_id ASC");
+    expect(clauses).toContain("COALESCE(g.played_at, '') DESC, g.id DESC");
+  });
+
+  it("gives every GROUP BY list an ORDER BY", () => {
+    const code = codeLines.join("\n");
+    const unordered: string[] = [];
+    for (const match of code.matchAll(/GROUP BY [^\n]*/g)) {
+      // The statement's own ORDER BY comes before the next statement starts.
+      const rest = code.slice(match.index, match.index + 600);
+      const nextStatement = rest.slice(1).search(/GROUP BY |\.prepare\(|\bq<|\bone</);
+      const statement = nextStatement < 0 ? rest : rest.slice(0, nextStatement + 1);
+      if (!statement.includes("ORDER BY ")) unordered.push(match[0]);
+    }
+    expect(unordered).toEqual([]);
+  });
+
+  it("never sorts a list by a non-unique key alone", () => {
+    const offenders = clauses.filter((clause) => sortKeys(clause).length < 2 && !SINGLE_KEY_ALLOWED.has(clause));
+    expect(offenders).toEqual([]);
+  });
+
+  it("rejects the shapes that caused plan-dependent lists (guard self-check)", () => {
+    expect(orderByClause("    ORDER BY count DESC")).toBe("count DESC");
+    expect(orderByClause("    GROUP BY w.attack_label ORDER BY count DESC LIMIT 5`);")).toBe("count DESC");
+    expect(sortKeys("count DESC")).toHaveLength(1);
+    expect(sortKeys("COALESCE(g.played_at, '') DESC, g.id DESC")).toHaveLength(2);
+    expect(SINGLE_KEY_ALLOWED.has("count DESC")).toBe(false);
+    expect(SINGLE_KEY_ALLOWED.has("g.played_at DESC")).toBe(false);
   });
 });

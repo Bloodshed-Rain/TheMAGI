@@ -91,6 +91,24 @@ function resolveTargetIndex(players: CornermanLivePlayer[], targetPlayer: string
   return scores[0]?.score ? scores[0].player.playerIndex : (players[0]?.playerIndex ?? 0);
 }
 
+/**
+ * The player `targetPlayer` identifies in this game, or null when nobody
+ * matches. Live stats fall back to the first player (resolveTargetIndex); a
+ * caller that must never present another player's data as the user's own uses
+ * this instead. Same scoring, and the same winner whenever there is a match.
+ */
+export function matchTargetPlayerIndex(settings: GameStartType, targetPlayer: string): number | null {
+  const id = targetPlayer.trim();
+  if (!id) return null;
+  let best: { playerIndex: number; score: number } | null = null;
+  for (const player of settings.players) {
+    if (player.type === 3) continue;
+    const score = matchScore({ tag: getPlayerTag(player), connectCode: player.connectCode || "" }, id);
+    if (score > 0 && (!best || score > best.score)) best = { playerIndex: player.playerIndex, score };
+  }
+  return best?.playerIndex ?? null;
+}
+
 function buildPlayers(settings: GameStartType, targetPlayer: string): CornermanLivePlayer[] {
   const activePlayers = settings.players.filter((p) => p.type !== 3);
   const players = activePlayers.map((player) => ({

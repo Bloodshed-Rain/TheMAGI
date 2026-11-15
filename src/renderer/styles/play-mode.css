@@ -560,7 +560,7 @@ body[data-theme="light"] .play-sidebar {
   overflow-x: auto;
 }
 .play-module-card {
-  flex: 1 0 172px;
+  flex: 1 0 158px;
   max-width: 260px;
   display: flex;
   flex-direction: column;

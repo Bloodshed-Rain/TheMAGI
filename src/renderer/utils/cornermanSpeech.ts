@@ -222,11 +222,6 @@ export function createBrowserSpeechAdapter(): CornermanSpeechAdapter | null {
   };
 }
 
-export function createBrowserCornermanSpeechCoach(): CornermanSpeechCoach | null {
-  const adapter = createBrowserSpeechAdapter();
-  return adapter ? new CornermanSpeechCoach(adapter) : null;
-}
-
 const PROVIDER_PCM_SAMPLE_RATE = 24_000;
 
 class StreamingPcmPlayer {

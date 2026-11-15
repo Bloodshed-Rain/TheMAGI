@@ -14,7 +14,7 @@ It's free and open source. You can use the stats and replay tools on their own, 
 
 On Windows, you can play Slippi from inside MAGI itself, with your training and coaching information right beside the game. Keep an eye on your stats, follow your set score, write down a practice goal, and get advice between games—all from the same screen.
 
-Make it your own with **Customize**. Choose what you want on each side of the game, change how much room it takes up, and save the layout you like. You can keep things simple or make room for Cornerman, Oracle, recent results, goals, and notes.
+Make it your own with **Customize**. Choose what you want on each side of the game, change how much room it takes up, and save the layout you like. You can keep things simple or make room for Cornerman, Oracle, recent results, goals, notes, and a live input display that lights your controller's buttons as you press them.
 
 Use **Fullscreen** for a bigger view. Your information can stay beside the game or tuck away until you move your mouse to the edge.
 
@@ -115,6 +115,6 @@ The [setup guide](docs/USER_GUIDE.md) covers playing, replay review, coaching, a
 
 Want to help build MAGI? Start with the [developer guide](docs/DEVELOPMENT.md) and [contribution guide](CONTRIBUTING.md).
 
-**Version 1.14.0** · [What's changed](CHANGELOG.md) · [MIT License](LICENSE)
+**Version 1.15.0** · [What's changed](CHANGELOG.md) · [MIT License](LICENSE)
 
 MAGI stands for *Melee Analysis through Generative Intelligence*.

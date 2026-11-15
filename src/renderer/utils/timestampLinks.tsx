@@ -75,5 +75,3 @@ export function makeTimestampComponents(replayPath: string, onSeek?: (frame: num
     },
   };
 }
-
-export const TIMESTAMP_PATTERN = /\[\d{1,2}:\d{2}\]/;

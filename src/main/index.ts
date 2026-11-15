@@ -1,7 +1,7 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, shell } from "electron";
 import * as path from "path";
 import * as fs from "fs";
-import { APP_USER_MODEL_ID, resolveAppIconPath } from "./appIcon";
+import { APP_USER_MODEL_ID, repairDevShortcutIcons, resolveAppIconPath } from "./appIcon";
 
 // Load key.env (dev only) so OPENAI_API_KEY / GEMINI_API_KEY / etc. flow into
 // process.env. Released builds never bundle keys — users supply their own in Settings.
@@ -176,11 +176,22 @@ function createWindow(): void {
 
 // ── App lifecycle ────────────────────────────────────────────────────
 
-// Windows derives the taskbar icon from the AppUserModelID, not the window's
-// icon. Without this the shell falls back to electron.exe's default icon.
+// Identify the app to the Windows shell (taskbar grouping, toast notifications).
+// The taskbar shows the window's icon UNLESS a Start Menu shortcut carries this
+// ID — then that shortcut's icon wins (see repairDevShortcutIcons).
 if (process.platform === "win32") app.setAppUserModelId(APP_USER_MODEL_ID);
 
 app.whenReady().then(() => {
+  // Before any window exists, so the taskbar resolves the right icon for this run.
+  if (process.platform === "win32" && !app.isPackaged) {
+    repairDevShortcutIcons(
+      shell,
+      path.join(app.getPath("appData"), "Microsoft/Windows/Start Menu/Programs"),
+      process.execPath,
+      resolveAppIconPath(),
+    );
+  }
+
   // Show the boot splash immediately so the logo covers DB/IPC init and the
   // renderer's cold start (the window below stays hidden until ready-to-show).
   createSplashWindow();

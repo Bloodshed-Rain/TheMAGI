@@ -2,22 +2,27 @@ import { useCallback, useEffect, lazy, Suspense, useMemo, useState, useRef } fro
 import { Gamepad2 } from "lucide-react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 
-const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
-const PlayMode = lazy(() => import("./pages/PlayMode").then((m) => ({ default: m.PlayMode })));
-const PerformanceLab = lazy(() => import("./pages/PerformanceLab").then((m) => ({ default: m.PerformanceLab })));
-const Sessions = lazy(() => import("./pages/Sessions").then((m) => ({ default: m.Sessions })));
-const Library = lazy(() => import("./pages/Library").then((m) => ({ default: m.Library })));
-const Trends = lazy(() => import("./pages/Trends").then((m) => ({ default: m.Trends })));
-const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
-const Characters = lazy(() => import("./pages/Characters").then((m) => ({ default: m.Characters })));
-const Rivals = lazy(() => import("./pages/Rivals").then((m) => ({ default: m.Rivals })));
-const Practice = lazy(() => import("./pages/Practice").then((m) => ({ default: m.Practice })));
-const Oracle = lazy(() => import("./pages/Oracle").then((m) => ({ default: m.Oracle })));
-const GameTheater = lazy(() => import("./pages/GameTheater").then((m) => ({ default: m.GameTheater })));
-const Cornerman = lazy(() => import("./pages/Cornerman").then((m) => ({ default: m.Cornerman })));
 const ReplayPlayer = lazy(() => import("./components/ReplayPlayer").then((m) => ({ default: m.ReplayPlayer })));
 const CommandPalette = lazy(() => import("./components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
 
+import {
+  Dashboard,
+  PlayMode,
+  PerformanceLab,
+  Sessions,
+  Library,
+  Trends,
+  Settings,
+  Characters,
+  Rivals,
+  Practice,
+  Oracle,
+  GameTheater,
+  Cornerman,
+  SetupWizard,
+  IDLE_PRELOAD_ORDER,
+} from "./pageRegistry";
+import { preloadWhenIdle } from "./lazyPage";
 import { applyTheme, getResolvedTheme, THEMES, type ColorMode } from "./themes";
 import {
   DashboardIcon,
@@ -38,8 +43,6 @@ import { useGlobalStore, type Density } from "./stores/useGlobalStore";
 import { useReplayPlayerStore } from "./stores/useReplayPlayerStore";
 import { useOverallRecord } from "./hooks/queries";
 import { resolveLiquidAppearanceSettings } from "../liquidAppearance";
-
-const SetupWizard = lazy(() => import("./pages/SetupWizard").then((m) => ({ default: m.SetupWizard })));
 
 import { useCornermanCoach } from "./hooks/useCornermanCoach";
 import { shouldOfferSetup } from "../setupOnboarding";
@@ -133,6 +136,9 @@ export function App() {
     }
     loadTheme();
   }, [navigate, setColorMode, setDensity, setLiquidAppearance]);
+
+  // Load the other pages' chunks in idle time so the first visit to each is as fast as a revisit.
+  useEffect(() => preloadWhenIdle(IDLE_PRELOAD_ORDER), []);
 
   useEffect(() => {
     document.body.setAttribute("data-density", density);

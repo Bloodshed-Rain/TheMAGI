@@ -26,6 +26,7 @@ import type { CornermanLiveEvent as LiveEvent } from "../cornermanLiveEvents";
 import type { ProviderId as LlmProviderId } from "../llm";
 import type { ProviderSpeechEvent, ProviderSpeechRequest } from "../providerVoice";
 import type { PlayBounds, PlayStatus, PlayCoachingSetup } from "../playMode";
+import type { PlayInputSample, PlayInputStatus } from "../playInput";
 import type { PlayCursor } from "../playEdgePeek";
 import type { ChatGPTStatus, ChatGPTModel } from "../chatgptTypes";
 
@@ -83,6 +84,9 @@ declare global {
       onPlayCursor: (callback: (cursor: PlayCursor | null) => void) => () => void;
       onPlayGameOnly: (callback: (active: boolean) => void) => () => void;
       onPlayStatus: (callback: (status: PlayStatus) => void) => () => void;
+      playInputWatch: (watching: boolean) => Promise<PlayInputStatus>;
+      onPlayInput: (callback: (samples: PlayInputSample[]) => void) => () => void;
+      onPlayInputStatus: (callback: (status: PlayInputStatus) => void) => () => void;
       setupStatus: () => Promise<import("../setupStatus").SetupStatus>;
       loadConfig: () => Promise<any>;
       saveConfig: (config: any) => Promise<any>;

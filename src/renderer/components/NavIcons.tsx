@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Swords,
-  Clock,
   TrendingUp,
   Gamepad2,
   SlidersHorizontal,
@@ -21,10 +20,6 @@ export function CoachingIcon({ size = 22 }: IconProps) {
 
 export function SessionsIcon({ size = 22 }: IconProps) {
   return <Swords size={size} strokeWidth={1.8} />;
-}
-
-export function HistoryIcon({ size = 22 }: IconProps) {
-  return <Clock size={size} strokeWidth={1.8} />;
 }
 
 export function TrendsIcon({ size = 22 }: IconProps) {

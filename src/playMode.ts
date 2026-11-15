@@ -8,6 +8,7 @@ export const PLAY_PANELS = {
   trends: "Recent form",
   focus: "Practice focus",
   notes: "Notes",
+  inputs: "Input display",
 } as const;
 export type PlayPanel = keyof typeof PLAY_PANELS;
 
@@ -15,6 +16,7 @@ export const PLAY_PANEL_CATEGORIES = {
   coaching: "Coaching",
   stats: "Stats",
   notes: "Notes",
+  stream: "Stream",
 } as const;
 export type PlayPanelCategory = keyof typeof PLAY_PANEL_CATEGORIES;
 export interface PlayPanelDef {
@@ -67,6 +69,12 @@ export const PLAY_PANEL_DEFS: readonly PlayPanelDef[] = [
     id: "notes",
     category: "notes",
     description: "A notebook for what worked and what to review.",
+    needsLive: false,
+  },
+  {
+    id: "inputs",
+    category: "stream",
+    description: "Your controller on a GameCube wireframe, lit by the inputs the running game reads.",
     needsLive: false,
   },
 ];

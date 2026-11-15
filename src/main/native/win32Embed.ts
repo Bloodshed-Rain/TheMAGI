@@ -449,11 +449,6 @@ export async function findDolphinWindows(pid: number, timeoutMs: number = 15000)
   throw new Error("Timed out waiting for Dolphin main window");
 }
 
-/** @deprecated kept for callers; prefer findDolphinWindows. */
-export async function findDolphinMainWindow(pid: number, timeoutMs?: number): Promise<bigint> {
-  return (await findDolphinWindows(pid, timeoutMs)).mainHwnd;
-}
-
 /**
  * Reparent `renderHwnd` into MAGI's window and hide the Dolphin shell.
  *

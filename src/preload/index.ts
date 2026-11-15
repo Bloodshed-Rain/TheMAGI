@@ -3,6 +3,7 @@ import type { CornermanLiveEvent } from "../cornermanLiveEvents";
 import type { CornermanLiveSnapshot } from "../cornermanLiveStats";
 import type { ProviderSpeechEvent, ProviderSpeechRequest } from "../providerVoice";
 import type { PlayBounds, PlayStatus, PlayCoachingSetup } from "../playMode";
+import type { PlayInputSample, PlayInputStatus } from "../playInput";
 import type { ChatGPTStatus, ChatGPTModel } from "../chatgptTypes";
 import type { PlayCursor } from "../playEdgePeek";
 import type { CareerAnalysisResult } from "../careerAnalysis";
@@ -48,6 +49,17 @@ const api = {
     const listener = (_event: unknown, status: PlayStatus) => callback(status);
     ipcRenderer.on("play:status", listener);
     return () => ipcRenderer.removeListener("play:status", listener);
+  },
+  playInputWatch: (watching: boolean): Promise<PlayInputStatus> => ipcRenderer.invoke("play:inputWatch", watching),
+  onPlayInput: (callback: (samples: PlayInputSample[]) => void) => {
+    const listener = (_event: unknown, samples: PlayInputSample[]) => callback(samples);
+    ipcRenderer.on("play:input", listener);
+    return () => ipcRenderer.removeListener("play:input", listener);
+  },
+  onPlayInputStatus: (callback: (status: PlayInputStatus) => void) => {
+    const listener = (_event: unknown, status: PlayInputStatus) => callback(status);
+    ipcRenderer.on("play:inputStatus", listener);
+    return () => ipcRenderer.removeListener("play:inputStatus", listener);
   },
   // Config
   setupStatus: () => ipcRenderer.invoke("setup:status"),

@@ -39,6 +39,7 @@ import { useCornermanLiveStats } from "../hooks/useCornermanLiveStats";
 import { useGlobalStore } from "../stores/useGlobalStore";
 import { CornermanLiveAlerts } from "../components/CornermanLiveAlerts";
 import { PlayLayoutEditor } from "../components/PlayLayoutEditor";
+import { PlayInputDisplay } from "../components/PlayInputDisplay";
 import { PlayOracle } from "../components/PlayOracle";
 import { PlayRecentForm } from "../components/PlayRecentForm";
 import magiLogo from "../assets/magi-controller.png";
@@ -346,6 +347,7 @@ export function PlayMode({ onExit }: { onExit: () => void }) {
         </>
       );
     if (id === "oracle") return <PlayOracle />;
+    if (id === "inputs") return <PlayInputDisplay />;
     if (id === "trends") return <PlayRecentForm />;
     if (id === "focus")
       return (

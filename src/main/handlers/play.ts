@@ -7,10 +7,11 @@ import { loadConfig, saveConfig } from "../../config";
 import type { PlayBounds, PlayCoachingSetup } from "../../playMode";
 import { getActiveModelId, getApiKey } from "../../llm";
 import { PROVIDER_BY_ID } from "../../llmProviders";
-import { readSlippiReplaySettings, selectPlayReplayFolder } from "../../slippiReplaySetup";
+import { readSlippiReplaySettings, readSlippiSpectatorSettings, selectPlayReplayFolder } from "../../slippiReplaySetup";
 import { getChatGPTClient } from "../chatgpt";
 import { PlaySessionController } from "../playSession";
 import { PlayPresentation, GAME_ONLY_SHORTCUT } from "../playPresentation";
+import { PlayInputStream } from "../playInputStream";
 import { getMainWindow } from "../state";
 import { validatePath, type SafeHandleFn } from "../ipc";
 
@@ -73,6 +74,21 @@ const presentation = new PlayPresentation({
     trackGameOnlyEdges(active);
     publishPlay("play:gameOnly", active);
   },
+});
+
+const DEFAULT_NETPLAY_DOLPHIN = "AppData/Roaming/Slippi Launcher/netplay/Slippi Dolphin.exe";
+// The user's own controller, read from the hosted Dolphin's local spectator stream.
+const inputStream = new PlayInputStream({
+  settings: () =>
+    readSlippiSpectatorSettings(
+      launchedDolphinPath || loadConfig().playDolphinPath || path.join(os.homedir(), DEFAULT_NETPLAY_DOLPHIN),
+    ),
+  target: () => {
+    const config = loadConfig();
+    return config.connectCode || config.targetPlayer || null;
+  },
+  publishSamples: (samples) => publishPlay("play:input", samples),
+  publishStatus: (status) => publishPlay("play:inputStatus", status),
 });
 
 function coachingSetup(): PlayCoachingSetup {
@@ -224,6 +240,7 @@ const controller = new PlaySessionController({
   hide: (surface) => native().setHostedGameVisible(surface.mainHwnd, false),
   close: (surface) => native().requestClose(surface.mainHwnd),
   publish: (status) => {
+    inputStream.setRunning(status.phase === "running");
     if (status.phase === "stopped" || status.phase === "error") {
       launchedDolphinPath = null;
       presentation.leave();
@@ -261,8 +278,14 @@ export function registerPlayHandlers(safeHandle: SafeHandleFn): void {
     return controller.getStatus();
   });
   safeHandle("play:stop", () => controller.stop());
+  safeHandle("play:inputWatch", (_e, watching: boolean) => {
+    if (typeof watching !== "boolean") throw new Error("Invalid input display state");
+    inputStream.setWatching(watching);
+    return inputStream.getStatus();
+  });
 }
 export function shutdownPlaySession(): void {
+  inputStream.dispose();
   presentation.leave();
   controller.stop(true);
 }
