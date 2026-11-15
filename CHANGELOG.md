@@ -1,5 +1,21 @@
 # Release notes
 
+## 1.13.0 — 2026-11-15
+
+- Add a motion layer so data arrives the way it reads and actions are confirmed, without anything looping for decoration. Every animation is skipped when the operating system asks for reduced motion.
+- Changing theme (Settings → Appearance or the Appearance panel) opens the new theme as a circle from the button you pressed instead of cross-fading every color. It falls back to an instant change while a replay is embedded.
+- KPI figures count up from zero and land on the exact value shown before; only single plain figures count (records, times and compound values render as written), and screen readers get the final value from the first frame.
+- The Dashboard's Recent Form card and each character's hero banner catch a light under the pointer and tilt toward it (up to 3°, less for large cards).
+- Filter pills: the active highlight glides to the pill you pick. The radar opens from its center and moves vertex to vertex when you change the comparison period.
+- Stock timeline: the kill marker stamps onto a lost stock as its segment finishes. Highlight chips land in order, and a chip that took a stock rings once. A coaching card shows a lit edge while its text is streaming.
+- Page headers, KPI rows, stat grids, table rows, empty states and recent-form dots enter in reading order; win-rate bars fill with a bright leading edge; chart sparklines ring once on their latest point; primary buttons get one sheen on hover.
+- Character wireframes idle: on a character's page the figure hovers slightly and, every seven seconds, a ring of color radiates out from its center through the wires: a bright leading edge, then the character's color shifted in hue. On the Characters grid the tile under the pointer does the same.
+- Win-rate bars carry a notch at 50%, so an even record reads at a glance; progress bars that are not win rates are unchanged.
+- KPI tiles no longer show a "0" while their figure is still loading: the Dashboard and the Library hold the layout with shimmering placeholders until the real number arrives. A KPI whose figure changes while on screen lights its edge once, in the same green or red its trend line is already drawn in; figures with no stated standing do not flash.
+- The newest game in a recent-form strip rings once after the dots appear.
+- Fix cards not lifting on hover: the entrance animation left an inline transform on every card that cancelled the stylesheet's lift.
+- Fix data tables wasting width: the row hover sweep was drawn with a pseudo-element that table layout treated as an extra column, so every auto-width column was narrower than it should be. With the width back, the Library table's Stocks, Neutral, L-Cancel and Dmg/Op headers are no longer cut off.
+
 ## 1.12.0 — 2026-11-06
 
 - Scope every AI analysis to the data that invoked it. A single-game review (Library → Game Theater) now ranks and reports only what happened in that game: the player's history decides whether to call something a habit, never whether it counts, and a pattern that did not occur in the game is no longer a finding. The lifetime profile (record, other characters, overall trend) is replaced by one background line, the player's record in that exact matchup before the game.

@@ -1,9 +1,13 @@
 import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, type MotionStyle } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Flame, Skull, TrendingUp, Trophy, Zap } from "lucide-react";
 import { useGameHighlights, useRecentHighlights } from "../hooks/queries";
 import { Card } from "./ui/Card";
+import { DURATION_MS, EASE, STAGGER_MS, seconds } from "../motion";
+
+/** Chips past this index land together, so a long reel never keeps the player waiting. */
+const STAMP_MAX_STEPS = 7;
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -80,9 +84,16 @@ export function GameHighlightReel({
               ]
                 .filter(Boolean)
                 .join(" ")}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.04 * i, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              // Highlight stamp: chips land in order with the app's one overshoot.
+              // --i paces the kill ring in motion.css to the same 120ms step.
+              style={{ "--i": Math.min(i, STAMP_MAX_STEPS) } as MotionStyle}
+              initial={{ opacity: 0, scale: 2.2 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                delay: seconds(Math.min(i, STAMP_MAX_STEPS) * 3 * STAGGER_MS),
+                duration: seconds(DURATION_MS.impact),
+                ease: EASE.impact,
+              }}
               role={seekable ? "button" : undefined}
               tabIndex={seekable ? 0 : undefined}
               aria-label={seekable ? `${h.label} at ${h.timestamp}. Activate to watch.` : h.label}

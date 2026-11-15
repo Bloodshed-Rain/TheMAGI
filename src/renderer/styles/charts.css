@@ -27,7 +27,7 @@
 .recharts-cartesian-axis-tick text {
   fill: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .recharts-cartesian-grid line {

@@ -127,7 +127,7 @@ export function StageCard({ character, color, glowColor }: CharacterModuleProps)
                     <span className={`stage-card-pct ${wr >= 0.5 ? "stage-card-pct-up" : "stage-card-pct-down"}`}>
                       {Math.round(wr * 100)}%
                     </span>
-                    <WinrateBar value={wr} />
+                    <WinrateBar value={wr} marked />
                   </div>
                 </td>
               </tr>

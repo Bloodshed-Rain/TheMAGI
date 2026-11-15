@@ -60,20 +60,42 @@ function CharacterCardImage({
   character,
   variant = "bg",
   color,
+  idle = false,
+  scanColor,
 }: {
   character: string;
   variant?: "bg" | "portrait";
   color?: string;
+  /**
+   * Wireframe idle: a ring of color radiates out through the wires (always on for the
+   * hero portrait, on hover for a tile). Needs a positioned parent, which the
+   * hero stage and the character tiles are.
+   */
+  idle?: boolean;
+  /** Color of the ring's leading edge; defaults to white (dark text in Light). */
+  scanColor?: string;
 }) {
   const src = CHARACTER_IMAGE_URLS[character];
   if (!src) return null;
   const className = variant === "portrait" ? "char-hero-portrait" : "char-card-bg-img";
-  const style: CSSProperties = {
-    WebkitMaskImage: `url(${src})`,
-    maskImage: `url(${src})`,
-    backgroundColor: color ?? "var(--text)",
-  };
-  return <div className={className} style={style} aria-hidden />;
+  const mask: CSSProperties = { WebkitMaskImage: `url(${src})`, maskImage: `url(${src})` };
+  return (
+    <>
+      <div className={className} style={{ ...mask, backgroundColor: color ?? "var(--text)" }} aria-hidden />
+      {idle && (
+        // The art is a mask over a flat color, so color painted behind the same
+        // mask only shows on the wires. It is a separate layer so the glow
+        // filter on the art above is not redrawn on every frame of the sweep.
+        <div
+          className={`wire-scan-mask wire-scan-mask--${variant}`}
+          style={{ ...mask, ...(scanColor ? { "--wire-scan": scanColor } : {}) } as CSSProperties}
+          aria-hidden
+        >
+          <span className="wire-scan" />
+        </div>
+      )}
+    </>
+  );
 }
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -473,7 +495,7 @@ export function Characters({ refreshKey: _ }: { refreshKey: number }) {
             >
               <div className="character-tile-art">
                 {CHARACTER_IMAGE_URLS[c.character] ? (
-                  <CharacterCardImage character={c.character} />
+                  <CharacterCardImage character={c.character} idle={!unplayed} scanColor={meta.color} />
                 ) : (
                   <div className="character-tile-emoji">{meta.emoji}</div>
                 )}
@@ -492,7 +514,7 @@ export function Characters({ refreshKey: _ }: { refreshKey: number }) {
                     </>
                   )}
                 </div>
-                <WinrateBar value={wr} />
+                <WinrateBar value={wr} marked />
               </div>
             </button>
           );
@@ -600,6 +622,7 @@ function CharacterDetail({
         tone="chrome-plate"
         className="character-hero-banner"
         style={{ "--char-color": meta.color, "--char-glow": meta.glowColor } as MotionStyle}
+        specular
       >
         <div className="character-hero-head">
           <div className="character-hero-identity">
@@ -631,7 +654,7 @@ function CharacterDetail({
 
         <div className="character-hero-stage">
           <div className="character-hero-art-xl" aria-hidden="true">
-            <CharacterCardImage character={character} variant="portrait" color={meta.color} />
+            <CharacterCardImage character={character} variant="portrait" color={meta.color} idle />
           </div>
           {(["left", "right"] as const).map((side, index) => (
             <div key={side} className={`character-hero-side character-hero-side--${side}`}>
@@ -869,7 +892,7 @@ function CharacterDetail({
                             >
                               {(wr * 100).toFixed(0)}%
                             </span>
-                            <WinrateBar value={wr} />
+                            <WinrateBar value={wr} marked />
                           </div>
                         </td>
                       </tr>

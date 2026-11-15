@@ -2,7 +2,7 @@
 
 [Back to MAGI](../README.md) · [Troubleshooting](DEVELOPMENT.md#troubleshooting)
 
-These instructions describe source version **1.12.0**. Compare the version shown in Settings with the release you downloaded.
+These instructions describe source version **1.13.0**. Compare the version shown in Settings with the release you downloaded.
 
 ## Quick Start
 

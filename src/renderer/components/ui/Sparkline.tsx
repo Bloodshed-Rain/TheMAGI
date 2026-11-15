@@ -44,7 +44,7 @@ export function Sparkline({
       height={h}
       preserveAspectRatio={kind === "chart" ? "none" : "xMinYMid meet"}
       style={{ display: "block", overflow: "visible", ...style }}
-      className={className}
+      className={["sparkline", className].filter(Boolean).join(" ")}
     >
       {showFill && (
         <defs>
@@ -68,7 +68,19 @@ export function Sparkline({
         strokeLinejoin="round"
       />
       {kind === "chart" && values.length > 1 && (
-        <circle cx={lastX} cy={lastY} r="5" fill={color} stroke="var(--bg)" strokeWidth="2" />
+        <>
+          {/* Rings once after the dot lands (motion.css); invisible at rest. */}
+          <circle className="sparkline-ping" cx={lastX} cy={lastY} r="5" stroke={color} strokeWidth="1.5" />
+          <circle
+            className="sparkline-dot"
+            cx={lastX}
+            cy={lastY}
+            r="5"
+            fill={color}
+            stroke="var(--bg)"
+            strokeWidth="2"
+          />
+        </>
       )}
     </svg>
   );

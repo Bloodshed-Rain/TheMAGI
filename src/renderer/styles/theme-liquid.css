@@ -18,7 +18,7 @@ body[data-theme="liquid"]::before {
     radial-gradient(700px 500px at 60% 40%, rgba(126, 232, 197, 0.12), transparent 60%),
     radial-gradient(600px 400px at 35% 88%, rgba(232, 163, 212, 0.14), transparent 60%);
   filter: blur(20px);
-  animation: liquid-float 24s ease-in-out infinite alternate;
+  animation: liquid-float var(--duration-ambient) ease-in-out infinite alternate;
 }
 
 body[data-theme="liquid"]::after {

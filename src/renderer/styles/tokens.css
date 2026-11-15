@@ -46,6 +46,9 @@
   --accent-dim: #e8ebf0;
   --accent-muted: rgba(199, 204, 214, 0.14);
   --accent-glow: rgba(199, 204, 214, 0.1);
+  --accent-fill: #c7ccd6; /* solid fill behind --on-accent text (primary buttons) */
+  --on-accent: #0a0f0c; /* text on --accent-fill / --accent-hover; AA in every theme */
+  --focus-ring: var(--accent);
 
   /* Semantic — aligned to liquid */
   --green: #7ee8c5;
@@ -97,6 +100,7 @@
   --radius-md: 6px;
   --radius-lg: 10px;
   --radius-xl: 14px;
+  --radius-pill: 999px;
 
   /* Shadows — layered for realistic depth on dark surfaces */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
@@ -120,8 +124,38 @@
   --magi-bg-logo-size: min(1120px, 76vw) auto;
 
   /* Easing */
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncier modern spring */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1); /* same value themes.ts applies at runtime: fast settle, no overshoot */
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* exits only */
+  --ease-impact: cubic-bezier(0.2, 1.3, 0.3, 1); /* the one overshoot: stock-taking events (kill stamp, highlight stamp) */
+
+  /* Motion — src/renderer/motion.ts mirrors these for framer-motion; tests/motion.test.ts keeps them in agreement */
+  --duration-fast: 120ms; /* press feedback */
+  --duration-base: 150ms; /* hover/focus color changes */
+  --duration-exit: 180ms; /* anything leaving; pairs with --ease-in */
+  --duration-moderate: 250ms; /* card lift, entrance rise, pill thumb */
+  --duration-slow: 400ms; /* bar fills, timeline segments, radar morph */
+  --duration-theme: 500ms; /* theme reveal */
+  --duration-impact: 520ms; /* kill stamp, highlight stamp; pairs with --ease-impact */
+  --duration-reveal: 600ms; /* one-shot data reveals, liquid glint */
+  --duration-count: 900ms; /* KPI count-up */
+  --duration-pulse: 2000ms; /* live-status ring */
+  --duration-orbit: 3200ms; /* one lap of the light on a streaming coaching card */
+  --duration-idle: 7s; /* one cycle of the character wireframe idle (the ring takes the first 40% of it, then the figure rests) */
+  --duration-ambient: 24s; /* liquid backdrop drift */
+  --stagger: 40ms; /* delay between siblings entering together */
+
+  /* Light that follows the pointer on specular cards and laps a streaming card; white in Liquid */
+  --specular: var(--accent);
+
+  /* Stacking */
+  --z-rail: 10;
+  --z-brand: 20;
+  --z-popover: 1000;
+  --z-modal: 2000;
+  --z-player: 2100;
+  --z-palette: 3000;
+  --z-tooltip: 4000;
 
   /* Layout */
   --rail-width: 220px;
@@ -162,27 +196,29 @@
   --border-muted: rgba(15, 23, 42, 0.14);
   --text: #0f172a; /* Slate 900 */
   --text-secondary: #475569; /* Slate 600 */
-  --text-dim: #64748b; /* Slate 500 */
-  --text-muted: #94a3b8; /* Slate 400 */
+  --text-dim: #475569; /* applyTheme aliases --text-dim to textSecondary */
+  --text-muted: #5b6675; /* AA 4.5:1 on light surfaces */
   --text-title: #020617; /* Slate 950 */
   --text-label: #475569;
-  --accent: #0ea5e9; /* Blue 500 */
-  --accent-dim: #0284c7; /* Blue 600 */
-  --accent-hover: #0284c7;
-  --accent-muted: rgba(14, 165, 233, 0.1);
-  --accent-glow: rgba(14, 165, 233, 0.06);
-  --green: #22c55e; /* Green 500 */
-  --red: #ef4444; /* Red 500 */
-  --yellow: #f59e0b; /* Amber 500 */
-  --win: #22c55e;
-  --loss: #ef4444;
-  --caution: #f59e0b;
-  --secondary: #6366f1; /* Indigo 500 */
-  --secondary-dim: #4f46e5;
-  --accent-rgb: 14, 165, 233;
-  --green-rgb: 34, 197, 94;
-  --red-rgb: 239, 68, 68;
-  --yellow-rgb: 245, 158, 11;
+  --accent: #0369a1; /* AA as text on white through surface-3 */
+  --accent-dim: #075985;
+  --accent-hover: #075985;
+  --accent-muted: rgba(3, 105, 161, 0.1);
+  --accent-fill: #0369a1;
+  --on-accent: #ffffff;
+  --accent-glow: rgba(3, 105, 161, 0.1);
+  --green: #166534;
+  --red: #b91c1c;
+  --yellow: #92400e;
+  --win: #166534;
+  --loss: #b91c1c;
+  --caution: #92400e;
+  --secondary: #0369a1; /* applyTheme aliases --secondary to accent */
+  --secondary-dim: #075985;
+  --accent-rgb: 3, 105, 161;
+  --green-rgb: 22, 101, 52;
+  --red-rgb: 185, 28, 28;
+  --yellow-rgb: 146, 64, 14;
   --sidebar-bg: #0f172a;
   --sidebar-hover: #1e293b;
   --sidebar-active-bg: rgba(34, 211, 238, 0.12);

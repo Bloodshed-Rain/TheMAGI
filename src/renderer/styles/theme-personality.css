@@ -220,7 +220,7 @@ body[data-theme="tournament"] .liquid-shell .nav-item.active {
 }
 
 body[data-theme="tournament"] .btn-primary {
-  background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(180deg, var(--accent-fill), #1d4ed8);
   border-color: #60a5fa;
 }
 
@@ -338,7 +338,7 @@ body[data-theme="telemetry"] .btn-primary,
 body[data-theme="telemetry"] .tweaks-chip.active,
 body[data-theme="telemetry"] .tab.active {
   background: linear-gradient(90deg, rgba(34, 211, 238, 0.98), rgba(56, 189, 248, 0.82)), var(--accent);
-  color: #03111d;
+  color: var(--on-accent);
   box-shadow: 0 0 18px rgba(34, 211, 238, 0.24);
 }
 
@@ -422,7 +422,7 @@ body[data-theme="tournament"] .settings-field input {
 
 body[data-theme="tournament"] .btn-primary,
 body[data-theme="tournament"] .tweaks-chip.active {
-  color: #ffffff;
+  color: var(--on-accent);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
@@ -515,8 +515,8 @@ body[data-theme="light"] .settings-field input {
 
 body[data-theme="light"] .btn-primary,
 body[data-theme="light"] .tweaks-chip.active {
-  background: linear-gradient(180deg, #0ea5e9, #0284c7);
-  color: #ffffff;
+  background: linear-gradient(180deg, var(--accent-fill), var(--accent-hover));
+  color: var(--on-accent);
   box-shadow: 0 8px 20px rgba(14, 165, 233, 0.22);
 }
 

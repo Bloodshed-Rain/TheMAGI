@@ -29,7 +29,7 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   line-height: 0;
 }
 .result-dot-button:focus-visible {
@@ -42,7 +42,7 @@
    without a keyboard affordance; components with their own
    :focus-visible rule override this automatically. */
 :where(button, a[href], [role="button"], [tabindex="0"], input, select, textarea):focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -62,24 +62,17 @@
     border-color 0.25s ease,
     background-color 0.25s ease;
 }
+/* The 3px hover lift lives in motion.css as `translate`, so it survives the inline
+   `transform: none` framer-motion leaves on <Card> and is skipped under reduced motion. */
 .card:hover {
-  transform: translateY(-3px);
   background: var(--surface-2);
   box-shadow:
     var(--shadow-glass),
     0 0 20px rgba(var(--accent-rgb), 0.1);
   border-color: rgba(var(--accent-rgb), 0.2);
 }
-.card.discovery-card:hover,
-.card.clippi-card:hover {
-  transform: none;
-}
-body .card.play-panel:hover,
-body .card.play-sidebar-editor:hover {
-  transform: none;
-}
 .card-title {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -167,7 +160,7 @@ body .card.play-sidebar-editor:hover {
   font-variant-numeric: tabular-nums;
 }
 .stat-label {
-  font-size: 9px;
+  font-size: 10px;
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -196,7 +189,7 @@ body .card.play-sidebar-editor:hover {
 }
 .cornerman-live-stats-table th {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--text-muted);
@@ -274,9 +267,9 @@ body .card.play-sidebar-editor:hover {
 }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #0a0f0c;
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: var(--on-accent);
   font-weight: 700;
   position: relative;
   overflow: hidden;
@@ -365,7 +358,7 @@ input[type="checkbox"] {
 }
 .data-table th {
   text-align: left;
-  font-size: 9px;
+  font-size: 10px;
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -393,27 +386,26 @@ input[type="checkbox"] {
 .data-table tbody tr:nth-child(odd) td {
   background: transparent;
 }
+/* The hover sweep is a background on the row itself. It used to be a tr::after
+   overlay; under table-layout: fixed a pseudo-element on a row is laid out as an
+   extra cell, so every table gained a phantom column and its auto-width columns
+   lost that share of the width (tests/motion.test.ts guards against its return). */
 .data-table tbody tr {
-  position: relative;
+  background-image: linear-gradient(90deg, rgba(var(--accent-rgb), 0.06) 0%, transparent 100%);
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  transition:
+    background-size 0.3s var(--ease-spring),
+    background-color var(--duration-base) ease;
 }
-.data-table tbody tr::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.06) 0%, transparent 100%);
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.3s var(--ease-spring);
-  pointer-events: none;
-  z-index: 1;
-}
-.data-table tbody tr:hover::after,
-.data-table tbody tr:focus-visible::after {
-  transform: scaleX(1);
+.data-table tbody tr:hover,
+.data-table tbody tr:focus-visible {
+  background-size: 100% 100%;
+  background-color: var(--surface-2);
 }
 .data-table tbody tr:hover td,
 .data-table tbody tr:focus-visible td {
-  background: var(--surface-2);
+  background: transparent;
 }
 /* Keyboard focus ring for interactive rows (negative offset stays inside
    the overflow:hidden cells). */
@@ -586,7 +578,7 @@ input[type="checkbox"] {
   font-family: var(--font-mono);
 }
 .mini-stat-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;
@@ -861,7 +853,7 @@ input[type="checkbox"] {
 }
 .settings-field label {
   display: block;
-  font-size: 9px;
+  font-size: 10px;
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -929,7 +921,7 @@ input[type="checkbox"] {
 }
 .settings-subhead {
   margin: 0 0 10px;
-  font-size: 9px;
+  font-size: 10px;
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -1213,7 +1205,7 @@ input[type="checkbox"] {
 }
 .empty-state-chip {
   padding: 8px 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-secondary);
@@ -1586,7 +1578,7 @@ input[type="checkbox"] {
   font-variant-numeric: tabular-nums;
 }
 .char-hero-stat-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   font-weight: 600;
   font-family: var(--font-mono);
@@ -1618,7 +1610,7 @@ input[type="checkbox"] {
   font-variant-numeric: tabular-nums;
 }
 .sig-stat-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   margin-top: 6px;
   font-weight: 600;
@@ -1793,7 +1785,7 @@ input[type="checkbox"] {
   margin-bottom: 8px;
 }
 .stock-timeline-title {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -1893,7 +1885,7 @@ input[type="checkbox"] {
 .stock-kill-icon {
   color: var(--red);
   font-weight: 700;
-  font-size: 9px;
+  font-size: 10px;
 }
 .stock-kill-move {
   max-width: 64px;
@@ -1959,7 +1951,7 @@ input[type="checkbox"] {
   margin-bottom: 8px;
 }
 .highlight-reel-title {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -1977,13 +1969,14 @@ input[type="checkbox"] {
   gap: 6px;
 }
 .highlight-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 11px;
   color: var(--text-secondary);
   cursor: pointer;
@@ -2095,7 +2088,7 @@ input[type="checkbox"] {
 .cmd-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: var(--z-palette);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -2192,7 +2185,7 @@ input[type="checkbox"] {
   align-items: center;
   gap: 6px;
   padding: 6px 18px 4px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -2371,7 +2364,7 @@ input[type="checkbox"] {
 }
 .sessions-chevron {
   display: inline-block;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
   flex-shrink: 0;
   transition: color 0.15s ease;
@@ -2458,7 +2451,7 @@ input[type="checkbox"] {
   margin-bottom: 20px;
 }
 .sessions-section-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   font-family: var(--font-mono);
   color: var(--text-muted);
@@ -2545,7 +2538,7 @@ input[type="checkbox"] {
 
 .tooltip {
   position: absolute;
-  z-index: 1000;
+  z-index: var(--z-popover);
   max-width: 260px;
   padding: 6px 10px;
   font-size: 11px;
@@ -2627,7 +2620,7 @@ input[type="checkbox"] {
 /* ── Portal Tooltips (rendered in document.body) ─────────────── */
 .tooltip-portal {
   position: fixed;
-  z-index: 99999;
+  z-index: var(--z-tooltip);
   max-width: 260px;
   padding: 6px 10px;
   font-size: 11px;
@@ -2704,7 +2697,7 @@ input[type="checkbox"] {
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(3px);
-  z-index: 2000;
+  z-index: var(--z-modal);
 }
 .coaching-modal {
   position: fixed;
@@ -2947,7 +2940,7 @@ body[data-theme="liquid"] .kpi-sub {
 }
 .pill {
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-secondary);
@@ -2984,7 +2977,7 @@ body[data-theme="liquid"] .pill.active {
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
@@ -3049,14 +3042,14 @@ body[data-theme="liquid"] .result-dot.loss {
   flex: 1;
   height: 4px;
   background: var(--surface-3);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   overflow: hidden;
   position: relative;
 }
 .winrate-bar-fill {
   height: 100%;
   background: var(--accent);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: width 0.4s var(--ease-spring);
 }
 body[data-theme="liquid"] .winrate-bar {
@@ -3242,7 +3235,7 @@ body[data-theme="liquid"] .liquid-shell .nav-item.active {
 .liquid-shell .sidebar-status-dot {
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   display: inline-block;
 }
 .liquid-shell .sidebar-footer-count {
@@ -3297,7 +3290,7 @@ body[data-theme="liquid"] .tweaks-toggle-btn {
   border: 1px solid var(--border-muted);
   border-radius: var(--radius-md);
   padding: 18px;
-  z-index: 1000;
+  z-index: var(--z-popover);
   box-shadow: var(--shadow-lg);
 }
 body[data-theme="liquid"] .tweaks-panel {
@@ -3377,7 +3370,7 @@ body[data-theme="liquid"] .tweaks-panel {
 }
 .tweaks-chip {
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-secondary);
@@ -3443,7 +3436,7 @@ body[data-theme="liquid"] .tweaks-chip.active {
 .library-search-suggestion {
   padding: 3px 8px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(var(--accent-rgb), 0.05);
   color: var(--text-secondary);
   cursor: pointer;
@@ -3473,7 +3466,7 @@ body[data-theme="liquid"] .tweaks-chip.active {
   max-width: 180px;
   padding: 3px 7px;
   border: 1px solid rgba(var(--accent-rgb), 0.3);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(var(--accent-rgb), 0.08);
   color: var(--text-secondary);
   cursor: pointer;
@@ -3496,7 +3489,7 @@ body[data-theme="liquid"] .tweaks-chip.active {
 
 .library-search-match .mono {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .library-search-match-kill {
@@ -3785,7 +3778,7 @@ body[data-theme="liquid"] .tweaks-chip.active {
   margin-bottom: 5px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -3957,7 +3950,7 @@ body[data-theme="liquid"] .tweaks-chip.active {
 .character-hero-stat-detail {
   margin-top: 4px;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4198,10 +4191,10 @@ body[data-theme="liquid"] .tweaks-chip.active {
     padding: 9px 10px;
   }
   .character-hero-stat-label {
-    font-size: 9px;
+    font-size: 10px;
   }
   .character-hero-stat-detail {
-    font-size: 8px;
+    font-size: 10px;
   }
   .character-hero-stripe {
     margin-top: -42px;
@@ -4284,7 +4277,7 @@ body[data-theme="liquid"] .tweaks-chip.active {
   margin-bottom: 5px;
   color: var(--accent);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.13em;
   text-transform: uppercase;
@@ -4344,7 +4337,7 @@ body[data-theme="liquid"] .tweaks-chip.active {
 }
 .performance-delta {
   max-width: 116px;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0;
   text-align: right;
   text-transform: none;
@@ -4654,7 +4647,7 @@ body[data-theme="liquid"] .tweaks-chip.active {
   gap: 4px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -4715,7 +4708,7 @@ body[data-theme="liquid"] .tweaks-chip.active {
   gap: 7px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
 }
 .game-review-note-head strong {

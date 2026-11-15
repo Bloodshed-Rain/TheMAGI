@@ -105,7 +105,8 @@ function CoachingCard({
 
   return (
     <motion.div
-      className="cc-card"
+      // is-streaming: a steady accent edge, plus a lapping light when motion is allowed (motion.css).
+      className={forceExpanded ? "cc-card is-streaming" : "cc-card"}
       style={{ "--cc-accent": meta.color } as MotionStyle}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}

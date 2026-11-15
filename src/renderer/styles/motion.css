@@ -1,0 +1,648 @@
+/* ── Motion layer ─────────────────────────────────────────────────
+   Data reveals, feedback and the app's signature moments. Rules:
+   - A mark grows the way its data reads (bars fill from zero, sparklines wipe
+     in time order, stocks enter in stock order).
+   - Reveals play once. Only four things loop: the live-status ring and the
+     orbit on a streaming coaching card (while their state is true), the Liquid
+     backdrop drift, and the character wireframe idle (the one hero portrait on
+     screen, or the tile under the pointer).
+   - Everything settles on --ease-spring with no overshoot. --ease-impact is
+     the single exception, reserved for a stock being taken.
+   - Keyframes declare only "from", so each element lands on its own resting
+     style; fill-mode is backwards for the same reason.
+   - Everything that moves sits inside prefers-reduced-motion: no-preference.
+   Card, StockTimeline segments, HighlightReel chips and CoachingCards keep
+   their framer-motion entrances; durations there come from src/renderer/motion.ts. */
+
+/* ── Static parts of motion-driven elements ────────────────────── */
+
+:root[data-theme="liquid"] {
+  --specular: #ffffff;
+}
+
+.winrate-bar-fill {
+  position: relative;
+  overflow: hidden;
+  transform-origin: left center;
+}
+/* Even-record marker on a win-rate bar (WinrateBar `marked`). */
+.winrate-bar--marked::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--bg);
+}
+/* KPI placeholder while its figure is unknown (KPI `loading`). */
+.skeleton-line {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-xs);
+}
+.kpi-skeleton-value {
+  width: 88px;
+  height: 28px;
+  margin: 4px 0 8px;
+}
+body[data-theme="liquid"] .kpi-skeleton-value {
+  height: 40px;
+  margin: 6px 0 10px;
+}
+.kpi-skeleton-sub {
+  width: 128px;
+}
+.dash-skeleton-card {
+  display: grid;
+  gap: 12px;
+  min-height: 180px;
+  align-content: start;
+}
+/* The newest dot in a recent-form strip rings once (ResultDot `latest`); the ring takes the dot's own color. */
+.result-dot {
+  position: relative;
+}
+.result-dot.win {
+  color: var(--win);
+}
+.result-dot.loss {
+  color: var(--loss);
+}
+.result-dot.draw {
+  color: var(--caution);
+}
+
+.sparkline-dot,
+.sparkline-ping {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.sparkline-ping {
+  fill: none;
+  opacity: 0;
+}
+.stock-kill-icon {
+  display: inline-block;
+}
+
+/* Character wireframe idle. The art is a mask over a flat color, so color
+   painted behind an identical mask only shows on the wires. */
+.wire-scan-mask {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+/* Tiles: match the art's inset and its hover scale so the two layers stay registered. */
+.character-tile .wire-scan-mask {
+  inset: 10px;
+  transition: transform 0.3s var(--ease-spring);
+}
+.character-tile:hover .wire-scan-mask {
+  transform: scale(1.05);
+}
+/* The ring's trailing color: the figure's own hue turned 45 degrees, so the wave
+   passes through a second color before the wires settle back. Where relative
+   colors are unsupported the trail is simply the leading color. */
+.wire-scan-mask {
+  --wire-trail: var(--wire-scan, #ffffff);
+}
+@supports (color: oklch(from red l c h)) {
+  .wire-scan-mask--portrait {
+    --wire-trail: oklch(from var(--char-color, var(--accent)) calc(l + 0.06) c calc(h + 45));
+  }
+  .wire-scan-mask--bg {
+    --wire-trail: oklch(from var(--wire-scan, var(--accent)) calc(l + 0.06) c calc(h + 45));
+  }
+}
+/* A ring centered on the figure: clear in the middle, the trailing color, then a
+   bright leading edge. It is scaled outward, so it widens as it travels. At full
+   scale its radius is 75% of the figure's width, past every corner. */
+.wire-scan {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(
+    closest-side,
+    transparent 52%,
+    color-mix(in srgb, var(--wire-trail) 75%, transparent) 72%,
+    color-mix(in srgb, var(--wire-scan, #ffffff) 92%, transparent) 93%,
+    transparent 100%
+  );
+}
+/* A short glow so the lit wires read as light, not just a lighter color. Kept
+   small: this layer is redrawn on every frame of the sweep. */
+.wire-scan-mask--portrait {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--wire-scan, #ffffff) 55%, transparent));
+}
+/* On Light the wires are already dark on white, so the light is ink instead. */
+:root[data-theme="light"] .wire-scan-mask--portrait {
+  --wire-scan: var(--text);
+}
+
+/* Specular card: a light that follows the pointer. Card.tsx sets --mx/--my. */
+.card-light {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    280px circle at var(--mx, 50%) var(--my, 0%),
+    color-mix(in srgb, var(--specular) 13%, transparent),
+    transparent 62%
+  );
+  transition: opacity var(--duration-moderate) var(--ease-out);
+}
+.card-light::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    200px circle at var(--mx, 50%) var(--my, 0%),
+    color-mix(in srgb, var(--specular) 80%, transparent),
+    transparent 70%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+.card.is-specular:hover .card-light {
+  opacity: 1;
+}
+
+/* Pill thumb: in a PillRow the active fill is one element that glides between
+   pills (framer-motion layoutId in Pill.tsx) instead of each pill repainting. */
+.pill.has-thumb {
+  position: relative;
+  isolation: isolate;
+}
+.pill.has-thumb.active,
+body[data-theme="liquid"] .pill.has-thumb.active {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.pill-thumb {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: var(--radius-pill);
+  background: var(--accent-muted);
+  border: 1px solid var(--accent);
+  pointer-events: none;
+}
+body[data-theme="liquid"] .pill-thumb {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06));
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* Streaming coaching card: the state is a steady accent edge; with motion
+   allowed, a light also laps it (below). */
+.cc-card {
+  position: relative;
+}
+.cc-card.is-streaming {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* Theme reveal (themeReveal.ts): colors must not cross-fade under the wipe. */
+:root.theme-revealing,
+:root.theme-revealing *,
+:root.theme-revealing *::before,
+:root.theme-revealing *::after {
+  transition: none !important;
+}
+
+@property --orbit-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes magi-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes magi-rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  @keyframes magi-fill {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes magi-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+  }
+  @keyframes magi-stamp {
+    from {
+      opacity: 0;
+      transform: scale(2.2);
+    }
+  }
+  @keyframes magi-flare {
+    from {
+      opacity: 1;
+    }
+  }
+  @keyframes magi-wipe {
+    from {
+      clip-path: inset(-8px 100% -8px -8px);
+    }
+    to {
+      clip-path: inset(-8px -8px -8px -8px);
+    }
+  }
+  @keyframes magi-ping {
+    from {
+      opacity: 0.7;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(3.2);
+    }
+  }
+  @keyframes magi-ping-chip {
+    from {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(1.18, 1.6);
+    }
+  }
+  @keyframes magi-sweep {
+    from {
+      transform: translateX(-120%);
+    }
+    to {
+      transform: translateX(120%);
+    }
+  }
+  @keyframes magi-live {
+    from {
+      box-shadow: 0 0 0 0 rgba(var(--green-rgb), 0.55);
+    }
+    to {
+      box-shadow: 0 0 0 7px rgba(var(--green-rgb), 0);
+    }
+  }
+  @keyframes magi-flash-win {
+    from {
+      border-color: var(--win);
+      box-shadow:
+        0 0 0 1px var(--win),
+        0 0 28px rgba(var(--green-rgb), 0.4);
+    }
+  }
+  @keyframes magi-flash-loss {
+    from {
+      border-color: var(--loss);
+      box-shadow:
+        0 0 0 1px var(--loss),
+        0 0 28px rgba(var(--red-rgb), 0.4);
+    }
+  }
+  @keyframes magi-orbit {
+    to {
+      --orbit-angle: 360deg;
+    }
+  }
+  /* The ring opens from the figure's center at constant speed, the way a wave
+     travels, and has passed its edges 40% into the cycle; the rest is still. */
+  @keyframes magi-wire-scan {
+    0% {
+      opacity: 0;
+      transform: scale(0.04);
+    }
+    6%,
+    28% {
+      opacity: 1;
+    }
+    40%,
+    100% {
+      opacity: 0;
+      transform: scale(1);
+    }
+  }
+  @keyframes magi-wire-float {
+    from {
+      transform: translateY(4px);
+    }
+    to {
+      transform: translateY(-6px) scale(1.012);
+    }
+  }
+  @keyframes magi-theme-reveal {
+    from {
+      clip-path: circle(0 at var(--reveal-x, 50%) var(--reveal-y, 50%));
+    }
+    to {
+      clip-path: circle(var(--reveal-r, 150%) at var(--reveal-x, 50%) var(--reveal-y, 50%));
+    }
+  }
+
+  /* Stagger index for every container whose children enter in reading order.
+     Later siblings share the tenth step. */
+  :is(.enter-group, .kpi-grid, .stat-group-grid, .empty-state, .dash-dot-strip, .form-strip-dots, .data-table tbody)
+    > :nth-child(2) {
+    --i: 1;
+  }
+  :is(.enter-group, .kpi-grid, .stat-group-grid, .empty-state, .dash-dot-strip, .form-strip-dots, .data-table tbody)
+    > :nth-child(3) {
+    --i: 2;
+  }
+  :is(.enter-group, .kpi-grid, .stat-group-grid, .empty-state, .dash-dot-strip, .form-strip-dots, .data-table tbody)
+    > :nth-child(4) {
+    --i: 3;
+  }
+  :is(.enter-group, .kpi-grid, .stat-group-grid, .empty-state, .dash-dot-strip, .form-strip-dots, .data-table tbody)
+    > :nth-child(5) {
+    --i: 4;
+  }
+  :is(.enter-group, .kpi-grid, .stat-group-grid, .empty-state, .dash-dot-strip, .form-strip-dots, .data-table tbody)
+    > :nth-child(6) {
+    --i: 5;
+  }
+  :is(.enter-group, .kpi-grid, .stat-group-grid, .empty-state, .dash-dot-strip, .form-strip-dots, .data-table tbody)
+    > :nth-child(7) {
+    --i: 6;
+  }
+  :is(.enter-group, .kpi-grid, .stat-group-grid, .empty-state, .dash-dot-strip, .form-strip-dots, .data-table tbody)
+    > :nth-child(8) {
+    --i: 7;
+  }
+  :is(.enter-group, .kpi-grid, .stat-group-grid, .empty-state, .dash-dot-strip, .form-strip-dots, .data-table tbody)
+    > :nth-child(9) {
+    --i: 8;
+  }
+  :is(.enter-group, .kpi-grid, .stat-group-grid, .empty-state, .dash-dot-strip, .form-strip-dots, .data-table tbody)
+    > :nth-child(n + 10) {
+    --i: 9;
+  }
+
+  /* Entrances. .enter rises one element; .enter-group rises its children in
+     reading order. --enter-delay offsets a band and is inherited. */
+  .enter,
+  .enter-group > *,
+  .kpi-grid > .kpi,
+  .stat-group-grid > .stat-group-cell,
+  .empty-state > * {
+    animation: magi-rise var(--duration-moderate) var(--ease-spring) backwards;
+    animation-delay: calc(var(--enter-delay, 0ms) + var(--i, 0) * var(--stagger));
+  }
+
+  /* Page header: wipes in from its accent bar, then title and meta settle. */
+  .page-header {
+    animation: magi-wipe var(--duration-slow) var(--ease-out) backwards;
+  }
+  .page-header h1 {
+    animation: magi-fade var(--duration-slow) var(--ease-out) backwards;
+    animation-delay: calc(2 * var(--stagger));
+  }
+  .page-header p {
+    animation: magi-fade var(--duration-moderate) var(--ease-out) backwards;
+    animation-delay: calc(5 * var(--stagger));
+  }
+
+  /* Data reveals: the mark grows the way the data reads (time runs left to right). */
+  .winrate-bar-fill {
+    animation: magi-fill var(--duration-slow) var(--ease-spring) backwards;
+    animation-delay: calc(var(--enter-delay, 0ms) + var(--i, 0) * var(--stagger));
+  }
+  /* The fill's leading edge is bright while it travels, then settles flat. */
+  .winrate-bar-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 60%, color-mix(in srgb, var(--specular) 70%, transparent) 100%);
+    opacity: 0;
+    animation: magi-flare var(--duration-reveal) var(--ease-out) backwards;
+    animation-delay: calc(var(--enter-delay, 0ms) + var(--duration-slow) + var(--i, 0) * var(--stagger));
+  }
+  .sparkline {
+    animation: magi-wipe var(--duration-reveal) var(--ease-out) backwards;
+  }
+  .sparkline-dot {
+    animation: magi-pop var(--duration-moderate) var(--ease-spring) backwards;
+    animation-delay: var(--duration-reveal);
+  }
+  .sparkline-ping {
+    animation: magi-ping var(--duration-reveal) var(--ease-out) backwards;
+    animation-delay: calc(var(--duration-reveal) + var(--duration-moderate));
+  }
+  .stat-trend {
+    display: inline-block;
+    animation: magi-pop var(--duration-moderate) var(--ease-spring) backwards;
+    animation-delay: calc(var(--duration-moderate) + var(--i, 0) * var(--stagger));
+  }
+  /* Recent-form strips: dots pop in the order the strip lists them. The dot
+     animates, not its button, so framer's hover scale on the button is untouched. */
+  :is(.dash-dot-strip, .form-strip-dots) .result-dot {
+    animation: magi-pop var(--duration-moderate) var(--ease-spring) backwards;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
+  }
+  .result-dot.is-latest::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    opacity: 0;
+    pointer-events: none;
+    animation: magi-ping var(--duration-reveal) var(--ease-out) backwards;
+    animation-delay: calc(var(--duration-moderate) + var(--i, 0) * var(--stagger));
+  }
+  /* KPI live change: the tile's edge lights once in its tone's color (KPI.tsx adds the class). */
+  .kpi.kpi-flash-win {
+    animation: magi-flash-win var(--duration-reveal) var(--ease-out);
+  }
+  .kpi.kpi-flash-loss {
+    animation: magi-flash-loss var(--duration-reveal) var(--ease-out);
+  }
+  .data-table tbody > tr {
+    animation: magi-fade var(--duration-moderate) var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
+  }
+
+  /* Stock timeline: the x stamps a lost stock as its segment finishes growing.
+     StockTimeline.tsx sets --i (stock index) and --lane (0 player, 1 opponent)
+     to match the segment's own framer delay of 80ms per stock + 40ms per lane. */
+  .stock-kill-icon {
+    animation: magi-stamp var(--duration-impact) var(--ease-impact) backwards;
+    animation-delay: calc(var(--duration-slow) + var(--i, 0) * 80ms + var(--lane, 0) * 40ms);
+  }
+
+  /* Highlight chip: a chip that took a stock rings once after it lands
+     (the landing itself is framer-motion in HighlightReel.tsx). */
+  .highlight-chip.highlight-chip-kill::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    border: 1px solid var(--loss);
+    opacity: 0;
+    pointer-events: none;
+    animation: magi-ping-chip var(--duration-reveal) var(--ease-out) backwards;
+    animation-delay: calc(var(--duration-moderate) + var(--i, 0) * 3 * var(--stagger));
+  }
+
+  /* Coaching stream: a light laps the card edge while its text arrives. */
+  .cc-card.is-streaming::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--orbit-angle),
+      transparent 0%,
+      transparent 68%,
+      color-mix(in srgb, var(--specular) 95%, transparent) 88%,
+      transparent 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    animation: magi-orbit var(--duration-orbit) linear infinite;
+  }
+
+  /* Feedback */
+  .btn {
+    transition:
+      background var(--duration-base) ease,
+      border-color var(--duration-base) ease,
+      transform var(--duration-fast) var(--ease-out);
+  }
+  .pill:active,
+  .highlight-chip:active,
+  .radar-period-btn:active,
+  .empty-state-chip:active {
+    transform: scale(0.97);
+  }
+  /* One sheen crosses a primary button on hover-in; it does not repeat while the pointer stays. */
+  .btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 38%,
+      color-mix(in srgb, var(--on-accent) 22%, transparent) 50%,
+      transparent 62%
+    );
+    transform: translateX(-120%);
+  }
+  .btn-primary:hover::after {
+    animation: magi-sweep var(--duration-reveal) var(--ease-out);
+  }
+
+  /* Card lift. framer-motion leaves `transform: none` inline on every <Card>
+     after its entrance, which silently cancelled the lift in components.css;
+     `translate` is a separate property, so it composes with that inline value. */
+  .card {
+    transition:
+      translate var(--duration-moderate) var(--ease-spring),
+      transform var(--duration-moderate) var(--ease-spring),
+      box-shadow var(--duration-moderate) ease,
+      border-color var(--duration-moderate) ease,
+      background-color var(--duration-moderate) ease;
+  }
+  .card:hover {
+    translate: 0 -3px;
+  }
+  .card.discovery-card:hover,
+  .card.clippi-card:hover,
+  body .card.play-panel:hover,
+  body .card.play-sidebar-editor:hover {
+    translate: none;
+  }
+
+  /* Liquid only: one pass of light across a card on hover-in; it snaps back unseen.
+     Specular cards carry the pointer light instead. */
+  body[data-theme="liquid"] .card:not(.is-specular)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.09) 50%, transparent 58%);
+    transform: translateX(-120%);
+  }
+  body[data-theme="liquid"] .card:not(.is-specular):hover::after {
+    transform: translateX(120%);
+    transition: transform var(--duration-reveal) var(--ease-out);
+  }
+  body[data-theme="liquid"] .card.discovery-card::after,
+  body[data-theme="liquid"] .card.clippi-card::after,
+  body[data-theme="liquid"] .card.play-panel::after,
+  body[data-theme="liquid"] .card.play-sidebar-editor::after {
+    display: none;
+  }
+
+  /* Character wireframe idle: the hero figure hovers and a ring of color
+     radiates out through its wires every --duration-idle; a tile does the same only under the
+     pointer or keyboard focus, so the grid never runs 26 loops at once. */
+  .character-hero-art-xl {
+    animation: magi-wire-float var(--duration-idle) ease-in-out infinite alternate;
+  }
+  .wire-scan-mask--portrait .wire-scan {
+    animation: magi-wire-scan var(--duration-idle) linear infinite;
+    animation-delay: 1200ms;
+  }
+  .character-tile:hover .wire-scan,
+  .character-tile:focus-visible .wire-scan {
+    animation: magi-wire-scan var(--duration-idle) linear infinite;
+  }
+
+  /* Live status: the watcher dot rings while the watcher runs. */
+  .sidebar-status-dot.is-live {
+    animation: magi-live var(--duration-pulse) var(--ease-out) infinite;
+  }
+
+  /* Theme reveal: the new theme opens as a circle from the control that chose it. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  ::view-transition-new(root) {
+    animation: magi-theme-reveal var(--duration-theme) var(--ease-out) both;
+  }
+}

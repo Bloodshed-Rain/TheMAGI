@@ -103,7 +103,7 @@ export function FormStrip({ character, color, glowColor }: CharacterModuleProps)
       <div className="form-strip-body">
         <div className="form-strip-recent">
           <div className="form-strip-dots" aria-label="Recent game results">
-            {recent.map((game) => (
+            {recent.map((game, i) => (
               <button
                 key={game.id}
                 type="button"
@@ -112,7 +112,11 @@ export function FormStrip({ character, color, glowColor }: CharacterModuleProps)
                 aria-label={`Open ${game.result} vs ${game.opponentTag}`}
                 title={`${game.result} on ${game.stage}`}
               >
-                <ResultDot result={game.result === "win" ? "win" : game.result === "loss" ? "loss" : "draw"} />
+                {/* Oldest to newest in this strip. */}
+                <ResultDot
+                  result={game.result === "win" ? "win" : game.result === "loss" ? "loss" : "draw"}
+                  latest={i === recent.length - 1}
+                />
               </button>
             ))}
           </div>

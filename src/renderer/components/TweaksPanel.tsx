@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { THEMES, THEME_ORDER, applyTheme, getResolvedTheme, ColorMode } from "../themes";
+import { THEMES, THEME_ORDER, getResolvedTheme, ColorMode } from "../themes";
+import { applyThemeWithReveal, revealOriginFromClick, type RevealOrigin } from "../themeReveal";
 import { useGlobalStore, Density } from "../stores/useGlobalStore";
 import { LiquidAppearanceControls } from "./LiquidAppearanceControls";
 
@@ -12,9 +13,9 @@ export function TweaksPanel() {
   const density = useGlobalStore((s) => s.density);
   const setDensity = useGlobalStore((s) => s.setDensity);
 
-  const onPickTheme = (id: ColorMode) => {
+  const onPickTheme = (id: ColorMode, origin: RevealOrigin) => {
     setColorMode(id);
-    applyTheme(getResolvedTheme(id, id));
+    applyThemeWithReveal(getResolvedTheme(id, id), origin);
     window.clippi.saveConfig({ colorMode: id }).catch(() => {});
   };
 
@@ -59,7 +60,9 @@ export function TweaksPanel() {
             <button
               key={id}
               className={`tweaks-chip ${colorMode === id ? "active" : ""}`}
-              onClick={() => onPickTheme(id as ColorMode)}
+              onClick={(e) =>
+                onPickTheme(id as ColorMode, revealOriginFromClick(e, e.currentTarget.getBoundingClientRect()))
+              }
             >
               {THEMES[id]!.name}
             </button>

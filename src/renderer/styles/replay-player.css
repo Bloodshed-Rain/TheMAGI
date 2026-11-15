@@ -9,7 +9,7 @@
   right: 0;
   bottom: 0;
   width: min(880px, 58vw);
-  z-index: 2100; /* above coaching modal overlay (2000) */
+  z-index: var(--z-player); /* above coaching modal overlay (2000) */
   pointer-events: none; /* let clicks fall through to underlying page */
   display: flex;
   align-items: stretch;
@@ -229,7 +229,7 @@ body[data-theme="liquid"] .replay-player-modal {
   position: relative;
   height: 16px;
   margin: 0 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.08);
   cursor: pointer;
   outline: none;
@@ -311,7 +311,7 @@ body[data-theme="liquid"] .replay-player-modal {
   gap: 12px;
   margin-top: 7px;
   color: var(--text-muted, #6b7280);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .replay-review-legend span {

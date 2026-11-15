@@ -111,7 +111,7 @@ function DayCard({ day }: { day: Day }) {
           );
         })()}
       </div>
-      <WinrateBar value={wr} />
+      <WinrateBar value={wr} marked />
       <div className="session-card-opponents">
         vs {day.opponents.slice(0, 3).join(", ")}
         {day.opponents.length > 3 ? ` +${day.opponents.length - 3}` : ""}

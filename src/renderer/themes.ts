@@ -14,6 +14,10 @@ export interface Theme {
   accent: string;
   accentHover: string;
   accentMuted: string;
+  /** Solid fill behind `onAccent` text (primary buttons). AA 4.5:1 with onAccent in every theme. */
+  accentFill: string;
+  /** Text/icon color on accentFill and accentHover. */
+  onAccent: string;
   win: string;
   loss: string;
   caution: string;
@@ -82,6 +86,8 @@ export const THEMES: Record<string, Theme> = {
     accent: "#c7ccd6", // chrome
     accentHover: "#e8ebf0",
     accentMuted: "rgba(199,204,214,0.14)",
+    accentFill: "#c7ccd6",
+    onAccent: "#0a0f0c",
     win: "#7ee8c5",
     loss: "#ff8a9e",
     caution: "#ffd47a",
@@ -104,7 +110,7 @@ export const THEMES: Record<string, Theme> = {
     magiBackgroundSize: "min(1180px, 78vw) auto",
     fontMono: FONT_MONO,
     fontSans: "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
-    fontDisplay: "'Inter', -apple-system, 'SF Pro Display', sans-serif",
+    fontDisplay: FONT_DISPLAY, // Chakra Petch headings in every theme; Liquid keeps Inter for body and KPI figures
     easeSpring: EASE_SPRING,
     easeOut: EASE_OUT,
     surfaceBlur: "28px",
@@ -131,8 +137,10 @@ export const THEMES: Record<string, Theme> = {
     accent: "#22d3ee",
     accentHover: "#06b6d4",
     accentMuted: "rgba(34, 211, 238, 0.15)",
+    accentFill: "#22d3ee",
+    onAccent: "#03111d",
     win: "#4ade80",
-    loss: "#f87171",
+    loss: "#fca5a5", // lightened to clear WCAG AA 4.5:1 on surface-2 (was #f87171 ≈ 3.7:1)
     caution: "#fbbf24",
     sidebarBg: "#0f172a",
     sidebarHover: "#1e293b",
@@ -174,6 +182,8 @@ export const THEMES: Record<string, Theme> = {
     accent: "#3b82f6",
     accentHover: "#2563eb",
     accentMuted: "rgba(59,130,246,0.15)",
+    accentFill: "#2563eb", // white text is 5.2:1 here; on accent #3b82f6 it was 3.7:1
+    onAccent: "#ffffff",
     win: "#4ade80",
     loss: "#f87171",
     caution: "#fbbf24",
@@ -214,12 +224,16 @@ export const THEMES: Record<string, Theme> = {
     text: "#0f172a",
     textSecondary: "#475569",
     textMuted: "#5b6675", // darkened to clear WCAG AA 4.5:1 on light surfaces (was #94a3b8 ≈ 2.4:1)
-    accent: "#0ea5e9",
-    accentHover: "#0284c7",
-    accentMuted: "rgba(14, 165, 233, 0.1)",
-    win: "#22c55e",
-    loss: "#ef4444",
-    caution: "#f59e0b",
+    // Accent and status colors double as text on white: darkened to clear WCAG AA 4.5:1 through surface-3
+    // (were #0ea5e9 2.8:1, #22c55e 2.3:1, #ef4444 3.8:1, #f59e0b 2.2:1).
+    accent: "#0369a1",
+    accentHover: "#075985",
+    accentMuted: "rgba(3, 105, 161, 0.1)",
+    accentFill: "#0369a1",
+    onAccent: "#ffffff",
+    win: "#166534",
+    loss: "#b91c1c",
+    caution: "#92400e",
     sidebarBg: "#0f172a",
     sidebarHover: "#1e293b",
     sidebarActiveBg: "rgba(34, 211, 238, 0.12)",
@@ -293,6 +307,8 @@ export function applyTheme(theme: Theme): void {
   root.style.setProperty("--accent", theme.accent);
   root.style.setProperty("--accent-hover", theme.accentHover);
   root.style.setProperty("--accent-muted", theme.accentMuted);
+  root.style.setProperty("--accent-fill", theme.accentFill);
+  root.style.setProperty("--on-accent", theme.onAccent);
   root.style.setProperty("--win", theme.win);
   root.style.setProperty("--loss", theme.loss);
   root.style.setProperty("--caution", theme.caution);

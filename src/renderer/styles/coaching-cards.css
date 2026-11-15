@@ -19,7 +19,6 @@
 .cc-card {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--cc-accent, var(--accent));
   border-radius: var(--radius-sm, 6px);
   overflow: hidden;
 }

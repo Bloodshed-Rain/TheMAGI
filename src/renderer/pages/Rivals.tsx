@@ -375,7 +375,7 @@ export function Rivals({ refreshKey: _ }: { refreshKey: number }) {
                   <div className="rival-card-record">
                     {opponent.wins}W-{opponent.losses}L - {opponent.totalGames} games
                   </div>
-                  <WinrateBar value={opponent.winRate ?? 0} />
+                  <WinrateBar value={opponent.winRate ?? 0} marked />
                   <div className="rival-chip-row">
                     {characters.slice(0, 3).map((character) => (
                       <span key={character} className="rival-character-chip">

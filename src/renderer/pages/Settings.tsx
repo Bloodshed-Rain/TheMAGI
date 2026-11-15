@@ -17,7 +17,8 @@ import { ChatGPTConnection } from "../components/ChatGPTConnection";
 import { LiquidAppearanceControls } from "../components/LiquidAppearanceControls";
 import { PROVIDERS, PROVIDER_BY_ID, type ProviderId } from "../../llmProviders";
 import { useGlobalStore, type Density } from "../stores/useGlobalStore";
-import { THEMES, THEME_ORDER, applyTheme, getResolvedTheme, type ColorMode } from "../themes";
+import { THEMES, THEME_ORDER, getResolvedTheme, type ColorMode } from "../themes";
+import { applyThemeWithReveal, revealOriginFromClick, type RevealOrigin } from "../themeReveal";
 import { resolveCornermanPopupSettings, type CornermanPopupLiveAlertMode } from "../../cornermanPopupSettings";
 import { resolveCornermanLiveStatsSettings } from "../../cornermanLiveStatsSettings";
 import {
@@ -378,9 +379,9 @@ export function Settings({ onImport }: SettingsProps) {
       },
     });
 
-  const onPickTheme = (id: ColorMode) => {
+  const onPickTheme = (id: ColorMode, origin: RevealOrigin) => {
     setColorMode(id);
-    applyTheme(getResolvedTheme(id, id));
+    applyThemeWithReveal(getResolvedTheme(id, id), origin);
     window.clippi.saveConfig({ colorMode: id }).catch(() => {});
   };
 
@@ -612,7 +613,12 @@ export function Settings({ onImport }: SettingsProps) {
                         type="button"
                         className={`btn ${colorMode === id ? "btn-primary" : ""}`}
                         aria-pressed={colorMode === id}
-                        onClick={() => onPickTheme(id as ColorMode)}
+                        onClick={(e) =>
+                          onPickTheme(
+                            id as ColorMode,
+                            revealOriginFromClick(e, e.currentTarget.getBoundingClientRect()),
+                          )
+                        }
                       >
                         {THEMES[id]!.name}
                       </button>

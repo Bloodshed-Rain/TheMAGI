@@ -103,10 +103,21 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
         const filteredWR = decisive > 0 ? (filteredWins / decisive) * 100 : 0;
         return (
           <div className="kpi-grid" style={{ marginBottom: 12 }}>
-            <KPI label="Filtered" value={total} sub={isFetching ? "updating" : `${pageStart}-${pageEnd || 0} shown`} />
-            <KPI label="Win Rate" value={`${filteredWR.toFixed(0)}%`} sub={`${filteredWins}W · ${filteredLosses}L`} />
-            <KPI label="Unique Opponents" value={data?.uniqueOpponents ?? 0} />
-            <KPI label="Characters Played" value={data?.charactersPlayed ?? 0} />
+            {/* Until the first result arrives there is no figure to show; a "0" here would be a number nobody measured. */}
+            <KPI
+              label="Filtered"
+              value={total}
+              sub={isFetching ? "updating" : `${pageStart}-${pageEnd || 0} shown`}
+              loading={data === undefined}
+            />
+            <KPI
+              label="Win Rate"
+              value={`${filteredWR.toFixed(0)}%`}
+              sub={`${filteredWins}W · ${filteredLosses}L`}
+              loading={data === undefined}
+            />
+            <KPI label="Unique Opponents" value={data?.uniqueOpponents ?? 0} loading={data === undefined} />
+            <KPI label="Characters Played" value={data?.charactersPlayed ?? 0} loading={data === undefined} />
           </div>
         );
       })()}
@@ -207,8 +218,8 @@ export function Library({ refreshKey: _ }: { refreshKey: number }) {
         <DataTable
           colWidths={
             showingSearchMatches
-              ? ["32px", undefined, undefined, undefined, "220px", "76px", "76px", "76px", "76px", undefined]
-              : ["32px", undefined, undefined, undefined, "76px", "76px", "76px", "76px", undefined]
+              ? ["32px", undefined, undefined, undefined, "220px", "104px", "104px", "104px", "104px", undefined]
+              : ["32px", undefined, undefined, undefined, "104px", "104px", "104px", "104px", undefined]
           }
         >
           <thead>

@@ -150,6 +150,9 @@ function StockRow({
                 "--segment-color": color,
                 "--segment-rgb": colorRgb,
                 "--segment-intensity": intensity,
+                // Read by the kill stamp in motion.css so it lands as this segment finishes growing.
+                "--i": i,
+                "--lane": isPlayer ? 0 : 1,
                 cursor: "pointer",
               } as MotionStyle
             }

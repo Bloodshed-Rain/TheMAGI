@@ -115,6 +115,6 @@ The [setup guide](docs/USER_GUIDE.md) covers playing, replay review, coaching, a
 
 Want to help build MAGI? Start with the [developer guide](docs/DEVELOPMENT.md) and [contribution guide](CONTRIBUTING.md).
 
-**Version 1.12.0** · [What's changed](CHANGELOG.md) · [MIT License](LICENSE)
+**Version 1.13.0** · [What's changed](CHANGELOG.md) · [MIT License](LICENSE)
 
 MAGI stands for *Melee Analysis through Generative Intelligence*.

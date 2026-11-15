@@ -15,6 +15,10 @@ function composite(fg: string, bg: string): [number, number, number] {
   const a = f[3];
   return [f[0] * a + b[0] * (1 - a), f[1] * a + b[1] * (1 - a), f[2] * a + b[2] * (1 - a)];
 }
+function composite3(ground: string, bg: string): string {
+  const [r, g, b] = composite(ground, bg);
+  return `rgb(${r}, ${g}, ${b})`;
+}
 function luminance([r, g, b]: [number, number, number]): number {
   const lin = (v: number) => {
     const s = v / 255;
@@ -110,4 +114,54 @@ describe("theme contrast (WCAG AA)", () => {
       expect(onS1).toBeGreaterThanOrEqual(4.5);
     });
   }
+});
+
+describe("theme contrast: accent, status and filled controls (WCAG AA)", () => {
+  // Accent and status colors are used as TEXT (active tabs, deltas, badges, error
+  // copy), and on-accent is the label on primary buttons. Each must clear 4.5:1 on
+  // the grounds it renders on. Encodes the requirement, not specific hexes.
+  for (const id of THEME_ORDER) {
+    const t = THEMES[id]!;
+    const on = (fg: string, ground: string) =>
+      contrastRatio(composite(fg, composite3(ground, t.bg)), composite(ground, t.bg));
+    for (const key of ["accent", "win", "loss", "caution"] as const) {
+      it(`${id}: --${key} clears AA 4.5:1 as text on bg, surface-1 and surface-2`, () => {
+        expect(on(t[key], t.bg)).toBeGreaterThanOrEqual(4.5);
+        expect(on(t[key], t.surface1)).toBeGreaterThanOrEqual(4.5);
+        expect(on(t[key], t.surface2)).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+    it(`${id}: --on-accent clears AA 4.5:1 on accent-fill and accent-hover`, () => {
+      expect(contrastRatio(composite(t.onAccent, t.accentFill), composite(t.accentFill, t.bg))).toBeGreaterThanOrEqual(
+        4.5,
+      );
+      expect(
+        contrastRatio(composite(t.onAccent, t.accentHover), composite(t.accentHover, t.bg)),
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
+  it("the check itself rejects the colors it replaced (negative control)", () => {
+    const white: [number, number, number] = [255, 255, 255];
+    // Former Light values as text on white, and white on the former Tournament button fill.
+    for (const old of ["#0ea5e9", "#22c55e", "#ef4444", "#f59e0b", "#3b82f6"]) {
+      expect(contrastRatio(composite(old, "#ffffff"), white)).toBeLessThan(4.5);
+    }
+  });
+
+  it("applyTheme publishes the filled-control tokens", () => {
+    const setProperty = vi.fn();
+    const originalDocument = globalThis.document;
+    globalThis.document = {
+      documentElement: { setAttribute: vi.fn(), style: { setProperty } },
+      body: { setAttribute: vi.fn() },
+    } as unknown as Document;
+    try {
+      applyTheme(THEMES["tournament"]!);
+    } finally {
+      globalThis.document = originalDocument;
+    }
+    expect(setProperty).toHaveBeenCalledWith("--accent-fill", THEMES["tournament"]!.accentFill);
+    expect(setProperty).toHaveBeenCalledWith("--on-accent", THEMES["tournament"]!.onAccent);
+  });
 });

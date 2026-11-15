@@ -124,7 +124,7 @@ export function LiquidShell({
           </button>
           <div className="sidebar-footer-row">
             <span
-              className="sidebar-status-dot"
+              className={watcherActive ? "sidebar-status-dot is-live" : "sidebar-status-dot"}
               style={{ background: watcherActive ? "var(--win)" : "var(--text-muted)" }}
             />
             {watcherActive ? "Watcher active" : "Watcher idle"}

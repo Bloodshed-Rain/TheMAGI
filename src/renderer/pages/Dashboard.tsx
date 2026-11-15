@@ -101,10 +101,26 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
   const dmgD = trends ? fmtDmgDelta(trends.avgDamagePerOpening) : { label: "—", tone: "neutral" as const };
 
   if (isLoading) {
+    // The layout is known before the data is, so hold its shape instead of a spinner.
     return (
-      <div className="loading">
-        <div className="spinner loading-spinner" />
-        Loading…
+      <div aria-busy="true">
+        <div className="page-header dash-header">
+          <div>
+            <h1>Dashboard</h1>
+            <p>Loading your games</p>
+          </div>
+        </div>
+        <div className="kpi-grid">
+          <KPI label="Win Rate" value={null} loading />
+          <KPI label="Neutral WR" value={null} loading />
+          <KPI label="L-Cancel" value={null} loading />
+          <KPI label="Dmg / Opening" value={null} loading />
+        </div>
+        <div className="card dash-skeleton-card" aria-hidden="true">
+          <span className="anim-shimmer skeleton-line" style={{ width: 120 }} />
+          <span className="anim-shimmer skeleton-line" style={{ width: "62%" }} />
+          <span className="anim-shimmer skeleton-line" style={{ width: "48%" }} />
+        </div>
       </div>
     );
   }
@@ -201,9 +217,9 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
       <RecentHighlightReel refreshKey={refreshKey} />
 
       <div className="dash-split">
-        <Card title="Recent Form">
+        <Card title="Recent Form" specular>
           <div className="dash-dot-strip">
-            {last10.map((g) => (
+            {last10.map((g, i) => (
               <motion.button
                 key={g.id}
                 type="button"
@@ -214,7 +230,8 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <ResultDot result={g.result === "win" ? "win" : "loss"} aria-hidden />
+                {/* Newest game first in this strip. */}
+                <ResultDot result={g.result === "win" ? "win" : "loss"} latest={i === 0} aria-hidden />
               </motion.button>
             ))}
             <span style={{ marginLeft: 12, fontSize: 12, color: "var(--text-muted)" }}>

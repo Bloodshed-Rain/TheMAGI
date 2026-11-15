@@ -1,4 +1,5 @@
 import { useState, useMemo, type CSSProperties } from "react";
+import { useReducedMotion } from "framer-motion";
 import {
   Radar,
   RadarChart as RechartsRadarChart,
@@ -11,6 +12,7 @@ import {
 } from "recharts";
 import type { RadarStats, RadarGameStats } from "../radarStats";
 import { computeRadarForPeriod } from "../radarStats";
+import { DURATION_MS } from "../motion";
 
 // ── Axis labels ──────────────────────────────────────────────────────
 
@@ -147,6 +149,8 @@ interface RadarProps {
 
 export function PlayerRadar({ stats, games, hideComparison, accentColor }: RadarProps) {
   const [period, setPeriod] = useState<Period>("none");
+  // Unfurl from the center on first draw, then morph vertex-to-vertex when the period changes.
+  const animate = !useReducedMotion();
 
   const { currentStats, comparison } = useMemo(() => {
     if (period === "none" || !games || games.length === 0) return { currentStats: stats, comparison: null };
@@ -192,6 +196,9 @@ export function PlayerRadar({ stats, games, hideComparison, accentColor }: Radar
               strokeWidth={1.5}
               strokeDasharray="4 4"
               dot={false}
+              isAnimationActive={animate}
+              animationDuration={DURATION_MS.slow}
+              animationEasing="ease-out"
             />
           )}
 
@@ -206,6 +213,9 @@ export function PlayerRadar({ stats, games, hideComparison, accentColor }: Radar
             dot={
               { r: 3.5, fill: "var(--bg-card)", strokeWidth: 2, stroke: "var(--radar-accent, var(--accent))" } as any
             }
+            isAnimationActive={animate}
+            animationDuration={DURATION_MS.reveal}
+            animationEasing="ease-out"
           />
 
           <Tooltip content={<RadarTooltip />} />
