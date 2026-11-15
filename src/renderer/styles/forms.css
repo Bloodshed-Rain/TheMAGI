@@ -13,8 +13,7 @@
 .model-select,
 .library-filter-input,
 .sessions-search-input,
-.oracle-input,
-.training-log-form :is(input, select, textarea) {
+.oracle-input {
   min-width: 0;
   width: 100%;
   min-height: var(--control-height);
@@ -33,7 +32,7 @@
   resize: vertical;
   min-height: 80px;
 }
-:is(.form-field, .settings-field, .training-log-form) :is(input, select, textarea):focus-visible,
+:is(.form-field, .settings-field) :is(input, select, textarea):focus-visible,
 :is(.model-select, .library-filter-input, .sessions-search-input, .oracle-input):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

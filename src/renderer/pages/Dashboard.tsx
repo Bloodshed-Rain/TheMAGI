@@ -10,6 +10,7 @@ import { ResultDot } from "../components/ui/ResultDot";
 import { Sparkline } from "../components/ui/Sparkline";
 import { EmptyState } from "../components/ui/EmptyState";
 import { CoachingCards } from "../components/CoachingCards";
+import { BestCharacterCard } from "../components/BestCharacterCard";
 
 interface RecentGame {
   id: number;
@@ -217,75 +218,79 @@ export function Dashboard({ refreshKey }: { refreshKey: number }) {
       <RecentHighlightReel refreshKey={refreshKey} />
 
       <div className="dash-split">
-        <Card title="Recent Form" specular>
-          <div className="dash-dot-strip">
-            {last10.map((g, i) => (
-              <motion.button
-                key={g.id}
-                type="button"
-                className="result-dot-button"
-                onClick={() => navigate(`/game/${g.id}`)}
-                aria-label={`Open ${g.result} vs ${g.opponentTag}`}
-                title={`${g.result} vs ${g.opponentTag}`}
-                whileHover={{ scale: 1.2 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                {/* Newest game first in this strip. */}
-                <ResultDot result={g.result === "win" ? "win" : "loss"} latest={i === 0} aria-hidden />
-              </motion.button>
-            ))}
-            <span style={{ marginLeft: 12, fontSize: 12, color: "var(--text-muted)" }}>
-              Last 10 ·{" "}
-              <strong style={{ color: "var(--text)" }}>
-                {last10.filter((g) => g.result === "win").length}W-
-                {last10.filter((g) => g.result === "loss").length}L
-              </strong>
-            </span>
-          </div>
-          <div className="dash-spark-grid">
-            <div className="dash-spark-cell">
-              <div className="dash-spark-head">
-                <span className="dash-spark-label">Neutral WR</span>
-                <span className="dash-spark-value mono">{(avgNeutral * 100).toFixed(1)}%</span>
-              </div>
-              <Sparkline
-                values={recent.map((g) => g.neutralWinRate).reverse()}
-                color="var(--accent)"
-                kind="chart"
-                height={90}
-                fill
-              />
+        <div className="dash-split-main">
+          <Card title="Recent Form" specular>
+            <div className="dash-dot-strip">
+              {last10.map((g, i) => (
+                <motion.button
+                  key={g.id}
+                  type="button"
+                  className="result-dot-button"
+                  onClick={() => navigate(`/game/${g.id}`)}
+                  aria-label={`Open ${g.result} vs ${g.opponentTag}`}
+                  title={`${g.result} vs ${g.opponentTag}`}
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  {/* Newest game first in this strip. */}
+                  <ResultDot result={g.result === "win" ? "win" : "loss"} latest={i === 0} aria-hidden />
+                </motion.button>
+              ))}
+              <span style={{ marginLeft: 12, fontSize: 12, color: "var(--text-muted)" }}>
+                Last 10 ·{" "}
+                <strong style={{ color: "var(--text)" }}>
+                  {last10.filter((g) => g.result === "win").length}W-
+                  {last10.filter((g) => g.result === "loss").length}L
+                </strong>
+              </span>
             </div>
-            <div className="dash-spark-cell">
-              <div className="dash-spark-head">
-                <span className="dash-spark-label">L-Cancel</span>
-                <span className="dash-spark-value mono">{(avgLCancel * 100).toFixed(1)}%</span>
+            <div className="dash-spark-grid">
+              <div className="dash-spark-cell">
+                <div className="dash-spark-head">
+                  <span className="dash-spark-label">Neutral WR</span>
+                  <span className="dash-spark-value mono">{(avgNeutral * 100).toFixed(1)}%</span>
+                </div>
+                <Sparkline
+                  values={recent.map((g) => g.neutralWinRate).reverse()}
+                  color="var(--accent)"
+                  kind="chart"
+                  height={90}
+                  fill
+                />
               </div>
-              <Sparkline
-                values={recent.map((g) => g.lCancelRate).reverse()}
-                color="var(--win)"
-                kind="chart"
-                height={90}
-                fill
-              />
-            </div>
-            <div className="dash-spark-cell">
-              <div className="dash-spark-head">
-                <span className="dash-spark-label">Conversion</span>
-                <span className="dash-spark-value mono">
-                  {((recent.reduce((s, g) => s + g.conversionRate, 0) / Math.max(recent.length, 1)) * 100).toFixed(1)}%
-                </span>
+              <div className="dash-spark-cell">
+                <div className="dash-spark-head">
+                  <span className="dash-spark-label">L-Cancel</span>
+                  <span className="dash-spark-value mono">{(avgLCancel * 100).toFixed(1)}%</span>
+                </div>
+                <Sparkline
+                  values={recent.map((g) => g.lCancelRate).reverse()}
+                  color="var(--win)"
+                  kind="chart"
+                  height={90}
+                  fill
+                />
               </div>
-              <Sparkline
-                values={recent.map((g) => g.conversionRate).reverse()}
-                color="var(--caution)"
-                kind="chart"
-                height={90}
-                fill
-              />
+              <div className="dash-spark-cell">
+                <div className="dash-spark-head">
+                  <span className="dash-spark-label">Conversion</span>
+                  <span className="dash-spark-value mono">
+                    {((recent.reduce((s, g) => s + g.conversionRate, 0) / Math.max(recent.length, 1)) * 100).toFixed(1)}
+                    %
+                  </span>
+                </div>
+                <Sparkline
+                  values={recent.map((g) => g.conversionRate).reverse()}
+                  color="var(--caution)"
+                  kind="chart"
+                  height={90}
+                  fill
+                />
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+          <BestCharacterCard refreshKey={refreshKey} />
+        </div>
 
         <CareerInsightCard refreshKey={refreshKey} />
       </div>
@@ -408,7 +413,7 @@ function CareerInsightCard({ refreshKey }: { refreshKey: number }) {
   const text = loading && streamText ? streamText : (ready?.text ?? "");
 
   return (
-    <Card title="MAGI on your whole record" className="clippi-card">
+    <Card title="MAGI on your whole record" className="clippi-card dash-career-card">
       {insufficient && (
         <p className="dash-career-meta">
           Import at least {insufficient.minGames} games to get an analysis of your full record (

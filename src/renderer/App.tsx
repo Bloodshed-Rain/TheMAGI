@@ -8,7 +8,6 @@ const CommandPalette = lazy(() => import("./components/CommandPalette").then((m)
 import {
   Dashboard,
   PlayMode,
-  PerformanceLab,
   Sessions,
   Library,
   Trends,
@@ -35,7 +34,6 @@ import {
   OracleIcon,
   RivalsIcon,
   CornermanIcon,
-  PerformanceIcon,
 } from "./components/NavIcons";
 import { LiquidShell, type NavItem as LiquidNavItem } from "./components/LiquidShell";
 import { TweaksPanel } from "./components/TweaksPanel";
@@ -49,7 +47,6 @@ import { shouldOfferSetup } from "../setupOnboarding";
 
 type Page =
   | "dashboard"
-  | "performance"
   | "sessions"
   | "library"
   | "trends"
@@ -67,7 +64,6 @@ interface NavItem extends LiquidNavItem {
 
 const ANALYZE_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
-  { id: "performance", label: "Performance Lab", path: "/performance", Icon: PerformanceIcon },
   { id: "sessions", label: "Sessions", path: "/sessions", Icon: SessionsIcon },
   { id: "library", label: "Library", path: "/library", Icon: LibraryIcon },
   { id: "trends", label: "Trends", path: "/trends", Icon: TrendsIcon },
@@ -194,7 +190,8 @@ export function App() {
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard refreshKey={refreshKey} />} />
-          <Route path="/performance" element={<PerformanceLab refreshKey={refreshKey} />} />
+          {/* Performance Lab was removed in 1.16.0; an old link lands on the Dashboard. */}
+          <Route path="/performance" element={<Navigate to="/dashboard" replace />} />
           <Route path="/sessions" element={<Sessions refreshKey={refreshKey} />} />
           <Route path="/library" element={<Library refreshKey={refreshKey} />} />
           <Route path="/trends" element={<Trends refreshKey={refreshKey} />} />
@@ -297,7 +294,6 @@ function CommandPaletteHost({ navigateTo, onImport }: { navigateTo: (page: Page)
           "practice",
           "oracle",
           "settings",
-          "performance",
         ];
         let num = parseInt(e.key, 10);
         if (e.key === "0") num = 10;

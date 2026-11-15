@@ -6,7 +6,6 @@ import { ChevronRight, Zap, UserCircle } from "lucide-react";
 
 type Page =
   | "dashboard"
-  | "performance"
   | "sessions"
   | "library"
   | "trends"
@@ -224,16 +223,6 @@ export function CommandPalette({ navigateTo, onImport, isOpen, onOpenChange }: C
         icon: <NavIcon />,
         action: () => {
           navigateTo("trends");
-          close();
-        },
-      },
-      {
-        id: "nav-performance",
-        label: "Performance Lab",
-        category: "navigate",
-        icon: <NavIcon />,
-        action: () => {
-          navigateTo("performance");
           close();
         },
       },

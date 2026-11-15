@@ -176,9 +176,8 @@ describe("db.ts module structure", () => {
     expect(DB_SOURCE).toMatch(/insertPracticePlan[\s\S]*?return db\.transaction/);
   });
 
-  it("persists player context and coach notes alongside replay telemetry", () => {
+  it("persists coach notes alongside replay telemetry and keeps the training-log table", () => {
     expect(DB_SOURCE).toContain("export function getPerformanceHub");
-    expect(DB_SOURCE).toContain("export function createTrainingLogEntry");
     expect(DB_SOURCE).toContain("export function listGameReviewNotes");
     expect(DB_SOURCE).toContain("export function addGameReviewNote");
     expect(DB_SOURCE).toContain("idx_training_log_logged_at");
@@ -210,7 +209,7 @@ describe("win-rate correctness", () => {
     );
   });
 
-  it("has migration v9 for the Performance Lab's durable data", () => {
+  it("has migration v9 for the training log and review notes tables", () => {
     expect(DB_SOURCE).toContain("version: 9");
     expect(DB_SOURCE).toContain("Add training log and per-game review notes");
   });

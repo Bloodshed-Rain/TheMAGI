@@ -142,8 +142,6 @@ const api = {
   getTrendSeriesBundle: (range: string, filterChar: string | null) =>
     ipcRenderer.invoke("stats:trendSeriesBundle", range, filterChar),
   getPerformanceHub: () => ipcRenderer.invoke("stats:performanceHub"),
-  getTrainingLog: (limit?: number) => ipcRenderer.invoke("stats:trainingLog", limit),
-  createTrainingLog: (entry: unknown) => ipcRenderer.invoke("stats:trainingLog:create", entry),
   getGameReviewNotes: (gameId: number) => ipcRenderer.invoke("stats:gameReviewNotes", gameId),
   addGameReviewNote: (gameId: number, note: { content: string; author?: string; category?: string }) =>
     ipcRenderer.invoke("stats:gameReviewNotes:add", gameId, note),

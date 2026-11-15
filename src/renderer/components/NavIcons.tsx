@@ -1,14 +1,4 @@
-import {
-  LayoutDashboard,
-  Swords,
-  TrendingUp,
-  Gamepad2,
-  SlidersHorizontal,
-  Library,
-  Target,
-  Bell,
-  Gauge,
-} from "lucide-react";
+import { LayoutDashboard, Swords, TrendingUp, Gamepad2, SlidersHorizontal, Library, Target, Bell } from "lucide-react";
 
 interface IconProps {
   size?: number;
@@ -50,10 +40,6 @@ export function LibraryIcon({ size = 22 }: IconProps) {
 // CoachingIcon. Kept as a named export so LiquidShell reads cleanly.
 export function DashboardIcon({ size = 22 }: IconProps) {
   return <LayoutDashboard size={size} strokeWidth={1.8} />;
-}
-
-export function PerformanceIcon({ size = 22 }: IconProps) {
-  return <Gauge size={size} strokeWidth={1.8} />;
 }
 
 export function PracticeIcon({ size = 18 }: { size?: number }) {

@@ -25,8 +25,6 @@ import {
   getTrendSeries,
   getTrendSeriesBundle,
   getPerformanceHub,
-  listTrainingLogEntries,
-  createTrainingLogEntry,
   listGameReviewNotes,
   addGameReviewNote,
   type TrendMetric,
@@ -67,10 +65,6 @@ export function registerStatsHandlers(safeHandle: SafeHandleFn): void {
     getTrendSeriesBundle(range, filterChar),
   );
   safeHandle("stats:performanceHub", () => getPerformanceHub());
-  safeHandle("stats:trainingLog", (_e, limit?: number) => listTrainingLogEntries(limit));
-  safeHandle("stats:trainingLog:create", (_e, entry: Parameters<typeof createTrainingLogEntry>[0]) =>
-    createTrainingLogEntry(entry),
-  );
   safeHandle("stats:gameReviewNotes", (_e, gameId: number) => listGameReviewNotes(gameId));
   safeHandle("stats:gameReviewNotes:add", (_e, gameId: number, note: Parameters<typeof addGameReviewNote>[1]) =>
     addGameReviewNote(gameId, note),

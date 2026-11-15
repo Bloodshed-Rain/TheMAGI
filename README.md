@@ -68,8 +68,6 @@ The more games you have, the more there is to look through. Some stats need a fe
 
 ## Take something into your next session
 
-**Performance Lab** helps you pick games to review, compare your recent results with earlier games, and keep track of your practice.
-
 **Practice** can suggest a plan based on your games, with drills you can check off as you go. Keep a goal and a few notes visible in Play Mode to remind yourself what you're working on.
 
 **Oracle** is there when you have a question about your play. Try asking:
@@ -137,6 +135,6 @@ The [setup guide](docs/USER_GUIDE.md) covers playing, replay review, coaching, a
 
 Want to help build MAGI? Start with the [developer guide](docs/DEVELOPMENT.md) and [contribution guide](CONTRIBUTING.md). To report a security problem, see the [security policy](SECURITY.md).
 
-**Version 1.15.0** · [What's changed](CHANGELOG.md) · [MIT License](LICENSE)
+**Version 1.16.0** · [What's changed](CHANGELOG.md) · [MIT License](LICENSE)
 
 MAGI stands for *Melee Analysis through Generative Intelligence*.

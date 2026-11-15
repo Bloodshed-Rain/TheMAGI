@@ -1,3 +1,4 @@
+import { pickBestCharacter } from "./bestCharacter";
 import { REPAIR_KEN_COMBOS_SQL } from "./kenCombo";
 import { readCharacterTechniqueExamples } from "./characterTechniqueReplayQuery";
 import { type CharacterTechniqueExample } from "./characterTechniqueExamples";
@@ -2342,7 +2343,11 @@ export function getOverallRecord(): { wins: number; losses: number; totalGames: 
 // ── Dashboard highlights ────────────────────────────────────────────
 
 export interface DashboardHighlights {
-  /** Best character by win rate (min 3 games) */
+  /**
+   * Best character as ranked by src/bestCharacter.ts: win rate rated for sample
+   * size, at least BEST_CHARACTER_MIN_DECIDED_GAMES decided games. `winRate` is
+   * the plain win rate and `games` the decided (win or loss) games behind it.
+   */
   bestCharacter: { character: string; winRate: number; games: number } | null;
   /** Worst matchup by win rate (min 3 games) */
   worstMatchup: { opponentCharacter: string; winRate: number; games: number } | null;
@@ -2366,21 +2371,16 @@ export interface DashboardHighlights {
 export function getDashboardHighlights(trendWindow: number = 10): DashboardHighlights {
   const db = getDb();
 
-  // Best character
-  const bestChar = db
-    .prepare(
-      `
-    SELECT g.player_character as character,
-           ROUND(CAST(SUM(CASE WHEN g.result = 'win' THEN 1 ELSE 0 END) AS REAL) / MAX(SUM(CASE WHEN g.result IN ('win', 'loss') THEN 1 ELSE 0 END), 1), 4) as winRate,
-           COUNT(*) as games
-    FROM games g
-    GROUP BY g.player_character
-    HAVING SUM(CASE WHEN g.result IN ('win', 'loss') THEN 1 ELSE 0 END) >= 3
-    ORDER BY winRate DESC, games DESC, g.player_character ASC
-    LIMIT 1
-  `,
-    )
-    .get() as { character: string; winRate: number; games: number } | undefined;
+  // Best character: the one definition in src/bestCharacter.ts (sample-size-rated win rate),
+  // over the same per-character records the Dashboard panel ranks.
+  const bestRanked = pickBestCharacter(getCharacterList());
+  const bestChar = bestRanked
+    ? {
+        character: bestRanked.character,
+        winRate: Math.round(bestRanked.winRate * 10000) / 10000,
+        games: bestRanked.decidedGames,
+      }
+    : undefined;
 
   // Best matchup
   const bestMu = db
@@ -3273,6 +3273,17 @@ export interface CharacterOverview {
   avgDeathPercent: number;
   avgRecoverySuccessRate: number;
   lastPlayed: string | null;
+  // Pooled counts (CharacterTotals in src/bestCharacter.ts). Sums of events, not
+  // averages of per-game rates, so a game with no attempts adds nothing.
+  neutralWins: number;
+  neutralExchanges: number;
+  conversions: number;
+  openings: number;
+  damageOnOpenings: number;
+  recoverySuccesses: number;
+  recoveryAttempts: number;
+  edgeguardKills: number;
+  edgeguardAttempts: number;
 }
 
 export function getCharacterList(): CharacterOverview[] {
@@ -3292,7 +3303,18 @@ export function getCharacterList(): CharacterOverview[] {
       ROUND(AVG(gs.avg_damage_per_opening), 2) as avgDamagePerOpening,
       ROUND(AVG(gs.avg_death_percent), 0) as avgDeathPercent,
       ROUND(AVG(gs.recovery_success_rate), 4) as avgRecoverySuccessRate,
-      MAX(g.played_at) as lastPlayed
+      MAX(g.played_at) as lastPlayed,
+      SUM(gs.neutral_wins) as neutralWins,
+      SUM(gs.neutral_wins + gs.neutral_losses) as neutralExchanges,
+      SUM(gs.total_conversions) as conversions,
+      SUM(gs.total_openings) as openings,
+      SUM(gs.avg_damage_per_opening * gs.total_openings) as damageOnOpenings,
+      -- Each stored rate is successes / attempts rounded to 4 places, so rate * attempts
+      -- rounds back to the exact success count for any single game.
+      SUM(ROUND(gs.recovery_success_rate * gs.recovery_attempts)) as recoverySuccesses,
+      SUM(gs.recovery_attempts) as recoveryAttempts,
+      SUM(ROUND(gs.edgeguard_success_rate * gs.edgeguard_attempts)) as edgeguardKills,
+      SUM(gs.edgeguard_attempts) as edgeguardAttempts
     FROM games g
     JOIN game_stats gs ON gs.game_id = g.id
     GROUP BY g.player_character
@@ -4610,12 +4632,9 @@ export function getTrendSeriesBundle(range: "7d" | "30d" | "all", filterChar: st
   return bundle;
 }
 
-// ── Performance Lab ───────────────────────────────────────────────
+// ── Recent form (Play Mode's Recent form module) ───────────────────
 
-/**
- * These metrics deliberately stay close to replay-derived facts. MAGI uses
- * them to prioritize review, not to make causal claims about a loss.
- */
+/** Per-game averages over the newest games, compared with the games just before them. */
 export type PerformanceMetricKey =
   | "neutralWinRate"
   | "conversionRate"
@@ -4634,69 +4653,25 @@ export interface PerformanceMetric {
   baseline: number | null;
   delta: number | null;
   higherIsBetter: boolean;
-  winValue: number | null;
-  lossValue: number | null;
-}
-
-export interface PerformanceReviewGame {
-  id: number;
-  playedAt: string | null;
-  playerCharacter: string;
-  opponentCharacter: string;
-  opponentTag: string;
-  stage: string;
-  playerFinalStocks: number;
-  opponentFinalStocks: number;
-  reviewReason: string;
-  priority: "high" | "medium";
-  noteCount: number;
 }
 
 export interface PerformanceHub {
   sample: { currentGames: number; baselineGames: number; gamesScanned: number };
   metrics: PerformanceMetric[];
-  insights: Array<{ kind: "progress" | "focus" | "winSignal"; title: string; detail: string }>;
-  reviewQueue: PerformanceReviewGame[];
 }
 
-interface PerformanceGameRow {
-  id: number;
-  playedAt: string | null;
-  playerCharacter: string;
-  opponentCharacter: string;
-  opponentTag: string;
-  stage: string;
-  result: "win" | "loss" | "draw";
-  playerFinalStocks: number;
-  opponentFinalStocks: number;
-  neutralWinRate: number;
-  conversionRate: number;
-  avgDamagePerOpening: number;
-  openingsPerKill: number;
-  recoverySuccessRate: number;
-  avgDeathPercent: number;
-  lCancelRate: number;
-  edgeguardSuccessRate: number;
-  diSurvivalScore: number;
-  noteCount: number;
-}
+type PerformanceGameRow = Record<PerformanceMetricKey, number>;
 
-const PERFORMANCE_METRICS: Array<{
-  key: PerformanceMetricKey;
-  label: string;
-  higherIsBetter: boolean;
-  /** Used only to compare the relative size of different metric changes. */
-  comparisonUnit: number;
-}> = [
-  { key: "neutralWinRate", label: "Neutral", higherIsBetter: true, comparisonUnit: 0.05 },
-  { key: "conversionRate", label: "Conversion", higherIsBetter: true, comparisonUnit: 0.05 },
-  { key: "avgDamagePerOpening", label: "Damage / opening", higherIsBetter: true, comparisonUnit: 4 },
-  { key: "openingsPerKill", label: "Openings / kill", higherIsBetter: false, comparisonUnit: 0.4 },
-  { key: "recoverySuccessRate", label: "Recovery", higherIsBetter: true, comparisonUnit: 0.05 },
-  { key: "avgDeathPercent", label: "Survival", higherIsBetter: true, comparisonUnit: 8 },
-  { key: "lCancelRate", label: "L-cancel", higherIsBetter: true, comparisonUnit: 0.05 },
-  { key: "edgeguardSuccessRate", label: "Edgeguard", higherIsBetter: true, comparisonUnit: 0.05 },
-  { key: "diSurvivalScore", label: "DI survival", higherIsBetter: true, comparisonUnit: 0.05 },
+const PERFORMANCE_METRICS: Array<{ key: PerformanceMetricKey; label: string; higherIsBetter: boolean }> = [
+  { key: "neutralWinRate", label: "Neutral", higherIsBetter: true },
+  { key: "conversionRate", label: "Conversion", higherIsBetter: true },
+  { key: "avgDamagePerOpening", label: "Damage / opening", higherIsBetter: true },
+  { key: "openingsPerKill", label: "Openings / kill", higherIsBetter: false },
+  { key: "recoverySuccessRate", label: "Recovery", higherIsBetter: true },
+  { key: "avgDeathPercent", label: "Survival", higherIsBetter: true },
+  { key: "lCancelRate", label: "L-cancel", higherIsBetter: true },
+  { key: "edgeguardSuccessRate", label: "Edgeguard", higherIsBetter: true },
+  { key: "diSurvivalScore", label: "DI survival", higherIsBetter: true },
 ];
 
 function averagePerformanceMetric(rows: PerformanceGameRow[], key: PerformanceMetricKey): number {
@@ -4715,10 +4690,6 @@ export function getPerformanceHub(sampleSize: number = 10): PerformanceHub {
     .prepare(
       `
       SELECT
-        g.id, g.played_at as playedAt, g.player_character as playerCharacter,
-        g.opponent_character as opponentCharacter, g.opponent_tag as opponentTag,
-        g.stage, g.result, g.player_final_stocks as playerFinalStocks,
-        g.opponent_final_stocks as opponentFinalStocks,
         gs.neutral_win_rate as neutralWinRate,
         gs.conversion_rate as conversionRate,
         gs.avg_damage_per_opening as avgDamagePerOpening,
@@ -4727,8 +4698,7 @@ export function getPerformanceHub(sampleSize: number = 10): PerformanceHub {
         gs.avg_death_percent as avgDeathPercent,
         gs.l_cancel_rate as lCancelRate,
         gs.edgeguard_success_rate as edgeguardSuccessRate,
-        gs.di_survival_score as diSurvivalScore,
-        (SELECT COUNT(*) FROM game_review_notes n WHERE n.game_id = g.id) as noteCount
+        gs.di_survival_score as diSurvivalScore
       FROM games g
       JOIN game_stats gs ON gs.game_id = g.id
       ORDER BY g.played_at DESC, g.id DESC
@@ -4740,8 +4710,6 @@ export function getPerformanceHub(sampleSize: number = 10): PerformanceHub {
   const currentCount = rows.length === 0 ? 0 : Math.min(safeSampleSize, Math.ceil(rows.length / 2));
   const currentRows = rows.slice(0, currentCount);
   const baselineRows = rows.slice(currentCount, currentCount + currentCount);
-  const winRows = rows.filter((row) => row.result === "win");
-  const lossRows = rows.filter((row) => row.result === "loss");
 
   const metrics: PerformanceMetric[] = PERFORMANCE_METRICS.map((definition) => {
     const current = averagePerformanceMetric(currentRows, definition.key);
@@ -4753,178 +4721,18 @@ export function getPerformanceHub(sampleSize: number = 10): PerformanceHub {
       baseline,
       delta: baseline == null ? null : current - baseline,
       higherIsBetter: definition.higherIsBetter,
-      winValue: winRows.length ? averagePerformanceMetric(winRows, definition.key) : null,
-      lossValue: lossRows.length ? averagePerformanceMetric(lossRows, definition.key) : null,
     };
   });
-
-  const metricByKey = new Map(metrics.map((metric) => [metric.key, metric]));
-  const normalizedTrend = (metric: PerformanceMetric): number => {
-    const definition = PERFORMANCE_METRICS.find((item) => item.key === metric.key)!;
-    if (metric.delta == null) return 0;
-    return (metric.higherIsBetter ? metric.delta : -metric.delta) / definition.comparisonUnit;
-  };
-  const normalizedWinSignal = (metric: PerformanceMetric): number => {
-    const definition = PERFORMANCE_METRICS.find((item) => item.key === metric.key)!;
-    if (metric.winValue == null || metric.lossValue == null) return 0;
-    const rawDifference = metric.higherIsBetter
-      ? metric.winValue - metric.lossValue
-      : metric.lossValue - metric.winValue;
-    return rawDifference / definition.comparisonUnit;
-  };
-
-  const insights: PerformanceHub["insights"] = [];
-  if (baselineRows.length > 0) {
-    const sortedByTrend = [...metrics].sort((a, b) => normalizedTrend(b) - normalizedTrend(a));
-    const strongest = sortedByTrend[0];
-    const focus = sortedByTrend[sortedByTrend.length - 1];
-    if (strongest && normalizedTrend(strongest) > 0.25) {
-      insights.push({
-        kind: "progress",
-        title: `${strongest.label} is trending up`,
-        detail: `Your last ${currentRows.length} games are ahead of the previous ${baselineRows.length}. Keep this stable while you add one new focus.`,
-      });
-    }
-    if (focus && normalizedTrend(focus) < -0.25) {
-      insights.push({
-        kind: "focus",
-        title: `Make ${focus.label.toLowerCase()} this block's focus`,
-        detail: `It moved the furthest in the wrong direction versus your recent baseline. Review the queue before adding more drills.`,
-      });
-    }
-  } else if (currentRows.length > 0) {
-    insights.push({
-      kind: "progress",
-      title: "Build a trustworthy baseline",
-      detail: `MAGI has ${currentRows.length} game${currentRows.length === 1 ? "" : "s"} so far. Import another session to unlock current-form comparisons.`,
-    });
-  }
-
-  const strongestWinSignal = [...metrics].sort((a, b) => normalizedWinSignal(b) - normalizedWinSignal(a))[0];
-  if (strongestWinSignal && normalizedWinSignal(strongestWinSignal) > 0.25) {
-    insights.push({
-      kind: "winSignal",
-      title: `${strongestWinSignal.label} separates recent wins`,
-      detail:
-        "This is a pattern in your replay data, not proof of cause. Use it as a review question and test it in your next block.",
-    });
-  }
-
-  const reviewQueue = lossRows
-    .map((game) => {
-      const gaps = PERFORMANCE_METRICS.map((definition) => {
-        const metric = metricByKey.get(definition.key)!;
-        if (metric.winValue == null) return { definition, score: 0 };
-        const difference = definition.higherIsBetter
-          ? metric.winValue - game[definition.key]
-          : game[definition.key] - metric.winValue;
-        return { definition, score: Math.max(0, difference / definition.comparisonUnit) };
-      }).sort((a, b) => b.score - a.score);
-      const biggestGap = gaps[0]!;
-      const generic =
-        game.neutralWinRate < 0.5
-          ? "Neutral fell below 50% in this game."
-          : "Review the key stock and identify the repeatable decision.";
-      return {
-        id: game.id,
-        playedAt: game.playedAt,
-        playerCharacter: game.playerCharacter,
-        opponentCharacter: game.opponentCharacter,
-        opponentTag: game.opponentTag,
-        stage: game.stage,
-        playerFinalStocks: game.playerFinalStocks,
-        opponentFinalStocks: game.opponentFinalStocks,
-        reviewReason:
-          biggestGap.score > 0.15 ? `${biggestGap.definition.label} trailed your recent win baseline.` : generic,
-        priority: biggestGap.score > 0.8 ? ("high" as const) : ("medium" as const),
-        noteCount: game.noteCount,
-        score: biggestGap.score,
-      };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6)
-    .map(({ score: _, ...game }) => game);
 
   return {
     sample: { currentGames: currentRows.length, baselineGames: baselineRows.length, gamesScanned: rows.length },
     metrics,
-    insights,
-    reviewQueue,
   };
 }
 
-// ── Training and review log ────────────────────────────────────────
-
-export interface TrainingLogEntry {
-  id: number;
-  loggedAt: string;
-  activityType: string;
-  minutes: number;
-  focus: string;
-  energy: number | null;
-  confidence: number | null;
-  notes: string;
-  createdAt: string;
-}
-
-export interface CreateTrainingLogEntry {
-  loggedAt?: string;
-  activityType: string;
-  minutes: number;
-  focus?: string;
-  energy?: number | null;
-  confidence?: number | null;
-  notes?: string;
-}
-
-function optionalRating(value: number | null | undefined): number | null {
-  if (value == null || !Number.isFinite(value)) return null;
-  return Math.max(1, Math.min(5, Math.round(value)));
-}
-
-export function listTrainingLogEntries(limit: number = 30): TrainingLogEntry[] {
-  const safeLimit = Math.max(1, Math.min(Math.floor(limit), 200));
-  return getDb()
-    .prepare(
-      `
-      SELECT id, logged_at as loggedAt, activity_type as activityType, minutes, focus,
-             energy, confidence, notes, created_at as createdAt
-      FROM training_log_entries
-      ORDER BY logged_at DESC, id DESC
-      LIMIT ?
-    `,
-    )
-    .all(safeLimit) as TrainingLogEntry[];
-}
-
-export function createTrainingLogEntry(input: CreateTrainingLogEntry): TrainingLogEntry {
-  const activityType = input.activityType.trim().slice(0, 40);
-  if (!activityType) throw new Error("Choose the kind of work you did.");
-
-  const focus = (input.focus ?? "").trim().slice(0, 180);
-  const notes = (input.notes ?? "").trim().slice(0, 4000);
-  const minutes = Number.isFinite(input.minutes) ? Math.max(0, Math.min(1440, Math.round(input.minutes))) : 0;
-  const loggedAt = input.loggedAt?.trim() || new Date().toISOString();
-  const row = getDb()
-    .prepare(
-      `
-      INSERT INTO training_log_entries (logged_at, activity_type, minutes, focus, energy, confidence, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      RETURNING id, logged_at as loggedAt, activity_type as activityType, minutes, focus,
-                energy, confidence, notes, created_at as createdAt
-    `,
-    )
-    .get(
-      loggedAt,
-      activityType,
-      minutes,
-      focus,
-      optionalRating(input.energy),
-      optionalRating(input.confidence),
-      notes,
-    ) as TrainingLogEntry;
-  return row;
-}
+// ── Per-game review notes ──────────────────────────────────────────
+// The training_log_entries table (migration v9) is kept with whatever it holds;
+// the Performance Lab page that wrote to it was removed in 1.16.0.
 
 export interface GameReviewNote {
   id: number;

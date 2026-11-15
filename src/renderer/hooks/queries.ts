@@ -190,14 +190,6 @@ export const usePerformanceHub = () => {
   });
 };
 
-export const useTrainingLog = (limit: number = 30) => {
-  return useQuery({
-    queryKey: ["trainingLog", limit],
-    queryFn: () => window.clippi.getTrainingLog(limit),
-    gcTime: GC_10MIN,
-  });
-};
-
 export const useGameReviewNotes = (gameId: number | null) => {
   return useQuery({
     queryKey: ["gameReviewNotes", gameId],

@@ -4,7 +4,6 @@ import { lazyPage } from "./lazyPage";
 // first render, the rest while idle) so opening one never waits on a Suspense fallback.
 export const Dashboard = lazyPage(() => import("./pages/Dashboard").then((m) => m.Dashboard));
 export const PlayMode = lazyPage(() => import("./pages/PlayMode").then((m) => m.PlayMode));
-export const PerformanceLab = lazyPage(() => import("./pages/PerformanceLab").then((m) => m.PerformanceLab));
 export const Sessions = lazyPage(() => import("./pages/Sessions").then((m) => m.Sessions));
 export const Library = lazyPage(() => import("./pages/Library").then((m) => m.Library));
 export const Trends = lazyPage(() => import("./pages/Trends").then((m) => m.Trends));
@@ -24,7 +23,6 @@ interface Preloadable {
 const PAGE_BY_PATH: Record<string, Preloadable> = {
   "/": Dashboard,
   "/dashboard": Dashboard,
-  "/performance": PerformanceLab,
   "/sessions": Sessions,
   "/library": Library,
   "/trends": Trends,
@@ -49,7 +47,6 @@ export function pageForHash(hash: string): Preloadable {
 /** Idle-preload order: the pages reachable from the sidebar first, in sidebar order. */
 export const IDLE_PRELOAD_ORDER: readonly Preloadable[] = [
   Dashboard,
-  PerformanceLab,
   Sessions,
   Library,
   Trends,

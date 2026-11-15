@@ -1,5 +1,15 @@
 # Release notes
 
+## 1.16.0 — 2026-11-15
+
+- Add a **Best Character** panel to the Dashboard, under Recent Form. It shows the wireframe of your best character with their record, and one sentence: what you do well with them and what to work on. A button opens that character's page.
+- Best character is decided by results: the highest win rate after discounting small samples (the lower bound of the 95% Wilson interval), among characters with at least 10 decided games. A 10-0 pocket pick no longer outranks hundreds of games at 60%. Draws and unfinished games count toward neither side. Until one character has 10 decided games the panel says so and names the closest.
+- "Does well" and "Work on" compare that character with your other characters combined on five measures: neutral win rate, openings converted (two or more hits), damage per opening, recoveries that made it back, and edgeguards that took the stock. Each is a total across games (for example 743 of 10,031 edgeguards), never an average of per-game percentages, so a game with no attempts adds nothing instead of counting as 0%. A measure is compared only with enough events on both sides (100 exchanges or openings, 50 recoveries or edgeguards), and is named only when it differs by 5% or more. Both tiles show the counts behind them.
+- With games on only one character there is nothing to compare against, and the panel says that instead of naming a strength or weakness.
+- The whole-record analysis card now matches the height of the column beside it and scrolls inside it, so neither Dashboard column leaves a blank area.
+- Remove the **Performance Lab** page and its entries in the sidebar and the command palette. Its scorecard repeated the Dashboard and Trends, and its suggestions and review queue came from the same per-game averages. An old link to it opens the Dashboard. Play Mode's Recent form module is unchanged. Training-log entries already saved stay in the database, but nothing in the app shows or adds to them now. Notes on individual games (the game page) are unchanged.
+- The unused `bestCharacter` field of the dashboard highlights query now uses the same ranking (it was the highest raw win rate with 3 decided games).
+
 ## 1.15.0 — 2026-11-15
 
 - Add an **Input display** module to Play Mode. It is in the Customize module tray, labeled Stream. It draws your controller as a GameCube wireframe and lights the lines of each control while it is held: A green, B red, Z purple, the C-stick yellow, everything else white. The stick caps move with the sticks, and L and R brighten with how far the trigger is pressed.

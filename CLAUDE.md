@@ -81,7 +81,7 @@ Three processes communicate via IPC:
 
 ### Renderer Pages
 
-`Dashboard`, `PerformanceLab`, `Sessions`, `Library` (history + filters, with `pages/library/` subviews), `Trends`, `Characters`, `Oracle` (persistent chat with recent-games context), `Practice` (LLM-generated drill plans), `Rivals` (opponent dossiers), `GameTheater` (replay viewer), `Cornerman` (live coaching history; live delivery also runs in Play Mode panels), `Settings`, `SetupWizard`, `PlayMode` — each in `src/renderer/pages/`.
+`Dashboard`, `Sessions`, `Library` (history + filters, with `pages/library/` subviews), `Trends`, `Characters`, `Oracle` (persistent chat with recent-games context), `Practice` (LLM-generated drill plans), `Rivals` (opponent dossiers), `GameTheater` (replay viewer), `Cornerman` (live coaching history; live delivery also runs in Play Mode panels), `Settings`, `SetupWizard`, `PlayMode` — each in `src/renderer/pages/`.
 
 Key components in `src/renderer/components/`:
 - `LiquidShell.tsx`: App chrome / navigation for analysis pages, with a featured Play Mode entry; theme state is applied in App.tsx

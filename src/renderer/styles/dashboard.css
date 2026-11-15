@@ -24,9 +24,36 @@
   gap: 10px;
   margin-bottom: 10px;
 }
+/* Left column of the split: Recent Form, then the best-character panel, which
+   takes whatever height the column has left. */
+.dash-split-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dash-split-main > .dash-best {
+  flex: 1 0 auto;
+}
+/* The whole-record analysis matches the left column's height and scrolls inside
+   it, so neither column leaves a blank area under its content. */
+.dash-career-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.dash-career-card .dash-oracle-body {
+  flex: 1 1 0;
+  min-height: 280px;
+  max-height: none;
+}
 @media (max-width: 1100px) {
   .dash-split {
     grid-template-columns: 1fr;
+  }
+  .dash-career-card .dash-oracle-body {
+    flex: none;
+    min-height: 0;
+    max-height: min(420px, 60vh);
   }
   .dash-spark-grid {
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -104,4 +131,152 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+}
+
+/* Dashboard: best character (BestCharacterCard). The figure reuses the
+   Characters hero art, so it floats and carries the wireframe idle. */
+.dash-best {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+}
+.dash-best-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  flex: 1 0 auto;
+}
+.dash-best-stage.has-tiles {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) minmax(0, 1fr);
+}
+.dash-best-stage:not(.has-tiles) .dash-best-flank {
+  display: none;
+}
+.dash-best-figure {
+  position: relative;
+  height: clamp(220px, 24vw, 300px);
+  display: grid;
+  place-items: center;
+}
+.dash-best-figure .dash-best-art {
+  width: 100%;
+}
+.dash-best-emoji {
+  font-size: 120px;
+  line-height: 1;
+}
+.dash-best-flank {
+  display: flex;
+  min-width: 0;
+}
+.dash-best-flank--left {
+  justify-content: flex-end;
+  text-align: right;
+}
+.dash-best-tile {
+  min-width: 0;
+  max-width: 280px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 84%, transparent);
+}
+.dash-best-tile--good {
+  border-color: color-mix(in srgb, var(--win) 45%, var(--border));
+}
+.dash-best-tile--work {
+  border-color: color-mix(in srgb, var(--caution) 45%, var(--border));
+}
+.dash-best-tile-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.dash-best-tile--good .dash-best-tile-eyebrow {
+  color: var(--win);
+}
+.dash-best-tile--work .dash-best-tile-eyebrow {
+  color: var(--caution);
+}
+.dash-best-tile-label {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dash-best-tile-value {
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.dash-best-tile-value span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.dash-best-tile-detail {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.dash-best-copy {
+  margin-top: 12px;
+  text-align: center;
+}
+.dash-best-name {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--char-color, var(--text));
+}
+.dash-best-record {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.dash-best-sentence {
+  max-width: 62ch;
+  margin: 12px auto 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.dash-best-sentence strong {
+  color: var(--text);
+}
+.dash-best-note {
+  max-width: 70ch;
+  margin: 8px auto 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+@container (max-width: 620px) {
+  .dash-best-stage.has-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-best-stage.has-tiles .dash-best-figure {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .dash-best-flank--left {
+    justify-content: stretch;
+    text-align: left;
+  }
+  .dash-best-tile {
+    max-width: none;
+    width: 100%;
+  }
 }

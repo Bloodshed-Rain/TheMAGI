@@ -219,8 +219,6 @@ declare global {
         >
       >;
       getPerformanceHub: () => Promise<PerformanceHub>;
-      getTrainingLog: (limit?: number) => Promise<TrainingLogEntry[]>;
-      createTrainingLog: (entry: CreateTrainingLogEntry) => Promise<TrainingLogEntry>;
       getGameReviewNotes: (gameId: number) => Promise<GameReviewNote[]>;
       addGameReviewNote: (
         gameId: number,
@@ -294,49 +292,11 @@ interface PerformanceMetric {
   baseline: number | null;
   delta: number | null;
   higherIsBetter: boolean;
-  winValue: number | null;
-  lossValue: number | null;
 }
 
 interface PerformanceHub {
   sample: { currentGames: number; baselineGames: number; gamesScanned: number };
   metrics: PerformanceMetric[];
-  insights: Array<{ kind: "progress" | "focus" | "winSignal"; title: string; detail: string }>;
-  reviewQueue: Array<{
-    id: number;
-    playedAt: string | null;
-    playerCharacter: string;
-    opponentCharacter: string;
-    opponentTag: string;
-    stage: string;
-    playerFinalStocks: number;
-    opponentFinalStocks: number;
-    reviewReason: string;
-    priority: "high" | "medium";
-    noteCount: number;
-  }>;
-}
-
-interface TrainingLogEntry {
-  id: number;
-  loggedAt: string;
-  activityType: string;
-  minutes: number;
-  focus: string;
-  energy: number | null;
-  confidence: number | null;
-  notes: string;
-  createdAt: string;
-}
-
-interface CreateTrainingLogEntry {
-  loggedAt?: string;
-  activityType: string;
-  minutes: number;
-  focus?: string;
-  energy?: number | null;
-  confidence?: number | null;
-  notes?: string;
 }
 
 interface GameReviewNote {
