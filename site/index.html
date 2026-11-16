@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="liquid">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +9,7 @@
       content="Play, review, and practice with MAGI. Windows Play Mode, live Cornerman stats, Slippi replay review, character action clips, and optional AI in a free, open-source desktop app."
     />
     <link rel="canonical" href="https://themagi.gg/" />
-    <meta name="theme-color" content="#090b12" />
+    <meta name="theme-color" content="#0a0d14" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://themagi.gg/" />
     <meta property="og:title" content="MAGI — Your Melee game. Your corner." />
@@ -24,19 +24,26 @@
     <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png" />
     <link rel="apple-touch-icon" href="favicon_io/apple-touch-icon.png" />
     <link rel="manifest" href="favicon_io/site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <script>
-      // Effect switch. Resolved before first paint so the CSS-driven effects
-      // (scroll ledger, signal beam, interference) apply without a flash.
+      // Effect switch for the procedural effects study. The page follows the
+      // MAGI design system's motion rules, so none of them runs by default:
+      // the hero is the system's wireframe idle. They stay available by name.
+      //   (no parameter)      none
       //   ?fx=all             every effect (cloud takes the hero over flow)
-      //   ?fx=none            plain page
-      //   ?fx=flow            the other hero option, effect 01
-      //   ?fx=cloud,etch,beam the effects study's recommended production set
+      //   ?fx=flow            hero option, effect 01
+      //   ?fx=cloud,etch,beam the effects study's earlier production set
       // Behaviour lives in magi-effects.js, which reads the resolved list back
       // off <html data-fx>. `cloud` and `flow` both target the hero stage, so
       // naming both just picks cloud — everything else composes freely.
       (() => {
         const NAMES = ["cloud", "flow", "plasma", "warp", "etch", "ledger", "beam", "interfere"];
-        const DEFAULT = ["cloud", "plasma", "warp", "etch", "ledger", "beam", "interfere"];
+        const DEFAULT = [];
         const raw = new URLSearchParams(location.search).get("fx");
         let set;
         if (raw === null) set = DEFAULT;
@@ -50,34 +57,100 @@
       })();
     </script>
     <style>
+      /*
+       * MAGI design system, Liquid Metal theme. Token names and values are the
+       * system's (project/tokens.json); build with the tokens by name. Liquid
+       * raises the xs/sm/md radii to 10/14/20px and reads in Inter.
+       */
       :root {
-        --bg: #090b12;
-        --panel: rgba(18, 22, 34, 0.86);
-        --panel-strong: rgba(28, 33, 48, 0.92);
-        --line: rgba(232, 237, 246, 0.16);
-        --line-strong: rgba(232, 237, 246, 0.28);
-        --text: #f5f7fb;
-        --text-soft: #ccd3df;
-        --muted: #8d96a7;
+        --bg: #0a0d14;
+        --surface-1: rgba(255, 255, 255, 0.04);
+        --surface-2: rgba(255, 255, 255, 0.08);
+        --surface-3: rgba(255, 255, 255, 0.12);
+        --border: rgba(255, 255, 255, 0.1);
+        --border-subtle: rgba(255, 255, 255, 0.05);
+        --border-muted: rgba(255, 255, 255, 0.18);
+        --text: #f5f7fa;
+        --text-secondary: #cfd4dc;
+        --text-muted: #9aa1ad;
+        --accent: #c7ccd6;
+        --accent-hover: #e8ebf0;
+        --accent-muted: rgba(199, 204, 214, 0.14);
+        --accent-fill: #c7ccd6;
+        --on-accent: #0a0f0c;
+        --focus-ring: var(--accent);
         --win: #7ee8c5;
         --loss: #ff8a9e;
-        --focus: #dfe6f2;
-        --shadow: 0 28px 70px rgba(0, 0, 0, 0.48);
-        --radius: 8px;
-        font-family:
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          sans-serif;
+        --caution: #ffd47a;
+        --bloom-a: #a0a8ff;
+        --bloom-b: #ff8a9e;
+        --specular: #ffffff;
+        --chrome-glint: linear-gradient(
+          145deg,
+          rgba(255, 255, 255, 0.18) 0%,
+          rgba(255, 255, 255, 0.04) 20%,
+          rgba(255, 255, 255, 0) 45%,
+          rgba(255, 255, 255, 0.08) 70%,
+          rgba(255, 255, 255, 0.02) 100%
+        );
+
+        --font-display: "Chakra Petch", "DM Sans", -apple-system, sans-serif;
+        --font-mono: "JetBrains Mono", "Fira Code", monospace;
+        --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 20px;
+        --space-6: 24px;
+        --space-7: 28px;
+        --space-8: 32px;
+        --space-9: 36px;
+        --space-10: 40px;
+        --space-11: 44px;
+        --space-12: 48px;
+
+        --radius-xs: 10px;
+        --radius-sm: 14px;
+        --radius-md: 20px;
+        --radius-pill: 999px;
+        --control-radius: 10px;
+        --control-height: 36px;
+        --control-padding-y: 7px;
+
+        --shadow-sm: 0 4px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        --shadow-md: 0 20px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        --shadow-lg: 0 40px 120px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+        --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+
+        --duration-fast: 120ms;
+        --duration-base: 150ms;
+        --duration-exit: 180ms;
+        --duration-moderate: 250ms;
+        --duration-slow: 400ms;
+        --duration-reveal: 600ms;
+        --duration-idle: 7s;
+        --duration-ambient: 24s;
+        --stagger: 40ms;
+        --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+        --ease-out: cubic-bezier(0, 0, 0.2, 1);
+        --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+        /* Site layout, not system tokens. */
+        --nav-height: 64px;
+        --page-width: 1180px;
+        /* The hero figure's character colour (Marth, as in the system's WireframeIdle sample). */
+        --char-color: #6b8cff;
+        --char-glow: rgba(107, 140, 255, 0.15);
+
+        font-family: var(--font-sans);
         color: var(--text);
         background: var(--bg);
       }
 
       /*
-       * Registered custom properties for the procedural effects.
+       * Registered custom properties for the opt-in procedural effects (?fx=).
        * --magi-beam must be an <angle> for the conic-gradient border light to
        * interpolate; without registration it is an unanimatable token string.
        * The --magi-* trio below feeds the magi-etch paint worklet.
@@ -162,53 +235,27 @@
         box-sizing: border-box;
       }
 
-      html {
-        scroll-behavior: smooth;
-      }
-
       body {
         margin: 0;
-        background: linear-gradient(180deg, rgba(9, 11, 18, 0.72), rgba(9, 11, 18, 0.98)), #090b12;
+        background-color: var(--bg);
+        background-image: linear-gradient(145deg, #0a0d14 0%, #171b28 54%, #070910 100%);
+        background-attachment: fixed;
         color: var(--text);
+        font-size: 14px;
         line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
       }
 
+      /* App backdrop: the two blooms, atmosphere only. They drift (one of the loops the system allows). */
       body::before {
         content: "";
         position: fixed;
-        inset: -22%;
+        inset: -10%;
         z-index: 0;
         pointer-events: none;
-        background:
-          linear-gradient(
-            118deg,
-            rgba(160, 168, 255, 0.22) 0%,
-            rgba(160, 168, 255, 0.03) 24%,
-            rgba(126, 232, 197, 0.18) 43%,
-            rgba(232, 163, 212, 0.08) 61%,
-            rgba(255, 138, 158, 0.18) 100%
-          ),
-          conic-gradient(
-            from 220deg at 66% 38%,
-            rgba(126, 232, 197, 0.12),
-            rgba(160, 168, 255, 0.24),
-            rgba(255, 138, 158, 0.14),
-            rgba(232, 163, 212, 0.2),
-            rgba(126, 232, 197, 0.12)
-          );
-        filter: blur(42px) saturate(1.35);
-        opacity: 0.72;
-        animation: ambient-flow 26s ease-in-out infinite alternate;
-      }
-
-      @keyframes ambient-flow {
-        from {
-          transform: translate3d(calc(-2% + var(--ambient-x, 0px)), calc(-1% + var(--ambient-y, 0px)), 0) scale(1);
-        }
-
-        to {
-          transform: translate3d(calc(2% + var(--ambient-x, 0px)), calc(1% + var(--ambient-y, 0px)), 0) scale(1.04);
-        }
+        background-image:
+          radial-gradient(900px 620px at 14% 18%, color-mix(in srgb, var(--bloom-a) 18%, transparent), transparent 62%),
+          radial-gradient(880px 680px at 92% 82%, color-mix(in srgb, var(--bloom-b) 14%, transparent), transparent 60%);
       }
 
       .wireframe-bg {
@@ -228,55 +275,15 @@
         width: auto;
         max-width: none;
         opacity: 0;
-        animation: wf-drift 28s ease-in-out infinite alternate;
         user-select: none;
         -webkit-user-drag: none;
-        will-change: opacity, translate, scale, rotate;
+        will-change: opacity;
       }
 
       .parallax-layer {
         transform: translate3d(var(--hero-x, 0px), var(--hero-y, 0px), 0);
-        transform-style: preserve-3d;
-        transition: transform 120ms ease-out;
+        transition: transform var(--duration-fast) var(--ease-out);
         will-change: transform;
-      }
-
-      @keyframes wf-drift {
-        from {
-          translate: 0 0;
-          scale: 1;
-        }
-
-        to {
-          translate: 0 -16px;
-          scale: 1.02;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        body::before {
-          animation: none;
-        }
-
-        .wireframe-bg {
-          display: none;
-        }
-
-        .parallax-layer,
-        .hero-stats,
-        .update-strip {
-          transform: none !important;
-          transition: none;
-        }
-
-        .hero-initial {
-          animation: none;
-        }
-
-        .feature-shot img,
-        .image-lightbox {
-          transition: none;
-        }
       }
 
       a {
@@ -288,31 +295,103 @@
         display: block;
       }
 
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      /* Display headings: Chakra Petch, uppercase by style, tracked. */
+      h1,
+      h2,
+      h3 {
+        font-family: var(--font-display);
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      main,
+      footer {
+        position: relative;
+        z-index: 1;
+      }
+
+      /* Keyboard focus: a 2px focus-ring, offset 2px, on every focusable control. */
+      a:focus-visible,
+      button:focus-visible,
+      summary:focus-visible,
+      .feature-shot img:focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+      }
+
+      .skip-link {
+        position: fixed;
+        top: -80px;
+        left: var(--space-4);
+        z-index: 100;
+        padding: var(--space-3) var(--space-4);
+        border-radius: var(--control-radius);
+        background: var(--accent-fill);
+        color: var(--on-accent);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        text-decoration: none;
+      }
+
+      .skip-link:focus {
+        top: var(--space-3);
+      }
+
+      section[id] {
+        scroll-margin-top: calc(var(--nav-height) + var(--space-6));
+      }
+
+      /* ── Label: uppercase mono metadata ─────────────────────────────── */
+      .eyebrow {
+        margin-bottom: var(--space-4);
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+
+      /* ── Navigation ─────────────────────────────────────────────────── */
       .site-nav {
         position: fixed;
         inset: 0 0 auto;
         z-index: 10;
-        height: 68px;
+        height: var(--nav-height);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 32px;
-        background: rgba(9, 11, 18, 0.78);
-        border-bottom: 1px solid var(--line);
-        backdrop-filter: blur(18px);
+        padding: 0 var(--space-8);
+        background: rgba(10, 13, 20, 0.65);
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(18px) saturate(1.4);
+        -webkit-backdrop-filter: blur(18px) saturate(1.4);
       }
 
       .brand {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: var(--space-3);
+        border-radius: var(--control-radius);
         text-decoration: none;
-        font-weight: 800;
-        letter-spacing: 0.1em;
+        font-family: var(--font-display);
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 2px;
       }
 
       .brand img {
-        width: 62px;
+        width: 56px;
         height: auto;
         filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.5));
       }
@@ -320,93 +399,289 @@
       .nav-links {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 14px;
-        font-weight: 700;
+        gap: var(--space-1);
       }
 
-      .nav-links a {
-        padding: 8px 12px;
-        border-radius: var(--radius);
-        color: var(--text-soft);
+      .nav-links a:not(.btn) {
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--control-radius);
+        color: var(--text-secondary);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
         text-decoration: none;
+        transition:
+          background var(--duration-base) ease,
+          color var(--duration-base) ease;
       }
 
-      .nav-links a:hover {
+      .nav-links a:not(.btn):hover {
         color: var(--text);
-        background: rgba(255, 255, 255, 0.06);
+        background: var(--surface-2);
       }
 
-      .button {
+      .nav-links .btn {
+        margin-left: var(--space-2);
+      }
+
+      /* ── Buttons ────────────────────────────────────────────────────── */
+      .btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 42px;
-        padding: 10px 16px;
-        border: 1px solid var(--line-strong);
-        border-radius: var(--radius);
-        background: rgba(255, 255, 255, 0.08);
+        gap: var(--space-2);
+        min-height: var(--control-height);
+        padding: var(--control-padding-y) 14px;
+        border-radius: var(--control-radius);
+        border: 1px solid var(--border);
+        background: var(--surface-1);
         color: var(--text);
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
         text-decoration: none;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        transition:
+          background var(--duration-base) ease,
+          border-color var(--duration-base) ease,
+          color var(--duration-base) ease;
       }
 
-      .button.primary {
-        background: rgba(245, 247, 251, 0.94);
-        color: #0d111a;
-        border-color: rgba(255, 255, 255, 0.72);
+      .btn:hover {
+        background: var(--surface-2);
+        border-color: var(--border-muted);
       }
 
+      .btn:active {
+        transform: scale(0.98);
+      }
+
+      .btn-primary {
+        position: relative;
+        overflow: hidden;
+        background: var(--accent-fill);
+        border-color: var(--accent-fill);
+        color: var(--on-accent);
+        font-weight: 700;
+      }
+
+      .btn-primary:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+        box-shadow:
+          0 0 20px color-mix(in srgb, var(--accent) 25%, transparent),
+          0 0 4px color-mix(in srgb, var(--accent) 15%, transparent);
+      }
+
+      /* Site addition: the page's call to action, sized for a touch target. */
+      .btn-lg {
+        min-height: var(--space-11);
+        padding: 0 var(--space-5);
+        font-size: 12px;
+      }
+
+      /* ── Hero ───────────────────────────────────────────────────────── */
       .hero {
-        min-height: 86vh;
-        padding: 116px 32px 64px;
-        display: flex;
-        align-items: flex-end;
-        background:
-          linear-gradient(90deg, rgba(9, 11, 18, 0.96) 0%, rgba(9, 11, 18, 0.78) 42%, rgba(9, 11, 18, 0.36) 100%),
-          linear-gradient(180deg, rgba(9, 11, 18, 0.12), rgba(9, 11, 18, 0.62));
-        border-bottom: 1px solid var(--line);
         position: relative;
         z-index: 1;
+        min-height: 86vh;
+        padding: calc(var(--nav-height) + var(--space-12)) var(--space-8) 64px;
+        display: flex;
+        align-items: flex-end;
         overflow: hidden;
-        perspective: 1200px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--bg) 92%, transparent) 0%,
+          color-mix(in srgb, var(--bg) 70%, transparent) 46%,
+          color-mix(in srgb, var(--bg) 20%, transparent) 100%
+        );
       }
 
+      /* The light under the pointer. White in Liquid. */
       .hero::after {
         content: "";
         position: absolute;
         inset: 0;
         z-index: 0;
         pointer-events: none;
-        background:
-          radial-gradient(
-            circle at var(--spot-x, 62%) var(--spot-y, 38%),
-            rgba(245, 247, 251, 0.18),
-            rgba(126, 232, 197, 0.08) 22%,
-            transparent 44%
-          ),
-          linear-gradient(
-            112deg,
-            transparent 0%,
-            transparent 36%,
-            rgba(255, 255, 255, 0.08) 48%,
-            transparent 62%,
-            transparent 100%
-          );
+        background: radial-gradient(
+          circle at var(--spot-x, 62%) var(--spot-y, 38%),
+          color-mix(in srgb, var(--specular) 13%, transparent),
+          transparent 44%
+        );
         mix-blend-mode: screen;
-        opacity: 0.82;
-        transform: translate3d(var(--glint-x, 0px), var(--glint-y, 0px), 0);
-        transition: opacity 180ms ease-out;
-        will-change: transform;
+      }
+
+      .hero-inner {
+        width: min(var(--page-width), 100%);
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hero-title {
+        position: relative;
+        display: grid;
+        gap: 0;
+        max-width: 940px;
+        font-size: clamp(34px, 7.8vw, 86px);
+        line-height: 0.94;
+        letter-spacing: 0.02em;
+      }
+
+      .hero-title-line {
+        display: flex;
+        align-items: baseline;
+        white-space: nowrap;
+      }
+
+      .hero-title-word {
+        min-width: 0;
+        color: color-mix(in srgb, var(--text) 78%, transparent);
+      }
+
+      .hero-title-thru {
+        padding-left: 0.9em;
+        margin: 0.1em 0 0.12em;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 0.16em;
+        font-weight: 600;
+        letter-spacing: 0.3em;
+        line-height: 1;
+      }
+
+      /* The acrostic initials take the system's one figure treatment: white to chrome. */
+      .hero-initial {
+        display: inline-block;
+        background: linear-gradient(180deg, #ffffff 0%, #c8cdd7 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .hero-copy {
+        max-width: 640px;
+        margin-top: var(--space-6);
+        color: var(--text-secondary);
+        font-size: clamp(16px, 1.7vw, 20px);
+        line-height: 1.5;
+      }
+
+      .hero-actions {
+        display: flex;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+        margin-top: var(--space-8);
+      }
+
+      .download-meta {
+        margin-top: var(--space-3);
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+
+      .download-meta a {
+        color: var(--text-secondary);
       }
 
       /*
-       * Hero canvas stage. Holds effect 01 ("Neutral Flow", the curl-noise flow
-       * field) or effect 02 ("Frame Cloud", the GPU particle system) — the
-       * effects study recommends one or the other, never both. The canvas is
-       * created by magi-effects.js, so nothing is allocated when fx is off.
+       * Hero figure: the system's WireframeIdle. The art is a mask over the
+       * character's colour; the scan layer repeats the mask, so the ring painted in
+       * it shows only on the wires. Decoration: the copy beside it carries the meaning.
+       */
+      .hero-figure {
+        position: absolute;
+        top: var(--nav-height);
+        bottom: 0;
+        right: max(var(--space-8), calc((100% - var(--page-width)) / 2));
+        width: min(44vw, 560px);
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      .character-hero-art-xl {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        margin: auto;
+      }
+
+      .char-hero-portrait,
+      .wire-scan-mask {
+        -webkit-mask-image: url(hero-marth.webp);
+        mask-image: url(hero-marth.webp);
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+      }
+
+      .char-hero-portrait {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background-color: var(--char-color);
+        filter: drop-shadow(0 0 30px var(--char-glow));
+      }
+
+      .wire-scan-mask {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        --wire-trail: var(--wire-scan, #ffffff);
+        filter: drop-shadow(0 0 6px color-mix(in srgb, var(--wire-scan, #ffffff) 55%, transparent));
+      }
+
+      @supports (color: oklch(from red l c h)) {
+        .wire-scan-mask--portrait {
+          --wire-trail: oklch(from var(--char-color, var(--accent)) calc(l + 0.06) c calc(h + 45));
+        }
+      }
+
+      .wire-scan {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 150%;
+        aspect-ratio: 1;
+        translate: -50% -50%;
+        border-radius: 50%;
+        opacity: 0;
+        background: radial-gradient(
+          closest-side,
+          transparent 52%,
+          color-mix(in srgb, var(--wire-trail) 75%, transparent) 72%,
+          color-mix(in srgb, var(--wire-scan, #ffffff) 92%, transparent) 93%,
+          transparent 100%
+        );
+      }
+
+      /* The opt-in canvas stages take the hero over; the figure steps aside for them. */
+      [data-fx~="cloud"] .hero-figure,
+      [data-fx~="flow"] .hero-figure {
+        display: none;
+      }
+
+      /*
+       * Hero canvas stage for the opt-in effects 01 ("Neutral Flow") and 02
+       * ("Frame Cloud"). The canvas is created by magi-effects.js, so nothing is
+       * allocated when neither is named in ?fx=.
        */
       .hero-fx {
         position: absolute;
@@ -433,22 +708,13 @@
         inset: 0;
         background: linear-gradient(
           90deg,
-          rgba(9, 11, 18, 0.92) 0%,
-          rgba(9, 11, 18, 0.6) 46%,
-          rgba(9, 11, 18, 0.08) 100%
+          color-mix(in srgb, var(--bg) 92%, transparent) 0%,
+          color-mix(in srgb, var(--bg) 60%, transparent) 46%,
+          color-mix(in srgb, var(--bg) 8%, transparent) 100%
         );
       }
 
-      /*
-       * Effect 03 - "Wordmark Plasma": iridescence flows through the four
-       * acrostic initials instead of a gradient sliding behind them. The <h1>
-       * keeps its real text; the canvas only supplies the glyph fill, which the
-       * letters were already transparent for.
-       */
-      .hero-title {
-        position: relative;
-      }
-
+      /* Opt-in effect 03, "Wordmark Plasma": a canvas supplies the initials' fill. */
       .hero-plasma {
         position: absolute;
         inset: 0;
@@ -460,437 +726,111 @@
 
       [data-fx~="plasma"] .hero-initial {
         background: none;
-        animation: none;
-        filter: none;
       }
 
-      main,
-      footer {
-        position: relative;
-        z-index: 1;
-      }
-
-      .hero-inner {
-        width: min(1180px, 100%);
-        margin: 0 auto;
-        position: relative;
-        z-index: 1;
-      }
-
-      .eyebrow {
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 900;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        margin-bottom: 16px;
-      }
-
-      h1,
-      h2,
-      h3,
-      p {
-        margin: 0;
-      }
-
-      h1 {
-        max-width: 940px;
-        font-size: clamp(36px, 9.5vw, 104px);
-        line-height: 0.92;
-        letter-spacing: 0;
-        text-transform: uppercase;
-      }
-
-      .hero-title {
-        display: grid;
-        gap: 0;
-      }
-
-      .hero-title-line {
-        display: flex;
-        align-items: baseline;
-        white-space: nowrap;
-      }
-
-      .hero-title-word {
-        min-width: 0;
-      }
-
-      .hero-title-thru {
-        padding-left: 0.78em;
-        margin: 0.06em 0 0.08em;
-        color: rgba(245, 247, 251, 0.58);
-        font-size: 0.35em;
-        font-weight: 900;
-        line-height: 1;
-      }
-
-      .hero-initial {
-        display: inline-block;
-        background: var(--initial-gradient);
-        background-size: 260% 260%;
-        background-clip: text;
-        -webkit-background-clip: text;
-        background-position: 0% 50%;
-        color: transparent;
-        -webkit-text-fill-color: transparent;
-        animation: initial-gradient-flow var(--initial-speed, 6.5s) ease-in-out infinite alternate;
-        filter: drop-shadow(0 0 18px color-mix(in srgb, var(--initial-glow) 42%, transparent));
-      }
-
-      @keyframes initial-gradient-flow {
-        from {
-          background-position: 0% 45%;
-        }
-
-        to {
-          background-position: 100% 55%;
-        }
-      }
-
-      .hero-initial.melee {
-        --initial-glow: #7ee8c5;
-        --initial-gradient: linear-gradient(120deg, #7ee8c5 0%, #a0a8ff 35%, #c5b6ff 64%, #7ee8c5 100%);
-      }
-
-      .hero-initial.analysis {
-        --initial-glow: var(--win);
-        --initial-gradient: linear-gradient(120deg, #7ee8c5 0%, #f5f7fb 35%, #a0a8ff 70%, #7ee8c5 100%);
-        animation-delay: -1.3s;
-      }
-
-      .hero-initial.generative {
-        --initial-glow: #c5b6ff;
-        --initial-gradient: linear-gradient(120deg, #a0a8ff 0%, #c5b6ff 34%, #7ee8c5 70%, #f5f7fb 100%);
-        animation-delay: -2.6s;
-      }
-
-      .hero-initial.intelligence {
-        --initial-glow: #7ee8c5;
-        --initial-gradient: linear-gradient(120deg, #7ee8c5 0%, #a0a8ff 38%, #c5b6ff 72%, #f5f7fb 100%);
-        animation-delay: -3.9s;
-      }
-
-      .hero-copy {
-        max-width: 680px;
-        margin-top: 24px;
-        color: var(--text-soft);
-        font-size: clamp(18px, 2vw, 23px);
-      }
-
-      .hero-actions {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-top: 32px;
-      }
-
-      .download-meta {
-        margin-top: 14px;
-        color: var(--muted);
-        font-size: 13px;
-        font-weight: 700;
-      }
-
-      .download-meta a {
-        color: var(--text-soft);
-      }
-
-      .hero-stats {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(120px, 1fr));
-        gap: 12px;
-        max-width: 860px;
-        margin-top: 44px;
-        transform: translate3d(var(--panel-x, 0px), var(--panel-y, 0px), 34px);
-        transform-style: preserve-3d;
-        transition: transform 120ms ease-out;
-        will-change: transform;
-      }
-
-      .stat {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: rgba(12, 15, 24, 0.68);
-        padding: 16px;
-        backdrop-filter: blur(14px);
-      }
-
-      .stat b {
-        display: block;
-        font-size: 22px;
-        margin-bottom: 4px;
-      }
-
-      .stat span {
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
-      .update-strip {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin-top: 28px;
-        max-width: 960px;
-        transform: translate3d(var(--panel-x, 0px), var(--panel-y, 0px), 46px);
-        transform-style: preserve-3d;
-        transition: transform 120ms ease-out;
-        will-change: transform;
-      }
-
-      .update-card {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: rgba(18, 22, 34, 0.72);
-        padding: 14px 16px;
-        color: var(--text-soft);
-        font-size: 14px;
-        font-weight: 700;
-        backdrop-filter: blur(14px);
-      }
-
-      .update-card b {
-        display: block;
-        color: var(--text);
-        font-size: 15px;
-        margin-bottom: 4px;
-      }
-
+      /* ── Sections ───────────────────────────────────────────────────── */
       section {
-        padding: 80px 32px;
+        padding: 80px var(--space-8);
       }
 
       .wrap {
-        width: min(1180px, 100%);
+        width: min(var(--page-width), 100%);
         margin: 0 auto;
-      }
-
-      .section-head {
-        display: grid;
-        grid-template-columns: minmax(240px, 0.7fr) minmax(280px, 1fr);
-        gap: 40px;
-        align-items: end;
-        margin-bottom: 32px;
-      }
-
-      .section-head h2 {
-        font-size: clamp(32px, 5vw, 56px);
-        line-height: 1;
-        letter-spacing: 0;
-        text-transform: uppercase;
-      }
-
-      .section-head p {
-        color: var(--text-soft);
-        font-size: 17px;
-      }
-
-      .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 14px;
-      }
-
-      .feature {
-        min-height: 184px;
-        padding: 22px;
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: var(--panel);
-        box-shadow: var(--shadow);
-      }
-
-      .feature h3 {
-        font-size: 18px;
-        margin-bottom: 10px;
-      }
-
-      .feature p,
-      .feature li {
-        color: var(--text-soft);
-      }
-
-      .feature ul {
-        margin: 12px 0 0;
-        padding-left: 18px;
-      }
-
-      .live-layout {
-        display: grid;
-        grid-template-columns: minmax(300px, 0.82fr) minmax(320px, 1fr);
-        gap: 18px;
-        align-items: stretch;
-      }
-
-      .live-panel,
-      .live-copy {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: var(--panel);
-        box-shadow: var(--shadow);
-      }
-
-      .live-panel {
-        overflow: hidden;
-      }
-
-      .live-panel-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 18px 20px;
-        border-bottom: 1px solid var(--line);
-        background: rgba(245, 247, 251, 0.06);
-      }
-
-      .live-panel-head h3 {
-        font-size: 18px;
-      }
-
-      .live-state {
-        color: var(--win);
-        font-size: 12px;
-        font-weight: 900;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
-      .event-list {
-        display: grid;
-        gap: 10px;
-        padding: 16px;
-      }
-
-      .event {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: rgba(7, 9, 16, 0.64);
-        padding: 13px 14px;
-      }
-
-      .event strong {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 4px;
-        font-size: 14px;
-      }
-
-      .event span {
-        color: var(--muted);
-        font-size: 12px;
-        white-space: nowrap;
-      }
-
-      .event p {
-        color: var(--text-soft);
-        font-size: 14px;
-      }
-
-      .event.high {
-        border-color: rgba(126, 232, 197, 0.46);
-        box-shadow: inset 3px 0 0 rgba(126, 232, 197, 0.8);
-      }
-
-      .live-copy {
-        padding: 24px;
-        display: grid;
-        gap: 18px;
-      }
-
-      .live-copy h3 {
-        font-size: clamp(24px, 4vw, 38px);
-        line-height: 1.05;
-        text-transform: uppercase;
-      }
-
-      .live-copy p {
-        color: var(--text-soft);
-      }
-
-      .event-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      .event-tags span {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 8px 10px;
-        background: rgba(255, 255, 255, 0.06);
-        color: var(--text-soft);
-        font-size: 13px;
-        font-weight: 800;
       }
 
       .feature-section {
         position: relative;
-        border-top: 1px solid rgba(232, 237, 246, 0.08);
+        border-top: 1px solid var(--border-subtle);
       }
 
       .feature-section.alt {
-        background: rgba(245, 247, 251, 0.025);
+        background: color-mix(in srgb, var(--text) 2.5%, transparent);
       }
 
       .feature-layout {
         display: grid;
         grid-template-columns: minmax(300px, 0.72fr) minmax(360px, 1fr);
-        gap: 28px;
+        gap: var(--space-10);
         align-items: center;
-      }
-
-      .feature-layout.reverse {
-        grid-template-columns: minmax(360px, 1fr) minmax(300px, 0.72fr);
       }
 
       .feature-copy {
         display: grid;
-        gap: 18px;
+        gap: var(--space-4);
       }
 
-      .feature-copy h2 {
-        font-size: clamp(34px, 5vw, 64px);
-        line-height: 0.96;
-        letter-spacing: 0;
+      /* Page header: a title with its meta line under it, beside a 3px accent rule. */
+      .page-header {
+        position: relative;
+        margin-bottom: var(--space-2);
+        padding-left: 14px;
+        border-left: 3px solid var(--accent);
+      }
+
+      .page-header h2 {
+        font-size: clamp(26px, 3.4vw, 42px);
+        line-height: 1.05;
+        letter-spacing: 1.5px;
+      }
+
+      .page-header p {
+        margin-top: var(--space-2);
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        line-height: 1.4;
         text-transform: uppercase;
       }
 
-      .feature-copy p {
-        color: var(--text-soft);
-        font-size: clamp(16px, 1.6vw, 20px);
+      .feature-copy > p,
+      .section-head > p,
+      .install .page-header ~ p {
+        color: var(--text-secondary);
+        font-size: clamp(15px, 1.35vw, 17px);
+        line-height: 1.65;
       }
 
-      .feature-pills {
+      .section-head {
+        display: grid;
+        grid-template-columns: minmax(240px, 0.7fr) minmax(280px, 1fr);
+        gap: var(--space-10);
+        align-items: end;
+        margin-bottom: var(--space-8);
+      }
+
+      .section-head .page-header {
+        margin-bottom: 0;
+      }
+
+      /* Chips: static tags in the pill style. Sentence case. */
+      .feature-pills,
+      .event-tags {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
+        margin-top: var(--space-1);
       }
 
-      .feature-pills span {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 8px 10px;
-        background: rgba(255, 255, 255, 0.06);
-        color: var(--text-soft);
-        font-size: 13px;
-        font-weight: 800;
+      .feature-pills span,
+      .event-tags span {
+        padding: var(--space-2) var(--space-4);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-pill);
+        background: var(--surface-1);
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.2;
       }
 
       .feature-media {
         display: grid;
-        gap: 14px;
+        gap: var(--space-3);
       }
 
-      .feature-media.dual {
-        grid-template-columns: 1fr 1fr;
-      }
-
+      .feature-media.dual,
       .feature-media.stats-showcase {
         grid-template-columns: 1fr 1fr;
       }
@@ -899,21 +839,75 @@
         grid-column: 1 / -1;
       }
 
-      .feature-shot {
+      /* ── Card: the frosted Liquid plate ─────────────────────────────── */
+      .feature-shot,
+      .faq-item,
+      .install {
         position: relative;
-        margin: 0;
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: rgba(7, 9, 16, 0.72);
         overflow: hidden;
-        box-shadow: var(--shadow);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: var(--radius-md);
+        background: rgba(14, 18, 28, 0.32);
+        backdrop-filter: blur(9px) saturate(1.4);
+        -webkit-backdrop-filter: blur(9px) saturate(1.4);
+        box-shadow: var(--shadow-md);
+      }
+
+      .feature-shot::before,
+      .faq-item::before,
+      .install::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: var(--chrome-glint);
+        opacity: 0.34;
+        mix-blend-mode: overlay;
+      }
+
+      .feature-shot {
+        margin: 0;
+        transition:
+          transform var(--duration-moderate) var(--ease-spring),
+          box-shadow var(--duration-moderate) ease,
+          border-color var(--duration-moderate) ease,
+          background-color var(--duration-moderate) ease;
+      }
+
+      .feature-shot:hover {
+        transform: translateY(-3px);
+        background: rgba(20, 25, 38, 0.44);
+        border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+        box-shadow:
+          var(--shadow-glass),
+          0 0 20px color-mix(in srgb, var(--accent) 10%, transparent);
+      }
+
+      .feature-shot img {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: contain;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        cursor: zoom-in;
+      }
+
+      .feature-shot img:focus-visible {
+        outline-offset: -2px;
+      }
+
+      .feature-shot figcaption {
+        position: relative;
+        padding: var(--space-3) var(--space-5);
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.5;
       }
 
       /*
-       * Effect 04 - "Replay Warp": the canvas renders the screenshot with
-       * hover-driven displacement and chromatic aberration. The <img> stays put
-       * underneath, transparent but still the lightbox trigger, so click,
-       * keyboard and alt text are untouched.
+       * Opt-in effect 04, "Replay Warp": the canvas renders the screenshot with
+       * hover-driven displacement. The <img> stays put underneath, transparent but
+       * still the lightbox trigger, so click, keyboard and alt text are untouched.
        */
       .feature-warp {
         position: absolute;
@@ -921,7 +915,7 @@
         display: block;
         width: 100%;
         aspect-ratio: 16 / 9;
-        border-bottom: 1px solid var(--line);
+        border-bottom: 1px solid var(--border);
         pointer-events: none;
       }
 
@@ -930,43 +924,18 @@
       }
 
       .feature-shot.is-warped:focus-within {
-        outline: 2px solid var(--focus);
+        outline: 2px solid var(--focus-ring);
         outline-offset: -2px;
       }
 
-      .feature-shot img {
-        width: 100%;
-        aspect-ratio: 16 / 9;
-        object-fit: contain;
-        background: #070910;
-        border-bottom: 1px solid var(--line);
-        cursor: zoom-in;
-        transition:
-          filter 160ms ease,
-          scale 160ms ease;
-      }
-
-      .feature-shot img:hover,
-      .feature-shot img:focus-visible {
-        filter: brightness(1.08);
-        outline: none;
-        scale: 1.01;
-      }
-
-      .feature-shot figcaption {
-        padding: 14px 16px;
-        color: var(--text-soft);
-        font-weight: 700;
-      }
-
       /*
-       * Effect 07 - "Signal Beam": a light runs the border of a live panel.
+       * Opt-in effect 07, "Signal Beam": a light runs the border of a live panel.
        * A 1px-padded wrapper carries an animated conic gradient; the child keeps
        * its own radius and drops its hairline so the two do not double up.
        */
       [data-fx~="beam"] .beam-frame {
         padding: 1px;
-        border-radius: 9px;
+        border-radius: calc(var(--radius-md) + 1px);
         background: conic-gradient(
           from var(--magi-beam, 0deg),
           rgba(232, 237, 246, 0.14) 0deg,
@@ -976,18 +945,7 @@
           rgba(232, 237, 246, 0.14) 360deg
         );
         animation: magi-beam 4.4s linear infinite;
-        box-shadow: var(--shadow);
-      }
-
-      [data-fx~="beam"] .beam-frame.warn {
-        background: conic-gradient(
-          from var(--magi-beam, 0deg),
-          rgba(232, 237, 246, 0.14) 0deg,
-          rgba(232, 237, 246, 0.14) 250deg,
-          rgba(255, 138, 158, 0.95) 322deg,
-          rgba(232, 163, 212, 0.85) 350deg,
-          rgba(232, 237, 246, 0.14) 360deg
-        );
+        box-shadow: var(--shadow-md);
       }
 
       [data-fx~="beam"] .beam-frame > * {
@@ -995,6 +953,7 @@
         box-shadow: none;
       }
 
+      /* ── Lightbox ───────────────────────────────────────────────────── */
       body.lightbox-open {
         overflow: hidden;
       }
@@ -1005,24 +964,25 @@
         z-index: 100;
         display: grid;
         place-items: center;
-        padding: 28px;
-        background:
-          radial-gradient(circle at 26% 20%, rgba(126, 232, 197, 0.16), transparent 34%),
-          radial-gradient(circle at 78% 76%, rgba(160, 168, 255, 0.16), transparent 36%), rgba(3, 5, 10, 0.88);
+        padding: var(--space-7);
+        background: color-mix(in srgb, var(--bg) 90%, transparent);
+        backdrop-filter: blur(9px);
+        -webkit-backdrop-filter: blur(9px);
         opacity: 0;
         pointer-events: none;
-        transition: opacity 180ms ease;
+        transition: opacity var(--duration-exit) var(--ease-in);
       }
 
       .image-lightbox.is-open {
         opacity: 1;
         pointer-events: auto;
+        transition: opacity var(--duration-moderate) var(--ease-out);
       }
 
       .image-lightbox-panel {
         position: relative;
         display: grid;
-        gap: 14px;
+        gap: var(--space-3);
         width: min(1420px, 100%);
         max-height: calc(100vh - 56px);
       }
@@ -1031,159 +991,80 @@
         width: 100%;
         max-height: min(78vh, 880px);
         object-fit: contain;
-        border: 1px solid var(--line-strong);
-        border-radius: var(--radius);
-        background: #05070d;
-        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+        border: 1px solid var(--border-muted);
+        border-radius: var(--radius-sm);
+        background: var(--bg);
+        box-shadow: var(--shadow-lg);
       }
 
       .image-lightbox-caption {
-        color: var(--text-soft);
-        font-weight: 700;
+        color: var(--text-secondary);
+        font-size: 13px;
         text-align: center;
       }
 
       .image-lightbox-close {
         position: absolute;
-        top: 12px;
-        right: 12px;
-        min-width: 42px;
-        min-height: 42px;
-        border: 1px solid var(--line-strong);
-        border-radius: var(--radius);
-        background: rgba(7, 9, 16, 0.86);
-        color: var(--text);
-        cursor: pointer;
-        font: inherit;
-        font-weight: 900;
-        box-shadow: var(--shadow);
+        top: var(--space-3);
+        right: var(--space-3);
+        background: color-mix(in srgb, var(--bg) 86%, transparent);
       }
 
-      .image-lightbox-close:hover,
-      .image-lightbox-close:focus-visible {
-        background: rgba(245, 247, 251, 0.94);
-        color: #0d111a;
-        outline: none;
+      .image-lightbox-close:hover {
+        background: var(--accent-fill);
+        border-color: var(--accent-fill);
+        color: var(--on-accent);
       }
 
-      .shots {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 18px;
-      }
-
-      .shot {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: var(--panel);
-        overflow: hidden;
-        box-shadow: var(--shadow);
-      }
-
-      .shot img {
-        width: 100%;
-        aspect-ratio: 16 / 9;
-        object-fit: cover;
-        border-bottom: 1px solid var(--line);
-      }
-
-      .shot figcaption {
-        padding: 14px 16px;
-        color: var(--text-soft);
-        font-weight: 700;
-      }
-
-      .workflow {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 10px;
-        counter-reset: step;
-      }
-
-      .step {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 18px;
-        background: var(--panel-strong);
-        position: relative;
-        min-height: 150px;
-      }
-
-      .step::before {
-        counter-increment: step;
-        content: counter(step, decimal-leading-zero);
-        display: block;
-        color: var(--win);
-        font-weight: 900;
-        letter-spacing: 0.14em;
-        margin-bottom: 12px;
-      }
-
-      .step h3 {
-        font-size: 16px;
-        margin-bottom: 8px;
-      }
-
-      .step p {
-        color: var(--text-soft);
-        font-size: 14px;
-      }
-
+      /* ── Closing call to action: the page's one chrome plate ────────── */
       .install {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: var(--panel-strong);
-        padding: 28px;
         display: grid;
         grid-template-columns: 1fr auto;
-        gap: 24px;
+        gap: var(--space-6);
         align-items: center;
-        box-shadow: var(--shadow);
+        padding: var(--space-7);
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.14) 0%, rgba(200, 205, 215, 0.08) 50%, rgba(255, 255, 255, 0.04) 100%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.1));
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.3),
+          inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+          0 8px 32px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(30px) saturate(2);
+        -webkit-backdrop-filter: blur(30px) saturate(2);
       }
 
       .install > * {
+        position: relative;
         min-width: 0;
       }
 
-      .install code {
-        display: block;
-        width: 100%;
-        margin-top: 16px;
-        padding: 16px;
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: #070910;
-        color: var(--text-soft);
-        overflow-x: auto;
-        font-family: "JetBrains Mono", Consolas, monospace;
-        font-size: 14px;
-        white-space: pre;
+      .install .page-header {
+        margin-bottom: var(--space-4);
       }
 
+      /* ── FAQ ────────────────────────────────────────────────────────── */
       .faq-list {
         display: grid;
-        gap: 10px;
+        gap: var(--space-3);
         max-width: 900px;
       }
 
-      .faq-item {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: var(--panel);
-        box-shadow: var(--shadow);
-        overflow: hidden;
-      }
-
       .faq-item summary {
+        position: relative;
         list-style: none;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
-        padding: 18px 20px;
+        gap: var(--space-4);
+        padding: var(--space-4) var(--space-6);
+        border-radius: inherit;
         cursor: pointer;
-        font-weight: 800;
-        font-size: 16px;
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.3;
+        transition: background var(--duration-base) ease;
       }
 
       .faq-item summary::-webkit-details-marker {
@@ -1193,11 +1074,12 @@
       .faq-item summary::after {
         content: "+";
         flex-shrink: 0;
-        color: var(--win);
-        font-size: 22px;
-        font-weight: 900;
+        color: var(--accent);
+        font-family: var(--font-mono);
+        font-size: 18px;
+        font-weight: 500;
         line-height: 1;
-        transition: rotate 160ms ease;
+        transition: rotate var(--duration-moderate) var(--ease-spring);
       }
 
       .faq-item[open] summary::after {
@@ -1205,30 +1087,30 @@
       }
 
       .faq-item summary:hover {
-        background: rgba(255, 255, 255, 0.04);
+        background: var(--surface-1);
       }
 
       .faq-item summary:focus-visible {
-        outline: 2px solid var(--focus);
         outline-offset: -2px;
       }
 
       .faq-body {
+        position: relative;
         display: grid;
-        gap: 10px;
-        padding: 0 20px 18px;
+        gap: var(--space-3);
+        padding: 0 var(--space-6) var(--space-5);
       }
 
       .faq-body p {
-        color: var(--text-soft);
+        color: var(--text-secondary);
+        line-height: 1.75;
       }
 
       /*
-       * Effect 05 - "Etched Panels": procedural instrument texture on panel
+       * Opt-in effect 05, "Etched Panels": procedural instrument texture on panel
        * surfaces. The worklet path is Chromium-only; the fallback reproduces the
-       * hatch, dot grid and scan band with layered CSS gradients (corner
-       * brackets are the only element lost). One of the two classes is set on
-       * <html> at runtime, so panels never render both.
+       * hatch, dot grid and scan band with layered CSS gradients. One of the two
+       * classes is set on <html> at runtime, so panels never render both.
        */
       .fx-etch [data-etch] {
         background-image: paint(magi-etch);
@@ -1255,10 +1137,9 @@
       }
 
       /*
-       * Effect 06 - "Scroll Ledger": reveal-on-scroll with no observers, no
-       * listeners and no scroll handler — it runs off the compositor. Guarded by
-       * @supports rather than relying on the keyframes' `both` fill, so browsers
-       * without scroll-driven animations simply get plain, visible content.
+       * Opt-in effect 06, "Scroll Ledger": reveal-on-scroll off the compositor.
+       * Guarded by @supports, so browsers without scroll-driven animations get
+       * plain, visible content.
        */
       @supports (animation-timeline: view()) {
         [data-fx~="ledger"] .feature-layout > *,
@@ -1269,8 +1150,6 @@
           animation-range: entry 4% cover 34%;
         }
 
-        /* Etched panels carry both: the scan band on the document timeline, the
-           reveal on their own view timeline. */
         [data-fx~="ledger"].fx-etch [data-etch] {
           animation:
             magi-scan var(--etch-dur, 9s) linear infinite,
@@ -1293,9 +1172,6 @@
             entry 4% cover 34%;
         }
 
-        /* Same collision for the beamed panel — it is a direct child of a
-           feature layout, so the reveal would otherwise replace its border
-           sweep outright. */
         [data-fx~="ledger"][data-fx~="beam"] .beam-frame {
           animation:
             magi-beam 4.4s linear infinite,
@@ -1307,7 +1183,7 @@
         }
       }
 
-      /* Reading-progress hairline, driven by scroll() rather than a listener. */
+      /* Reading-progress hairline, part of the opt-in ledger effect. */
       .scroll-progress {
         display: none;
       }
@@ -1315,41 +1191,231 @@
       @supports (animation-timeline: scroll()) {
         [data-fx~="ledger"] .scroll-progress {
           position: fixed;
-          inset: 68px 0 auto;
+          inset: var(--nav-height) 0 auto;
           z-index: 9;
           display: block;
           height: 3px;
-          background: rgba(232, 237, 246, 0.12);
+          background: var(--surface-3);
           pointer-events: none;
         }
 
         [data-fx~="ledger"] .scroll-progress span {
           display: block;
           height: 100%;
-          background: linear-gradient(90deg, #7ee8c5, #a0a8ff);
+          background: var(--accent);
           transform-origin: 0 50%;
           animation: magi-fill linear both;
           animation-timeline: scroll(root block);
         }
       }
 
-      /*
-       * Effect 08 - "Interference": SVG feTurbulence + feDisplacementMap on the
-       * Cornerman heading. The text stays selectable and accessible. The class
-       * is only added once the filter defs exist — a dangling filter reference
-       * makes the element render as nothing at all.
-       */
+      /* Opt-in effect 08, "Interference": an SVG displacement filter on one heading. */
       .fx-interfere-on[data-fx~="interfere"] #cornerman h2 {
         filter: url(#magi-interfere);
       }
 
+      /* ── Footer ─────────────────────────────────────────────────────── */
+      footer {
+        padding: var(--space-8);
+        border-top: 1px solid var(--border);
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+
+      .foot-inner {
+        width: min(var(--page-width), 100%);
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        gap: var(--space-4);
+        flex-wrap: wrap;
+      }
+
       /*
-       * Effect still frames. This block sits after the effect rules above so it
-       * wins the cascade on equal specificity: the beam parks at 0deg, the etch
-       * keeps its texture with the scan band held, and the flow field is never
-       * initialized (the script bails on the same media query).
+       * Motion. Reduced motion is the baseline: everything that moves on its own
+       * sits in this block, so without it the page shows its final state at once.
+       * Three things loop, all from the system's allowed set: the backdrop drift,
+       * the backdrop's ghosted wireframes, and the hero figure's wireframe idle.
        */
+      @media (prefers-reduced-motion: no-preference) {
+        html {
+          scroll-behavior: smooth;
+        }
+
+        @keyframes magi-rise {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+        }
+
+        @keyframes magi-wipe {
+          from {
+            clip-path: inset(-8px 100% -8px -8px);
+          }
+
+          to {
+            clip-path: inset(-8px -8px -8px -8px);
+          }
+        }
+
+        @keyframes magi-sweep {
+          from {
+            transform: translateX(-120%);
+          }
+
+          to {
+            transform: translateX(120%);
+          }
+        }
+
+        @keyframes magi-drift {
+          0% {
+            transform: translate(0, 0) scale(1);
+          }
+
+          50% {
+            transform: translate(-20px, 30px) scale(1.05);
+          }
+
+          100% {
+            transform: translate(30px, -20px) scale(0.98);
+          }
+        }
+
+        @keyframes magi-wire-scan {
+          0% {
+            opacity: 0;
+            transform: scale(0.04);
+          }
+
+          6%,
+          28% {
+            opacity: 1;
+          }
+
+          40%,
+          100% {
+            opacity: 0;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes magi-wire-float {
+          from {
+            transform: translateY(4px);
+          }
+
+          to {
+            transform: translateY(-6px) scale(1.012);
+          }
+        }
+
+        @keyframes wf-drift {
+          from {
+            translate: 0 0;
+            scale: 1;
+          }
+
+          to {
+            translate: 0 -16px;
+            scale: 1.02;
+          }
+        }
+
+        body::before {
+          animation: magi-drift var(--duration-ambient) ease-in-out infinite alternate;
+        }
+
+        .wireframe-char {
+          animation: wf-drift 28s ease-in-out infinite alternate;
+        }
+
+        /* Page entrance, once: the hero's blocks rise in reading order, a stagger apart. */
+        .enter-group > * {
+          animation: magi-rise var(--duration-moderate) var(--ease-spring) backwards;
+          animation-delay: calc(var(--enter-delay, 0ms) + var(--i, 0) * var(--stagger));
+        }
+
+        .enter-group > :nth-child(2) {
+          --i: 1;
+        }
+
+        .enter-group > :nth-child(3) {
+          --i: 2;
+        }
+
+        .enter-group > :nth-child(4) {
+          --i: 3;
+        }
+
+        .enter-group > :nth-child(5) {
+          --i: 4;
+        }
+
+        .enter-group > :nth-child(6) {
+          --i: 5;
+        }
+
+        .enter-group > :nth-child(n + 7) {
+          --i: 6;
+        }
+
+        /* One sheen crosses a primary button on hover; it does not repeat while the pointer stays. */
+        .btn-primary::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: linear-gradient(
+            105deg,
+            transparent 38%,
+            color-mix(in srgb, var(--on-accent) 22%, transparent) 50%,
+            transparent 62%
+          );
+          transform: translateX(-120%);
+        }
+
+        .btn-primary:hover::after {
+          animation: magi-sweep var(--duration-reveal) var(--ease-out);
+        }
+
+        /* Wireframe idle: the hero figure hovers, and once per cycle a ring radiates out through its wires. */
+        .character-hero-art-xl {
+          animation: magi-wire-float var(--duration-idle) ease-in-out infinite alternate;
+        }
+
+        .wire-scan-mask--portrait .wire-scan {
+          animation: magi-wire-scan var(--duration-idle) linear infinite;
+          animation-delay: 1200ms;
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
+        .wireframe-bg,
+        .hero-fx {
+          display: none;
+        }
+
+        .parallax-layer {
+          transform: none !important;
+          transition: none;
+        }
+
+        .feature-shot,
+        .image-lightbox,
+        .btn {
+          transition: none;
+        }
+
+        .feature-shot:hover {
+          transform: none;
+        }
+
+        /* Opt-in effects park on a still frame. */
         [data-fx~="beam"] .beam-frame,
         .fx-etch [data-etch],
         .fx-etch-fallback [data-etch],
@@ -1366,66 +1432,54 @@
         .fx-interfere-on[data-fx~="interfere"] #cornerman h2 {
           filter: none;
         }
-
-        /* The hero stage and the screenshot warp are never initialized at all. */
-        .hero-fx {
-          display: none;
-        }
       }
 
-      footer {
-        padding: 32px;
-        border-top: 1px solid var(--line);
-        color: var(--muted);
-      }
-
-      .foot-inner {
-        width: min(1180px, 100%);
-        margin: 0 auto;
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-      }
-
-      @media (max-width: 920px) {
+      /* ── Narrow screens ─────────────────────────────────────────────── */
+      @media (max-width: 1250px) {
         .nav-links .hide-sm {
           display: none;
         }
+      }
 
+      @media (max-width: 920px) {
         .hero {
           min-height: 88vh;
-          padding-inline: 20px;
+          padding-inline: var(--space-5);
         }
 
-        .hero-stats,
-        .update-strip,
-        .feature-grid,
+        /* No room beside the copy: the figure sits behind it, dimmed. */
+        .hero-figure {
+          right: -12%;
+          width: 86vw;
+          opacity: 0.28;
+        }
+
         .feature-layout,
-        .feature-layout.reverse,
         .feature-media.dual,
         .feature-media.stats-showcase,
-        .live-layout,
-        .workflow,
         .section-head,
         .install {
           grid-template-columns: 1fr;
         }
 
-        .shots {
-          grid-template-columns: 1fr;
-        }
-
         section {
-          padding: 56px 20px;
+          padding: 56px var(--space-5);
         }
       }
-      .skip-link { position: fixed; top: -80px; left: 16px; z-index: 100; background: #f5f7fb; color: #090b12; padding: 12px 18px; border-radius: 8px; }
-      .skip-link:focus { top: 12px; }
-      a:focus-visible, button:focus-visible, .feature-shot img:focus-visible { outline: 2px solid var(--win); outline-offset: 5px; }
-      section[id] { scroll-margin-top: 90px; }
-      @media (max-width: 1250px) { .nav-links .hide-sm { display: none; } }
-      @media (max-width: 480px) { .site-nav { padding: 0 12px; } .nav-links { gap: 2px; } .nav-links a { padding: 8px; } .brand { gap: 6px; } .brand img { width: 42px; } }
+
+      @media (max-width: 480px) {
+        .site-nav {
+          padding: 0 var(--space-3);
+        }
+
+        .brand {
+          gap: 6px;
+        }
+
+        .brand img {
+          width: 42px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -1448,7 +1502,7 @@
         <a class="hide-sm" href="#faq">FAQ</a>
         <a href="https://github.com/Bloodshed-Rain/TheMAGI" target="_blank" rel="noreferrer">GitHub</a>
         <a
-          class="button primary"
+          class="btn"
           data-download-cta="short"
           href="https://github.com/Bloodshed-Rain/TheMAGI/releases"
           target="_blank"
@@ -1463,7 +1517,13 @@
     <main id="top">
       <header class="hero">
         <div class="hero-fx" aria-hidden="true"></div>
-        <div class="hero-inner parallax-layer">
+        <div class="hero-figure" aria-hidden="true">
+          <div class="character-hero-art-xl">
+            <div class="char-hero-portrait"></div>
+            <div class="wire-scan-mask wire-scan-mask--portrait"><span class="wire-scan"></span></div>
+          </div>
+        </div>
+        <div class="hero-inner parallax-layer enter-group">
           <div class="eyebrow">Your game. Your corner.</div>
           <h1 class="hero-title" aria-label="Melee Analysis through Generative Intelligence">
             <span class="hero-title-line">
@@ -1487,14 +1547,14 @@
           <p class="hero-copy">Play with your stats beside you. Find the moments that matter. Take one clear adjustment into the next game.</p>
           <div class="hero-actions">
             <a
-              class="button primary"
+              class="btn btn-primary btn-lg"
               data-download-cta="long"
               href="https://github.com/Bloodshed-Rain/TheMAGI/releases"
               target="_blank"
               rel="noreferrer"
               >Get MAGI</a
             >
-            <a class="button" href="#play-mode"
+            <a class="btn btn-lg" href="#play-mode"
               >See Play Mode</a
             >
           </div>
@@ -1512,11 +1572,15 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">Play Mode · Windows</div>
-              <h2>Melee in the middle.<br />Your corner beside it.</h2>
-              <p>Launch your Slippi Netplay Dolphin from MAGI. Arrange live statistics, opponent and set tracking, Cornerman, Oracle, recent form, practice focus, and notes around the game. Choose and reorder panels on either side, resize the sidebars, and save your layout.</p>
-              <p>Go Fullscreen with panels visible in the side space, or choose auto-hide and reveal them at the edge. Your game keeps its 4:3 aspect ratio. Minimal, Live Coaching, and Practice presets give you a starting point.</p>
-              <div class="feature-pills" aria-label="Play Mode highlights"><span>Customizable panels</span><span>Fullscreen sidebars</span><span>Saved layouts</span><span>AI optional</span></div>
+              <div class="page-header">
+                <h2>Melee in the middle.<br />Your corner beside it.</h2>
+                <p>Play Mode · Windows</p>
+              </div>
+              <p>Launch your Slippi Netplay Dolphin from MAGI and keep the game in the middle. Customize lists every module with what it shows and whether it needs a live session: live statistics, opponent and set tracking, Cornerman, Oracle, recent form, practice focus, notes, and the input display. Add one to either sidebar or drag it there.</p>
+              <p>Drag a module by its title to reorder it or move it across, drag a sidebar's inner edge to resize it, and fold any module down to its title. Save the arrangement as a named scene beside the Minimal, Live Coaching, and Practice presets.</p>
+              <p>The input display draws your controller as a GameCube wireframe and lights each control while it is held, from the inputs the running game read on that frame. It shows your controller only, during a game.</p>
+              <p>Go Fullscreen with panels visible in the side space, or choose auto-hide and reveal them at the edge. Your game keeps its 4:3 aspect ratio.</p>
+              <div class="feature-pills" aria-label="Play Mode highlights"><span>Module tray</span><span>Saved scenes</span><span>Input display</span><span>Fullscreen sidebars</span><span>AI optional</span></div>
             </div>
             <figure class="feature-shot">
               <img src="screenshots/app-play-fullscreen.png" alt="MAGI fullscreen Play Mode with panels arranged beside the game area" loading="lazy" />
@@ -1530,8 +1594,10 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">Replay review</div>
-              <h2>Go from a stat to the replay.</h2>
+              <div class="page-header">
+                <h2>Go from a stat to the replay.</h2>
+                <p>Replay review</p>
+              </div>
               <p>
                 Review games in Game Theater, jump to supported coaching timestamps, and replay character action clips. See the sequence in context before deciding what to practice.
               </p>
@@ -1556,15 +1622,20 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">Pattern recognition</div>
-              <h2>See what changes across your games.</h2>
+              <div class="page-header">
+                <h2>See what changes across your games.</h2>
+                <p>Pattern recognition</p>
+              </div>
               <p>
-                Track recent form, compare sessions, and review trends across your replay history. Optional AI reports turn that statistical context into suggested review targets and practice plans.
+                The Dashboard names your best character from your whole record: the highest win rate once small samples are discounted, among characters with at least 10 decided games. Beside that character's wireframe it says what you do better with them than with your other characters and what to work on, with the counts behind both.
+              </p>
+              <p>
+                Track recent form, compare sessions, and review trends across your replay history. Optional AI analysis stays scoped to what you opened it on: one game, one set, one character, or every game you have recorded.
               </p>
               <div class="feature-pills" aria-label="Deep analysis highlights">
+                <span>Best character</span>
                 <span>Session and trend reports</span>
-                <span>Replay-derived context</span>
-                <span>Actionable coaching</span>
+                <span>Scoped AI analysis</span>
               </div>
             </div>
             <figure class="feature-shot">
@@ -1579,8 +1650,10 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">Stats that matter</div>
-              <h2>Know your character. Find your next rep.</h2>
+              <div class="page-header">
+                <h2>Know your character. Find your next rep.</h2>
+                <p>Stats that matter</p>
+              </div>
               <p>
                 Explore character records, execution and punish statistics, matchup results, and supported character-specific sequences. Click the surrounding stats for replay examples, expand core metrics for explanations, and open details for habits, recovery, stock losses, stages, and lifetime totals. Move and technique entries link to short replay clips when timestamp evidence and the original replay are available.
               </p>
@@ -1613,8 +1686,10 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">Integrated live coaching</div>
-              <h2>One adjustment between games.</h2>
+              <div class="page-header">
+                <h2>One adjustment between games.</h2>
+                <p>Integrated live coaching</p>
+              </div>
               <p>
                 Cornerman reads Slippi replay files as they are written, surfaces detected events and running statistics, and uses your selected AI provider for concise between-game coaching. Coaching, alerts, and optional spoken callouts are integrated into MAGI and Play Mode; there is no separate popup window.
               </p>
@@ -1638,8 +1713,10 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">Opponent scouting</div>
-              <h2>Rival Dossier</h2>
+              <div class="page-header">
+                <h2>Rival Dossier</h2>
+                <p>Opponent scouting</p>
+              </div>
               <p>
                 Rival Dossier turns your match history into a focused opponent scouting report: habits, matchup
                 patterns, punish openings, weaknesses to exploit, and a practical game plan for the next set or
@@ -1670,8 +1747,10 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">Ask about any game, session, or pattern</div>
-              <h2>Ask a better question.</h2>
+              <div class="page-header">
+                <h2>Ask a better question.</h2>
+                <p>Ask about any game, session, or pattern</p>
+              </div>
               <p>
                 Ask Oracle about recent form, matchup trends, or what to review next. It receives selected game context from MAGI and responds through your configured AI provider. Check its suggestions against the replay.
               </p>
@@ -1693,8 +1772,10 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">From review to practice</div>
-              <h2>Give the next session a focus.</h2>
+              <div class="page-header">
+                <h2>Give the next session a focus.</h2>
+                <p>From review to practice</p>
+              </div>
               <p>Optional AI practice plans turn supplied game context into suggested drills, with completion tracking and plan history. Keep a practice focus and notes beside the game in Play Mode.</p>
               <div class="feature-pills" aria-label="Practice highlights"><span>Practice plans</span><span>Drill tracking</span></div>
             </div>
@@ -1710,11 +1791,13 @@
         <div class="wrap">
           <div class="feature-layout">
             <div class="feature-copy">
-              <div class="eyebrow">First-run setup</div>
-              <h2>Start with the replays you already have.</h2>
+              <div class="page-header">
+                <h2>Start with the replays you already have.</h2>
+                <p>First-run setup</p>
+              </div>
               <p>The setup wizard guides you through your player identity, Slippi replay folder, and first import. Use your connect code for online games or your tag for offline games. Subfolders are included, and duplicate files are skipped.</p>
               <p>Add Netplay Dolphin, Playback Dolphin, and your own Melee game image when you want to play or review. Common Slippi Launcher paths are detected when available. Finish later and reopen the wizard from Settings whenever you need it.</p>
-              <p>Choose Liquid, Telemetry, Tournament, or Light for the main app and Play Mode. AI is optional throughout setup.</p>
+              <p>Choose Liquid, Telemetry, Tournament, or Light for the main app and Play Mode. Motion shows data arriving and confirms what you did, and is skipped when your system asks for reduced motion. AI is optional throughout setup.</p>
               <div class="feature-pills" aria-label="Setup highlights"><span>Guided import</span><span>Resumable setup</span><span>Four appearances</span><span>No AI required</span></div>
             </div>
             <figure class="feature-shot">
@@ -1727,7 +1810,7 @@
 
       <section id="faq" class="feature-section">
         <div class="wrap">
-          <div class="section-head"><h2>A few things to know.</h2><p>Start with your replays. Add game hosting and AI when you want them.</p></div>
+          <div class="section-head"><div class="page-header"><h2>A few things to know.</h2><p>Questions</p></div><p>Start with your replays. Add game hosting and AI when you want them.</p></div>
           <div class="faq-list">
             <details class="faq-item" data-etch open><summary>What do I need to get started?</summary><div class="faq-body"><p>Download an available release, open the setup wizard, enter your player identity, and select your Slippi replay folder. Import existing games or enable watching for new ones. Playback and Play Mode also need the appropriate Slippi Dolphin and your own Melee game image. MAGI includes neither.</p></div></details>
             <details class="faq-item" data-etch><summary>What is AI doing?</summary><div class="faq-body"><p>MAGI computes statistics and supported event detections from replay data. Optional AI features interpret supplied summaries and suggest coaching, scouting, and practice ideas. Those suggestions can be wrong; replay timestamps and clips are available for supported moments, not every claim.</p></div></details>
@@ -1746,13 +1829,15 @@
         <div class="wrap">
           <div class="install" data-etch>
             <div>
-              <div class="eyebrow">Start with one session</div>
-              <h2>Your next game has a corner.</h2>
+              <div class="page-header">
+                <h2>Your next game has a corner.</h2>
+                <p>Start with one session</p>
+              </div>
               <p>Get an available build from GitHub Releases, check its version and release notes, then follow the setup wizard. The README covers Play Mode, replay review, providers, privacy, and building from source.</p>
             </div>
             <div class="hero-actions" style="margin: 0">
               <a
-                class="button primary"
+                class="btn btn-primary btn-lg"
                 data-download-cta="long"
                 href="https://github.com/Bloodshed-Rain/TheMAGI/releases"
                 target="_blank"
@@ -1760,7 +1845,7 @@
                 >Download Release</a
               >
               <a
-                class="button"
+                class="btn btn-lg"
                 href="https://github.com/Bloodshed-Rain/TheMAGI/blob/main/README.md"
                 target="_blank"
                 rel="noreferrer"
@@ -1775,13 +1860,13 @@
     <footer>
       <div class="foot-inner">
         <span>MAGI — Melee Analysis through Generative Intelligence</span>
-        <span>MIT License - local-first desktop app</span>
+        <span>MIT License · local-first desktop app</span>
       </div>
     </footer>
 
     <div class="image-lightbox" id="image-lightbox" role="dialog" aria-modal="true" aria-label="Enlarged screenshot" aria-hidden="true">
       <div class="image-lightbox-panel">
-        <button class="image-lightbox-close" type="button" aria-label="Close enlarged image">X</button>
+        <button class="btn image-lightbox-close" type="button" aria-label="Close enlarged image">Close</button>
         <img alt="" />
         <div class="image-lightbox-caption"></div>
       </div>
@@ -1977,7 +2062,6 @@
           "dr_mario",
           "falco",
           "fox",
-          "game_and_watch",
           "ganondorf",
           "ice_climbers",
           "jigglypuff",

@@ -4,8 +4,24 @@
     {
       "name": "renderer",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "--config", "vite.config.ts"],
+      "runtimeArgs": [
+        "vite",
+        "--config",
+        "vite.config.ts"
+      ],
       "port": 5173
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4173",
+        "--directory",
+        "site"
+      ],
+      "port": 4173
     }
   ]
 }
