@@ -9,6 +9,7 @@
 - The whole-record analysis card now matches the height of the column beside it and scrolls inside it, so neither Dashboard column leaves a blank area.
 - Remove the **Performance Lab** page and its entries in the sidebar and the command palette. Its scorecard repeated the Dashboard and Trends, and its suggestions and review queue came from the same per-game averages. An old link to it opens the Dashboard. Play Mode's Recent form module is unchanged. Training-log entries already saved stay in the database, but nothing in the app shows or adds to them now. Notes on individual games (the game page) are unchanged.
 - The unused `bestCharacter` field of the dashboard highlights query now uses the same ranking (it was the highest raw win rate with 3 decided games).
+- Development only: packaging builds now empty the main-process output folder first. Compiled files left over from sources deleted months ago were still being picked up, and the artifact check rejected the package.
 
 ## 1.15.0 — 2026-11-15
 
